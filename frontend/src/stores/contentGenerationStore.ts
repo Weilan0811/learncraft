@@ -21,6 +21,8 @@ interface ContentGenerationState {
 export const useContentGenerationStore = create<ContentGenerationState>((set, get) => ({
   loading: false,
   async submitTask(request) {
+    // TODO(MVP-task): Start polling or subscribe to SSE/WebSocket progress once
+    // backend task execution becomes asynchronous instead of immediately complete.
     set({ loading: true, error: undefined });
     try {
       const task = await createContentGenerationTask(request);
@@ -31,6 +33,8 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
     }
   },
   async exportTask(exportType) {
+    // TODO(MVP-export): Track long-running export jobs separately from content
+    // generation and expose retry/download states in the UI.
     const taskId = get().task?.task_id;
     if (!taskId) {
       set({ error: "No task is available to export." });

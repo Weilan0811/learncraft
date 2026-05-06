@@ -5,6 +5,8 @@ interface TaskHistoryPageProps {
 }
 
 export function TaskHistoryPage({ tasks }: TaskHistoryPageProps) {
+  // TODO(MVP-task-history): Load persisted task history, support filters by
+  // content_type/status, and allow reopening preview/export results.
   return (
     <section className="task-history">
       <h2>任务历史</h2>

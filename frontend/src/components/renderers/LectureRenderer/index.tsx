@@ -7,6 +7,8 @@ interface LectureRendererProps {
 }
 
 export function LectureRenderer({ model }: LectureRendererProps) {
+  // TODO(MVP-lecture-renderer): Add table of contents, references, reading
+  // mode, print mode, and full block support for chart/mindmap/table/quiz.
   return (
     <article className="lecture-renderer">
       <header>

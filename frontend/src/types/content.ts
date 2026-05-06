@@ -7,6 +7,8 @@ export type ContentType =
   | "project_task"
   | "quiz_pack"
   | "learning_path";
+// TODO(schema-sync): Generate these types from backend JSON Schema/OpenAPI once
+// schema automation is added, instead of maintaining frontend mirrors by hand.
 
 export type MvpContentType = "lecture" | "slide_deck";
 
@@ -28,6 +30,8 @@ export interface GenerationOptions {
   include_images: boolean;
   include_charts: boolean;
   include_mindmap: boolean;
+  // TODO(MVP-options): Sync with backend additions for audience, duration,
+  // slide count, image style, citation policy, PDF options, and slide theme.
 }
 
 export interface ContentGenerationRequest {

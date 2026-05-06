@@ -1,6 +1,8 @@
 import { useContentGenerationStore } from "../../stores/contentGenerationStore";
 
 export function GenerationProgress() {
+  // TODO(MVP-progress): Show workflow node progress: retrieval, planning,
+  // spec generation, element generation, validation, rendering, and export.
   const { task, loading, error } = useContentGenerationStore();
 
   return (

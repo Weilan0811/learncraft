@@ -4,6 +4,8 @@ from app.schemas.state import RetrievedChunk
 
 class CitationService:
     def from_chunks(self, chunks: list[RetrievedChunk]) -> list[Citation]:
+        # TODO(P1-citations): Deduplicate sources, preserve page/section
+        # metadata, and format citations for lecture, PDF, and slide views.
         return [
             Citation(
                 id=f"citation_{chunk.id}",

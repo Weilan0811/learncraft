@@ -12,6 +12,9 @@ class RAGService(Protocol):
 
 class StubRAGService:
     def retrieve(self, request: ContentGenerationRequest, stage: str, section_hint: str | None = None) -> list[RetrievedChunk]:
+        # TODO(MVP-retriever): Replace with keyword/vector retrieval over at
+        # least one knowledge base, including dedupe, ranking, max token limits,
+        # source metadata, and section-level secondary retrieval.
         return [
             RetrievedChunk(
                 id="chunk_stub",

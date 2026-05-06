@@ -33,3 +33,5 @@ class ContentGenerationState(SchemaModel):
     export_result: ExportResult | None = None
     errors: list[str] = Field(default_factory=list)
     status: TaskStatus = TaskStatus.queued
+    # TODO(MVP-observability): Add current_node, progress percentage, node
+    # timings, retry records, and structured error details for task tracking.

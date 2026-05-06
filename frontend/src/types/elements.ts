@@ -33,3 +33,5 @@ export interface MindmapElementSpec extends BaseElement {
 }
 
 export type ContentElement = TextElement | ImageElement | ChartElementSpec | MindmapElementSpec;
+// TODO(schema-sync): Add table, quiz, citation, and future audio/video element
+// unions when frontend renderers are implemented.

@@ -40,6 +40,8 @@ class LectureSpec(SchemaModel):
     metadata: Metadata = Field(default_factory=dict)
     objectives: list[str] = Field(default_factory=list)
     sections: list[LectureSection] = Field(default_factory=list)
+    # TODO(MVP-lecture): Add summary, references, editable revision metadata,
+    # and explicit required element declarations per section.
 
 
 class SlideSpecElement(SchemaModel):
@@ -65,6 +67,10 @@ class SlideDeckSpec(SchemaModel):
     title: str
     metadata: Metadata = Field(default_factory=dict)
     slides: list[SlideSpecPage] = Field(default_factory=list)
+    # TODO(MVP-slide): Add deck-level theme, slide count, speaker notes, and
+    # asset dependency declarations for scene-content-kit/PPTX export.
 
 
 ContentSpec = LectureSpec | SlideDeckSpec
+# TODO(content-types): Extend this union when enabling social_post,
+# podcast_script, video_script, project_task, quiz_pack, or learning_path.

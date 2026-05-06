@@ -1,6 +1,8 @@
 import { useContentGenerationStore } from "../../stores/contentGenerationStore";
 
 export function ExportActions() {
+  // TODO(MVP-export): Support multiple export formats, disabled reasons,
+  // download progress, failed export retries, and generated file metadata.
   const task = useContentGenerationStore((state) => state.task);
   const exportResult = useContentGenerationStore((state) => state.exportResult);
   const exportTask = useContentGenerationStore((state) => state.exportTask);

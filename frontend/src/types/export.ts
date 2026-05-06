@@ -16,6 +16,8 @@ export interface TaskResult {
   preview_url?: string | null;
   export_files: ExportFile[];
   errors: string[];
+  // TODO(MVP-task): Add progress, current_node, timestamps, and structured
+  // error details after backend task state is persisted.
 }
 
 export interface PreviewResponse {
