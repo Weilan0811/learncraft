@@ -1,0 +1,205 @@
+{
+  "$defs": {
+    "LectureRenderModel": {
+      "additionalProperties": false,
+      "properties": {
+        "render_type": {
+          "const": "lecture_page",
+          "default": "lecture_page",
+          "title": "Render Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "objectives": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Objectives",
+          "type": "array"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/LectureRenderSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "printable_model": {
+          "additionalProperties": true,
+          "title": "Printable Model",
+          "type": "object"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "LectureRenderModel",
+      "type": "object"
+    },
+    "LectureRenderSection": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "render_blocks": {
+          "items": {
+            "$ref": "#/$defs/RenderBlock"
+          },
+          "title": "Render Blocks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "LectureRenderSection",
+      "type": "object"
+    },
+    "RenderBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content"
+        },
+        "asset_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Url"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "RenderBlock",
+      "type": "object"
+    },
+    "SlidePageModel": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": "scenekit.slide/v1",
+          "default": "scenekit.slide/v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "page": {
+          "additionalProperties": true,
+          "title": "Page",
+          "type": "object"
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "title": "SlidePageModel",
+      "type": "object"
+    },
+    "SlideRenderModel": {
+      "additionalProperties": false,
+      "properties": {
+        "render_type": {
+          "const": "slide_deck",
+          "default": "slide_deck",
+          "title": "Render Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/SlidePageModel"
+          },
+          "title": "Pages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "SlideRenderModel",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "content_type": {
+      "enum": [
+        "lecture",
+        "slide_deck"
+      ],
+      "title": "Content Type",
+      "type": "string"
+    },
+    "render_model": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/LectureRenderModel"
+        },
+        {
+          "$ref": "#/$defs/SlideRenderModel"
+        }
+      ],
+      "title": "Render Model"
+    }
+  },
+  "required": [
+    "content_type",
+    "render_model"
+  ],
+  "title": "PreviewResponse",
+  "type": "object"
+}

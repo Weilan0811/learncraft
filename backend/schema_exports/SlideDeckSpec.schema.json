@@ -1,0 +1,128 @@
+{
+  "$defs": {
+    "SlideSpecElement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content"
+        },
+        "element_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Element Id"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "SlideSpecElement",
+      "type": "object"
+    },
+    "SlideSpecPage": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "core_message": {
+          "title": "Core Message",
+          "type": "string"
+        },
+        "layout": {
+          "default": "title-content",
+          "title": "Layout",
+          "type": "string"
+        },
+        "elements": {
+          "items": {
+            "$ref": "#/$defs/SlideSpecElement"
+          },
+          "title": "Elements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "core_message"
+      ],
+      "title": "SlideSpecPage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "slide_deck",
+      "default": "slide_deck",
+      "title": "Type",
+      "type": "string"
+    },
+    "version": {
+      "default": "content.spec/v1",
+      "title": "Version",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "slides": {
+      "items": {
+        "$ref": "#/$defs/SlideSpecPage"
+      },
+      "title": "Slides",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title"
+  ],
+  "title": "SlideDeckSpec",
+  "type": "object"
+}

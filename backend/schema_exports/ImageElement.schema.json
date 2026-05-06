@@ -1,0 +1,45 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "image",
+      "default": "image",
+      "title": "Type",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "prompt": {
+      "title": "Prompt",
+      "type": "string"
+    },
+    "asset_url": {
+      "title": "Asset Url",
+      "type": "string"
+    },
+    "alt_text": {
+      "title": "Alt Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "prompt",
+    "asset_url",
+    "alt_text"
+  ],
+  "title": "ImageElement",
+  "type": "object"
+}

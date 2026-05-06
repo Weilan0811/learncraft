@@ -1,0 +1,107 @@
+{
+  "$defs": {
+    "GenerationOptions": {
+      "additionalProperties": false,
+      "properties": {
+        "language": {
+          "default": "zh-CN",
+          "title": "Language",
+          "type": "string"
+        },
+        "difficulty": {
+          "default": "introductory",
+          "title": "Difficulty",
+          "type": "string"
+        },
+        "style": {
+          "default": "educational",
+          "title": "Style",
+          "type": "string"
+        },
+        "include_images": {
+          "default": true,
+          "title": "Include Images",
+          "type": "boolean"
+        },
+        "include_charts": {
+          "default": false,
+          "title": "Include Charts",
+          "type": "boolean"
+        },
+        "include_mindmap": {
+          "default": false,
+          "title": "Include Mindmap",
+          "type": "boolean"
+        }
+      },
+      "title": "GenerationOptions",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "content_type": {
+      "enum": [
+        "lecture",
+        "slide_deck"
+      ],
+      "title": "Content Type",
+      "type": "string"
+    },
+    "topic": {
+      "minLength": 1,
+      "title": "Topic",
+      "type": "string"
+    },
+    "user_prompt": {
+      "minLength": 1,
+      "title": "User Prompt",
+      "type": "string"
+    },
+    "system_prompt": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "System Prompt"
+    },
+    "knowledge_base_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Knowledge Base Ids",
+      "type": "array"
+    },
+    "output_formats": {
+      "items": {
+        "enum": [
+          "preview",
+          "pdf",
+          "slide_json",
+          "image_assets",
+          "pptx",
+          "markdown",
+          "html"
+        ],
+        "type": "string"
+      },
+      "title": "Output Formats",
+      "type": "array"
+    },
+    "generation_options": {
+      "$ref": "#/$defs/GenerationOptions"
+    }
+  },
+  "required": [
+    "content_type",
+    "topic",
+    "user_prompt"
+  ],
+  "title": "ContentGenerationRequest",
+  "type": "object"
+}
