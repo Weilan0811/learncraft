@@ -2,6 +2,7 @@ import json
 import zipfile
 from io import BytesIO
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
@@ -15,8 +16,15 @@ from app.workflows.routers import get_exporter
 client = TestClient(app)
 
 
-def test_local_storage_saves_bytes_and_manifest_record(tmp_path: Path) -> None:
-    storage = LocalStorageService(storage_root=tmp_path, public_base_url="/api/assets")
+def storage_test_root() -> Path:
+    root = Path("storage") / "test_assets" / uuid4().hex
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def test_local_storage_saves_bytes_and_manifest_record() -> None:
+    storage_root = storage_test_root()
+    storage = LocalStorageService(storage_root=storage_root, public_base_url="/api/assets")
 
     record = storage.save_bytes(
         asset_id="asset_one",
@@ -30,20 +38,21 @@ def test_local_storage_saves_bytes_and_manifest_record(tmp_path: Path) -> None:
     assert record.url == "/api/assets/asset_one/download"
     assert record.byte_size == 11
     assert record.metadata == {"source": "test"}
-    assert (tmp_path / "files" / "asset_one.txt").read_bytes() == b"hello asset"
+    assert (storage_root / "files" / "asset_one.txt").read_bytes() == b"hello asset"
 
-    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((storage_root / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["assets"]["asset_one"]["filename"] == "one.txt"
     assert manifest["assets"]["asset_one"]["content_type"] == "text/plain"
 
 
-def test_local_storage_preserves_distinct_manifest_records(tmp_path: Path) -> None:
-    storage = LocalStorageService(storage_root=tmp_path, public_base_url="/api/assets")
+def test_local_storage_preserves_distinct_manifest_records() -> None:
+    storage_root = storage_test_root()
+    storage = LocalStorageService(storage_root=storage_root, public_base_url="/api/assets")
 
     storage.save_bytes("asset_one", "one.txt", b"one", "text/plain", "image_assets")
     storage.save_bytes("asset_two", "two.txt", b"two", "text/plain", "image_assets")
 
-    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((storage_root / "manifest.json").read_text(encoding="utf-8"))
     assert sorted(manifest["assets"]) == ["asset_one", "asset_two"]
 
 
@@ -166,8 +175,8 @@ def test_get_exporter_routes_by_explicit_export_type() -> None:
     assert get_exporter("image_assets").export_type == "image_assets"
 
 
-def test_exporters_persist_expected_formats(tmp_path: Path) -> None:
-    storage = LocalStorageService(storage_root=tmp_path, public_base_url="/api/assets")
+def test_exporters_persist_expected_formats() -> None:
+    storage = LocalStorageService(storage_root=storage_test_root(), public_base_url="/api/assets")
     lecture_model = LectureRenderModel(title="Title")
     slide_model = SlideRenderModel(
         title="Deck",

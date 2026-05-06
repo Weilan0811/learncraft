@@ -4,7 +4,7 @@
 
 本项目是“内容生成 Agent”的可启动工程骨架，用于承载后续多模态内容生成能力。系统目标是基于系统 Prompt、用户 Prompt 与外部知识库内容，生成可预览、可渲染、可导出、可扩展的结构化内容资源。
 
-当前工程已实现项目结构、统一 schema、API 契约、工作流节点边界、前端预览入口，以及 Local 资源存储与导出资源访问链路。LLM 调用、RAG 检索、真实图片生成、图表生成、完整 PDF 排版、完整 Slide 渲染等能力仍以接口形式预留，后续应在既有模块内替换 stub 实现，而不是改变整体架构。
+当前工程已实现项目结构、统一 schema、API 契约、工作流节点边界、前端预览入口、Local 资源存储与导出资源访问链路，并补充了可配置的 LLM、图片生成与 RAG 检索 service。默认运行仍使用 stub workflow，避免开发和测试时误调用付费 API；真实 provider service 已封装在后端服务层，后续只需要在 workflow 节点中接入，而不是改变整体架构。
 
 项目采用 monorepo 结构：
 
@@ -57,7 +57,7 @@ flowchart LR
 
 后端负责生成任务、工作流编排、schema 校验、渲染模型和导出结果；前端负责提交任务、展示任务状态、展示讲义或 Slide 预览，以及触发导出。
 
-当前内容生成 workflow 仍为同步 stub，创建任务后立即返回 `completed`。生成过程中产生的图片占位资源、PDF 导出文件、Slide JSON 导出文件和资源包会写入本地 `storage/` 目录，并通过 `/api/assets/{asset_id}` 与 `/api/assets/{asset_id}/download` 暴露元数据和下载入口。后续接入真实异步任务队列时，应保持 API 响应结构不变，只调整 `TaskService` 与 workflow 执行方式。
+当前内容生成 workflow 仍为同步 stub，创建任务后立即返回 `completed`。生成过程中产生的图片占位资源、PDF 导出文件、Slide JSON 导出文件和资源包会写入本地 `storage/` 目录，并通过 `/api/assets/{asset_id}` 与 `/api/assets/{asset_id}/download` 暴露元数据和下载入口。真实 LLM、图片和检索 provider 已在 service 层实现，后续接入真实异步任务队列和真实生成节点时，应保持 API 响应结构不变，只调整 `TaskService` 与 workflow 执行方式。
 
 ## 3. 后端模块说明
 
@@ -112,13 +112,22 @@ GET  /api/assets/{asset_id}/download
 - 提供日志入口。
 - 定义任务状态枚举。
 - 提供 Local 资源存储配置，例如 `storage_root` 和 `/api/assets` 公开访问前缀。
+- 统一管理文本、图片、embedding provider 与模型配置。
 
 后续开发预留点：
 
-- 在 `config.py` 中继续增加模型供应商、向量库、OSS/S3、任务队列、图片生成服务等配置。
+- 在 `config.py` 中继续增加 OSS/S3、任务队列等配置。
 - 在 `exceptions.py` 中扩展业务异常，例如 schema 校验失败、LLM 调用失败、导出失败、资源不存在。
 - 在 `logging.py` 中接入结构化日志、trace id、request id 和任务级日志。
 - 在 `task.py` 中扩展任务阶段状态，例如 `retrieving`、`planning`、`generating`、`rendering`、`exporting`。
+
+关键配置从根目录 `.env` 读取，变量前缀为 `CONTENT_GENERATOR_`。默认值包括：
+
+- `PROVIDER_MODE=stub`：默认不调用真实外部 API。
+- `TEXT_PROVIDER=bailian`、`TEXT_MODEL=qwen3.5-flash`。
+- `IMAGE_PROVIDER=apimart`、`IMAGE_MODEL=gpt-image-2`、`IMAGE_RESOLUTION=1k`。
+- `EMBEDDING_PROVIDER=bailian`、`EMBEDDING_MODEL=text-embedding-v3`。
+- `QDRANT_PATH=storage/qdrant_data`、`QDRANT_COLLECTION=default`。
 
 ### 3.3 Schema 层
 
@@ -242,24 +251,28 @@ retrieve_context
 
 - 封装外部能力和业务服务。
 - 将具体供应商、存储系统、任务执行方式从 workflow 中隔离。
-- 当前已提供 Local 存储、资源元数据查询和文件下载服务；LLM、RAG、真实图片生成等外部能力仍使用 stub。
+- 当前已提供 Local 存储、资源元数据查询、文件下载服务、真实 LLM service、真实图片 provider service 和 Qdrant RAG service。默认 workflow 仍使用 stub，真实 service 通过 factory 按配置创建。
 
 模块功能与预留位置：
 
 `llm_service.py`
 
-- 当前：定义 `LLMService` 协议和 `StubLLMService`。
-- 后续：接入真实 LLM provider，支持结构化输出、重试、超时、日志、模型路由和 token 统计。
+- 当前：定义 `LLMService` 协议、`StubLLMService` 和 `BailianLLMService`。
+- `BailianLLMService` 通过百炼兼容 OpenAI 的 `/chat/completions` 接口生成结构化 JSON，支持超时、重试、token usage 记录、Pydantic schema 校验和一次 schema repair。
+- 后续：将 Planner、Generator、Reviewer 节点接入 `get_llm_service()`，并补充任务级 tracing 与模型路由策略。
 
 `rag_service.py`
 
-- 当前：`StubRAGService` 返回知识库占位片段。
-- 后续：接入关键词检索、向量检索或混合检索，支持按 `retrieval_stage` 和 `section_hint` 检索。
+- 当前：`StubRAGService` 返回知识库占位片段；`QdrantRAGService` 使用 `langchain_qdrant` 读取 `storage/qdrant_data` 下的本地 Qdrant 数据；`BailianEmbeddingService` 负责查询向量。
+- 支持单知识库 collection 选择、按阶段和章节 hint 构造查询、结果去重、按分数排序、字符上限控制和来源 metadata 映射。
+- 后续：补充知识库入库流程、混合检索、rerank 与章节级二次检索在 workflow 中的实际调用。
 
 `image_generation_service.py`
 
-- 当前：生成确定性的本地 SVG 占位图片资源，写入 Local storage，并返回包含 `prompt`、`asset_url`、`alt_text` 和图片元数据的 `ImageElement`。
-- 后续：接入真实图片生成服务，支持 provider 调用、失败重试和更多生成参数。
+- 当前：保留确定性的本地 SVG stub；真实图片默认使用 `APIMartImageGenerationService` 调用 APIMart `gpt-image-2`，提交异步任务、轮询完成状态、下载图片并转存到 Local storage。
+- 仍保留 `BailianImageGenerationService`，可通过 `IMAGE_PROVIDER=bailian` 切换。
+- 图片 metadata 会记录 provider、model、resolution、aspect ratio、prompt、task id、格式和尺寸推断。
+- 后续：在 Element Generator 中按 `get_image_generation_service()` 接入真实 provider，并完善图片失败降级策略。
 
 `asset_service.py`
 
@@ -639,9 +652,9 @@ ExportActions
 
 后续开发应优先替换服务内部逻辑：
 
-- `StubRAGService` -> 真实 Retriever。
-- `StubLLMService` -> 真实 LLM Service。
-- `StubImageGenerationService` -> 真实图片生成服务。
+- `StubRAGService` -> `QdrantRAGService`。
+- `StubLLMService` -> `BailianLLMService`。
+- `StubImageGenerationService` -> `APIMartImageGenerationService` 或 `BailianImageGenerationService`。
 - `InMemoryTaskService` -> 数据库 + 异步任务队列。
 - `PDFExporter` -> 完整 PDF 排版渲染。
 - `SlideExporter` -> 完整 scene-content-kit Slide JSON/PPTX 导出。
@@ -654,6 +667,7 @@ ExportActions
 
 - `test_api.py`：验证 API 契约。
 - `test_assets.py`：验证 Local storage、资源 API、下载接口和导出资源落盘。
+- `test_provider_services.py`：使用 mock client 验证配置、LLM、APIMart 图片 provider、百炼图片 provider factory 和 Qdrant RAG 映射逻辑。
 - `test_schemas.py`：验证核心 schema。
 - `test_workflow.py`：验证 workflow stub 能产出完整状态。
 
@@ -665,6 +679,8 @@ uv run python backend/scripts/export_json_schema.py
 cd frontend
 npm run build
 ```
+
+后端自动测试默认不调用 APIMart、百炼或真实 Qdrant 服务。真实 provider 冒烟测试应通过显式环境变量和手动命令触发，避免图片生成和 LLM 调用产生非预期费用。
 
 后续新增真实能力时，应至少补充：
 
@@ -680,9 +696,10 @@ npm run build
 
 当前骨架尚未实现以下能力：
 
-- 真实 LLM 调用。
-- 真实知识库检索。
-- 真实图片生成。
+- workflow 节点接入真实 LLM 调用。
+- workflow 节点接入真实知识库检索。
+- workflow 节点接入真实图片生成。
+- 知识库入库与 Qdrant collection 构建。
 - 真实图表数据生成。
 - 真实 Markmap 渲染。
 - 真实 scene-content-kit 渲染。

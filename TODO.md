@@ -11,7 +11,7 @@
 | [ ] | MVP-task | `backend/app/api/content_generation.py:22` | 查询任务时返回节点级进度，例如 retrieving、planning、generating、rendering、exporting。 |
 | [ ] | MVP-preview | `backend/app/api/content_generation.py:32` | 预览接口读取持久化 render_model 快照，支持进程重启后的重复访问和后续编辑/再生成。 |
 | [x] | MVP-export | `backend/app/api/content_generation.py:42` | 根据 export_type 路由到 Local PDF/Slide JSON/资源包 exporter，并返回可下载存储 URL。 |
-| [ ] | MVP-config | `backend/app/core/config.py:10` | 增加 LLM、图片生成、向量检索、对象存储、异步任务队列等 provider/storage 配置。 |
+| [x] | MVP-config | `backend/app/core/config.py:10` | 已增加文本、图片、embedding provider/model 配置，支持 APIMart、百炼、Qdrant 与本地存储关键参数；对象存储和异步任务队列后续扩展。 |
 
 ## 后端 Schema
 
@@ -38,9 +38,9 @@
 |---|---|---|---|
 | [x] | MVP-assets | `backend/app/services/asset_service.py:12` | 查询 Local 资源记录，为图片、PDF、Slide JSON 和资源包返回公开下载 URL。 |
 | [ ] | P1-citations | `backend/app/services/citation_service.py:7` | 引用去重，保留 page/section 元数据，并格式化为讲义、PDF、Slide 视图可用结构。 |
-| [ ] | MVP-image | `backend/app/services/image_generation_service.py:14` | 根据章节上下文生成图片 prompt，调用图片 provider，持久化资源，失败重试并返回真实 URL。 |
-| [ ] | MVP-llm | `backend/app/services/llm_service.py:20` | 实现结构化输出调用、重试、超时、token 统计和 schema repair。 |
-| [ ] | MVP-retriever | `backend/app/services/rag_service.py:15` | 用关键词/向量检索替换 stub，支持单知识库、去重、排序、token 限制、来源元数据和章节二次检索。 |
+| [x] | MVP-image | `backend/app/services/image_generation_service.py:14` | 已实现 APIMart GPT-Image-2 默认图片 provider、百炼图片 provider、任务轮询、图片下载落盘和 metadata 记录；workflow 接入后续完成。 |
+| [x] | MVP-llm | `backend/app/services/llm_service.py:20` | 已实现百炼兼容 OpenAI 结构化输出调用、重试、超时、token usage 记录和 schema repair；workflow 接入后续完成。 |
+| [x] | MVP-retriever | `backend/app/services/rag_service.py:15` | 已实现百炼 embedding 与 `langchain_qdrant` 检索 service，支持单知识库、去重、排序、字符限制和来源 metadata；知识库构建与 workflow 二次检索后续完成。 |
 | [x] | MVP-storage | `backend/app/services/storage_service.py:12` | 将 bytes 保存到 local storage，并返回前端可消费 URL；OSS/S3-compatible storage 后续扩展。 |
 | [ ] | MVP-task | `backend/app/services/task_service.py:13` | 将任务持久化到数据库，并通过 BackgroundTasks/Celery/Arq 派发 workflow。 |
 | [ ] | MVP-preview | `backend/app/services/task_service.py:38` | 从持久化 render snapshot 加载 preview，保证服务重启后任务结果可访问。 |
@@ -69,8 +69,8 @@
 | [ ] | MVP-slide-renderer | `backend/app/renderers/slide_renderer.py:8` | 将 SlideDeckSpec 转换为完整 scene-content-kit JSON，支持图片、表格、主题和布局。 |
 | [x] | MVP-assets | `backend/app/exporters/asset_exporter.py:7` | 打包生成图片资源，用于下载；静态图表、思维导图导出资源后续接入。 |
 | [ ] | P2-markdown | `backend/app/exporters/markdown_exporter.py:7` | 将讲义、脚本和未来内容 spec 转换为 Markdown，并保留引用与资产链接。 |
-| [ ] | MVP-pdf | `backend/app/exporters/pdf_exporter.py:7` | 将 LectureRenderModel.printable_model 渲染为 PDF，包含图片、图表、思维导图和引用。 |
-| [x] | MVP-slide-export | `backend/app/exporters/slide_exporter.py:7` | 序列化 scene-content-kit pages 为 Slide JSON，并预留 PPTX exporter 路径。 |
+| [-] | MVP-pdf | `backend/app/exporters/pdf_exporter.py:7` | 将 LectureRenderModel.printable_model 渲染为 PDF，包含图片、图表、思维导图和引用。 |
+| [-] | MVP-slide-export | `backend/app/exporters/slide_exporter.py:7` | 序列化 scene-content-kit pages 为 Slide JSON，并预留 PPTX exporter 路径。 |
 
 ## 前端 API、状态与页面
 
