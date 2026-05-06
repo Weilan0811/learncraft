@@ -1,0 +1,42 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "text",
+      "default": "text",
+      "title": "Type",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "content": {
+      "title": "Content",
+      "type": "string"
+    },
+    "citations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Citations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "content"
+  ],
+  "title": "TextElement",
+  "type": "object"
+}

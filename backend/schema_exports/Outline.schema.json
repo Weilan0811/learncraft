@@ -1,0 +1,139 @@
+{
+  "$defs": {
+    "OutlineSection": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "goal": {
+          "title": "Goal",
+          "type": "string"
+        },
+        "key_points": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Points",
+          "type": "array"
+        },
+        "recommended_elements": {
+          "items": {
+            "enum": [
+              "text",
+              "image",
+              "chart",
+              "mindmap",
+              "table",
+              "quiz",
+              "citation",
+              "audio_script",
+              "audio_file",
+              "video_script",
+              "interactive_task",
+              "project_task"
+            ],
+            "type": "string"
+          },
+          "title": "Recommended Elements",
+          "type": "array"
+        },
+        "estimated_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Minutes"
+        },
+        "assessment_points": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assessment Points",
+          "type": "array"
+        },
+        "citations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Citations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "goal"
+      ],
+      "title": "OutlineSection",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "content_type": {
+      "enum": [
+        "lecture",
+        "slide_deck"
+      ],
+      "title": "Content Type",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "audience": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Audience"
+    },
+    "learning_objectives": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Learning Objectives",
+      "type": "array"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/OutlineSection"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "id",
+    "content_type",
+    "title"
+  ],
+  "title": "Outline",
+  "type": "object"
+}

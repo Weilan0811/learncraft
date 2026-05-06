@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "ElementReferenceBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "element_ref",
+          "default": "element_ref",
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "element_id": {
+          "title": "Element Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "element_id"
+      ],
+      "title": "ElementReferenceBlock",
+      "type": "object"
+    },
+    "LectureSection": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "blocks": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TextBlock"
+              },
+              {
+                "$ref": "#/$defs/ElementReferenceBlock"
+              }
+            ]
+          },
+          "title": "Blocks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "summary"
+      ],
+      "title": "LectureSection",
+      "type": "object"
+    },
+    "TextBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "text",
+          "default": "text",
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content"
+      ],
+      "title": "TextBlock",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "lecture",
+      "default": "lecture",
+      "title": "Type",
+      "type": "string"
+    },
+    "version": {
+      "default": "content.spec/v1",
+      "title": "Version",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "objectives": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Objectives",
+      "type": "array"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/LectureSection"
+      },
+      "title": "Sections",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title"
+  ],
+  "title": "LectureSpec",
+  "type": "object"
+}
