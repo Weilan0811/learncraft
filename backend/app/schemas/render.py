@@ -26,11 +26,15 @@ class LectureRenderModel(SchemaModel):
     objectives: list[str] = Field(default_factory=list)
     sections: list[LectureRenderSection] = Field(default_factory=list)
     printable_model: dict[str, object] = Field(default_factory=dict)
+    # TODO(MVP-pdf): Replace printable_model dict with a typed print/PDF model
+    # covering table of contents, page size, margins, headers, and references.
 
 
 class SlidePageModel(SchemaModel):
     version: Literal["scenekit.slide/v1"] = "scenekit.slide/v1"
     page: dict[str, object]
+    # TODO(MVP-slide-render): Replace page dict with the official
+    # scene-content-kit page schema once the renderer package is integrated.
 
 
 class SlideRenderModel(SchemaModel):

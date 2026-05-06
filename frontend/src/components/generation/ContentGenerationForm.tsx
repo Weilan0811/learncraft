@@ -6,6 +6,8 @@ import type { ContentGenerationRequest, ExportType, MvpContentType } from "../..
 const defaultPrompt = "生成一份适合本科一年级学生学习的多模态讲义。";
 
 export function ContentGenerationForm() {
+  // TODO(MVP-form): Expand generation controls for audience, difficulty,
+  // slide count/duration, image style, PDF options, and slide theme options.
   const submitTask = useContentGenerationStore((state) => state.submitTask);
   const loading = useContentGenerationStore((state) => state.loading);
   const [contentType, setContentType] = useState<MvpContentType>("lecture");

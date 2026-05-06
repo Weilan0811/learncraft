@@ -17,4 +17,6 @@ class LLMService(Protocol):
 
 class StubLLMService:
     def generate_structured(self, prompt: str, schema: type[StructuredModel]) -> StructuredModel:
+        # TODO(MVP-llm): Implement structured output calls, retries, timeout
+        # handling, token accounting, and schema repair before returning data.
         raise NotImplementedError("LLM generation is intentionally stubbed in the skeleton.")

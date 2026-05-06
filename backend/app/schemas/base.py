@@ -13,6 +13,8 @@ ContentType = Literal[
     "quiz_pack",
     "learning_path",
 ]
+# TODO(schema-extension): When enabling non-MVP content types, add their Spec,
+# Renderer, Exporter, frontend type, and workflow route at the same time.
 
 MvpContentType = Literal["lecture", "slide_deck"]
 
@@ -32,6 +34,8 @@ ElementType = Literal[
 ]
 
 ExportType = Literal["preview", "pdf", "slide_json", "image_assets", "pptx", "markdown", "html"]
+# TODO(export-extension): Enable only formats with concrete exporter
+# implementations in production request validation.
 
 Metadata = dict[str, Any]
 

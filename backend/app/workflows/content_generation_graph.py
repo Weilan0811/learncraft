@@ -1,8 +1,6 @@
 from uuid import uuid4
 
 from app.core.task import TaskStatus
-from app.exporters.pdf_exporter import PDFExporter
-from app.exporters.slide_exporter import SlideExporter
 from app.schemas.elements import ChartElement, ImageElement, MindmapElement, TextElement
 from app.schemas.export import ExportRequest
 from app.schemas.outline import Outline, OutlineSection
@@ -19,7 +17,7 @@ from app.schemas.specs import (
 from app.schemas.state import ContentGenerationState
 from app.services.image_generation_service import StubImageGenerationService
 from app.services.rag_service import StubRAGService
-from app.workflows.routers import get_renderer
+from app.workflows.routers import get_exporter, get_renderer
 
 
 def run_content_generation(
@@ -55,11 +53,15 @@ def run_content_generation(
 
 
 def retrieve_context(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
+    # TODO(MVP-retriever): Support planning/generation/reviewer retrieval stages
+    # and pass section_hint for secondary retrieval after outline creation.
     state.retrieved_chunks = StubRAGService().retrieve(request, stage="planning")
     return state
 
 
 def plan_outline(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
+    # TODO(MVP-planner): Replace placeholder outline with LLM-generated
+    # lecture/slide outlines validated by Outline schema and citation coverage.
     state.outline = Outline(
         id=f"outline_{state.request_id}",
         content_type=request.content_type,
@@ -87,6 +89,8 @@ def generate_content_spec(state: ContentGenerationState, request: ContentGenerat
         raise ValueError("Outline is required before content spec generation.")
 
     if request.content_type == "slide_deck":
+        # TODO(MVP-slide-generator): Generate a multi-page SlideDeckSpec with
+        # title/content/summary pages, visual strategy, layouts, and citations.
         state.content_spec = SlideDeckSpec(
             id=f"deck_{state.request_id}",
             title=state.outline.title,
@@ -106,6 +110,8 @@ def generate_content_spec(state: ContentGenerationState, request: ContentGenerat
         )
         return state
 
+    # TODO(MVP-lecture-generator): Generate full LectureSpec sections with
+    # objectives, summaries, text blocks, required elements, and source citations.
     state.content_spec = LectureSpec(
         id=f"lecture_{state.request_id}",
         title=state.outline.title,
@@ -136,6 +142,8 @@ def generate_content_spec(state: ContentGenerationState, request: ContentGenerat
 
 
 def generate_elements(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
+    # TODO(MVP-elements): Fan out element generation for text/image/chart/
+    # mindmap/table/quiz/citation, then merge generated assets by element id.
     image = StubImageGenerationService().generate_image(
         title=f"{request.topic} 示意图",
         description=f"{request.topic} 的教育类概念图",
@@ -159,6 +167,8 @@ def generate_elements(state: ContentGenerationState, request: ContentGenerationR
 
 
 def validate_content(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
+    # TODO(MVP-validator): Validate schema completeness, source citation
+    # coverage, required element presence, and content quality before rendering.
     if state.content_spec is None:
         state.errors.append("content_spec is missing")
     if state.render_model is not None:
@@ -167,6 +177,8 @@ def validate_content(state: ContentGenerationState, request: ContentGenerationRe
 
 
 def render_content(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
+    # TODO(MVP-renderer): Route to typed content renderers and store render
+    # snapshots for repeatable frontend preview and export.
     if state.content_spec is None:
         raise ValueError("Content spec is required before rendering.")
     renderer = get_renderer(request.content_type)
@@ -175,16 +187,18 @@ def render_content(state: ContentGenerationState, request: ContentGenerationRequ
 
 
 def export_content(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
+    # TODO(MVP-export): Support multiple requested output_formats in one task
+    # and defer long-running exports to async workers.
     if state.render_model is None:
         raise ValueError("Render model is required before exporting.")
     if request.content_type == "slide_deck":
-        state.export_result = SlideExporter().export(
+        state.export_result = get_exporter("slide_json").export(
             state.request_id,
             state.render_model,
             ExportRequest(export_type="slide_json"),
         )
     elif "pdf" in request.output_formats:
-        state.export_result = PDFExporter().export(
+        state.export_result = get_exporter("pdf").export(
             state.request_id,
             state.render_model,
             ExportRequest(export_type="pdf"),

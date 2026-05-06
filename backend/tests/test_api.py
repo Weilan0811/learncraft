@@ -56,11 +56,32 @@ def test_content_generation_task_lifecycle_exposes_stub_result() -> None:
     exported = export_response.json()
     assert exported["export_type"] == "pdf"
     assert exported["status"] == "success"
-    assert exported["file_url"].endswith(f"{task_id}.pdf")
+    assert exported["file_url"].startswith("/api/assets/")
+    assert exported["file_url"].endswith("/download")
+
+    download_response = client.get(exported["file_url"])
+    assert download_response.status_code == 200
+    assert download_response.headers["content-type"].startswith("application/pdf")
+    assert download_response.content.startswith(b"%PDF-")
 
 
-def test_asset_endpoint_returns_stub_asset_metadata() -> None:
+def test_asset_endpoint_returns_local_asset_metadata() -> None:
+    create_response = client.post(
+        "/api/content-generation/tasks",
+        json={
+            "content_type": "lecture",
+            "topic": "人工智能基础导论",
+            "user_prompt": "生成一份讲义",
+            "output_formats": ["preview"],
+            "generation_options": {"include_images": True},
+        },
+    )
+    assert create_response.status_code == 201
+
     response = client.get("/api/assets/img_stub")
 
     assert response.status_code == 200
-    assert response.json()["asset_id"] == "img_stub"
+    asset = response.json()
+    assert asset["asset_id"] == "img_stub"
+    assert asset["kind"] == "image"
+    assert asset["url"] == "/api/assets/img_stub/download"

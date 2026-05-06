@@ -3,6 +3,8 @@ import { SlideDeckPreview } from "../components/renderers/SlideRenderer/SlideDec
 import { useContentGenerationStore } from "../stores/contentGenerationStore";
 
 export function ContentPreviewPage() {
+  // TODO(MVP-preview): Add editable preview modes and section-level
+  // regeneration hooks once backend stores content_spec/render_model snapshots.
   const preview = useContentGenerationStore((state) => state.preview);
 
   if (!preview) {

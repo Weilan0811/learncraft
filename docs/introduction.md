@@ -4,7 +4,7 @@
 
 本项目是“内容生成 Agent”的可启动工程骨架，用于承载后续多模态内容生成能力。系统目标是基于系统 Prompt、用户 Prompt 与外部知识库内容，生成可预览、可渲染、可导出、可扩展的结构化内容资源。
 
-当前骨架只实现项目结构、统一 schema、API 契约、工作流节点边界、前端预览入口和 stub 服务。真实的 LLM 调用、RAG 检索、图片生成、图表生成、PDF 导出、Slide 导出等能力均以接口形式预留，后续应在既有模块内替换 stub 实现，而不是改变整体架构。
+当前工程已实现项目结构、统一 schema、API 契约、工作流节点边界、前端预览入口，以及 Local 资源存储与导出资源访问链路。LLM 调用、RAG 检索、真实图片生成、图表生成、完整 PDF 排版、完整 Slide 渲染等能力仍以接口形式预留，后续应在既有模块内替换 stub 实现，而不是改变整体架构。
 
 项目采用 monorepo 结构：
 
@@ -12,6 +12,9 @@
 content-generator-agent/
   backend/
     app/
+  storage/
+    files/
+    manifest.json
   frontend/
     src/
   docs/
@@ -54,7 +57,7 @@ flowchart LR
 
 后端负责生成任务、工作流编排、schema 校验、渲染模型和导出结果；前端负责提交任务、展示任务状态、展示讲义或 Slide 预览，以及触发导出。
 
-当前所有生成能力均为同步 stub，创建任务后立即返回 `completed`。后续接入真实异步任务队列时，应保持 API 响应结构不变，只调整 `TaskService` 与 workflow 执行方式。
+当前内容生成 workflow 仍为同步 stub，创建任务后立即返回 `completed`。生成过程中产生的图片占位资源、PDF 导出文件、Slide JSON 导出文件和资源包会写入本地 `storage/` 目录，并通过 `/api/assets/{asset_id}` 与 `/api/assets/{asset_id}/download` 暴露元数据和下载入口。后续接入真实异步任务队列时，应保持 API 响应结构不变，只调整 `TaskService` 与 workflow 执行方式。
 
 ## 3. 后端模块说明
 
@@ -82,12 +85,13 @@ GET  /api/content-generation/tasks/{task_id}
 GET  /api/content-generation/tasks/{task_id}/preview
 POST /api/content-generation/tasks/{task_id}/export
 GET  /api/assets/{asset_id}
+GET  /api/assets/{asset_id}/download
 ```
 
 后续开发预留点：
 
 - 在 `content_generation.py` 中增加任务取消、重试、重新生成、局部章节再生成等 API。
-- 在 `assets.py` 中接入真实对象存储、鉴权、临时下载 URL、资源元数据查询。
+- 在 `assets.py` 中基于当前 Local 资源接口扩展真实对象存储、鉴权和临时签名 URL。
 - 在 API 层增加错误码映射和统一异常响应格式。
 
 ### 3.2 Core 层
@@ -107,10 +111,11 @@ GET  /api/assets/{asset_id}
 - 定义统一异常基类。
 - 提供日志入口。
 - 定义任务状态枚举。
+- 提供 Local 资源存储配置，例如 `storage_root` 和 `/api/assets` 公开访问前缀。
 
 后续开发预留点：
 
-- 在 `config.py` 中增加模型供应商、向量库、对象存储、任务队列、图片生成服务等配置。
+- 在 `config.py` 中继续增加模型供应商、向量库、OSS/S3、任务队列、图片生成服务等配置。
 - 在 `exceptions.py` 中扩展业务异常，例如 schema 校验失败、LLM 调用失败、导出失败、资源不存在。
 - 在 `logging.py` 中接入结构化日志、trace id、request id 和任务级日志。
 - 在 `task.py` 中扩展任务阶段状态，例如 `retrieving`、`planning`、`generating`、`rendering`、`exporting`。
@@ -128,6 +133,7 @@ GET  /api/assets/{asset_id}
 - `elements.py`
 - `render.py`
 - `export.py`
+- `assets.py`
 - `task.py`
 - `state.py`
 
@@ -147,6 +153,7 @@ GET  /api/assets/{asset_id}
 - `TextElement`、`ImageElement`、`ChartElement`、`MindmapElement`、`TableElement`、`QuizElement`、`Citation`：多模态元素结构。
 - `LectureRenderModel`、`SlideRenderModel`：前端可渲染模型。
 - `ExportRequest`、`ExportResult`：导出请求与结果。
+- `AssetRecord`、`AssetResponse`：本地资源 manifest 记录与 API 返回结构。
 - `ContentGenerationState`：工作流状态。
 
 后续开发预留点：
@@ -154,6 +161,7 @@ GET  /api/assets/{asset_id}
 - 新增内容类型时，在 `base.py` 中扩展 `ContentType`，并在 `specs.py` 中新增对应 Spec。
 - 新增元素类型时，在 `elements.py` 中新增 Element schema，并更新 `ContentElement` union。
 - 新增导出格式时，在 `base.py` 中扩展 `ExportType`，并在 `exporters/` 中新增实现。
+- 新增资源类型时，在 `assets.py` 中扩展 `AssetKind`，并在存储、导出和前端下载入口中同步处理。
 - 前端类型当前为手写镜像，后续可通过 `backend/scripts/export_json_schema.py` 导出的 JSON Schema 自动生成 TypeScript 类型。
 
 schema 约束约定：
@@ -179,7 +187,7 @@ schema 约束约定：
 
 - 承载内容生成主流程。
 - 保留 LangGraph 风格的节点边界。
-- 根据 `content_type` 选择对应 renderer 和 exporter。
+- 根据 `content_type` 选择对应 renderer，并根据显式 `export_type` 选择 exporter。
 - 通过 `ContentGenerationState` 在各节点之间传递数据。
 
 当前 workflow 节点：
@@ -205,7 +213,7 @@ retrieve_context
 - 在 `nodes/element_generator_node.py` 中实现文本、图片、图表、思维导图、表格、测验、引用等并行生成。
 - 在 `nodes/validator_node.py` 中加入结构校验、引用校验、内容安全校验和质量检查。
 - 在 `nodes/renderer_node.py` 中按内容类型选择 renderer。
-- 在 `nodes/exporter_node.py` 中按导出格式选择 exporter。
+- 在 `nodes/exporter_node.py` 中承接更完整的异步导出、重试和错误恢复逻辑。
 
 预期功能：
 
@@ -234,7 +242,7 @@ retrieve_context
 
 - 封装外部能力和业务服务。
 - 将具体供应商、存储系统、任务执行方式从 workflow 中隔离。
-- 当前大部分服务提供 Protocol 或 stub 实现。
+- 当前已提供 Local 存储、资源元数据查询和文件下载服务；LLM、RAG、真实图片生成等外部能力仍使用 stub。
 
 模块功能与预留位置：
 
@@ -250,18 +258,18 @@ retrieve_context
 
 `image_generation_service.py`
 
-- 当前：返回占位 `ImageElement`。
-- 后续：接入图片生成服务，保存图片资源，返回可访问 URL，记录 prompt、尺寸、格式和生成参数。
+- 当前：生成确定性的本地 SVG 占位图片资源，写入 Local storage，并返回包含 `prompt`、`asset_url`、`alt_text` 和图片元数据的 `ImageElement`。
+- 后续：接入真实图片生成服务，支持 provider 调用、失败重试和更多生成参数。
 
 `asset_service.py`
 
-- 当前：返回占位资源元数据。
-- 后续：接入本地存储、OSS 或 S3-compatible Storage，支持资源鉴权、下载、生命周期管理。
+- 当前：读取 Local storage manifest，为图片、PDF、Slide JSON 和资源包返回资源元数据与下载 URL；未知资源返回 not found。
+- 后续：接入 OSS 或 S3-compatible Storage，支持资源鉴权、生命周期管理和临时签名 URL。
 
 `storage_service.py`
 
-- 当前：提供保存接口占位。
-- 后续：统一封装文件写入、对象存储上传、公开 URL 或签名 URL 生成。
+- 当前：将 bytes 保存到 `storage/files/`，维护 `storage/manifest.json`，记录文件类型、大小、SHA-256、创建时间和元数据，并生成 `/api/assets/{asset_id}/download` URL。
+- 后续：扩展 OSS/S3-compatible backend、签名 URL 和更强的并发写入保护。
 
 `citation_service.py`
 
@@ -270,7 +278,7 @@ retrieve_context
 
 `task_service.py`
 
-- 当前：使用内存字典保存任务，创建任务时同步执行 workflow。
+- 当前：使用内存字典保存任务，创建任务时同步执行 workflow；手动导出会按 `export_type` 调用对应 exporter，并持久化导出文件资源。
 - 后续：接入数据库和异步任务队列，支持任务恢复、任务历史、用户隔离、取消、重试和状态推送。
 
 ### 3.6 Renderers 层
@@ -331,13 +339,13 @@ retrieve_context
 
 `PDFExporter`
 
-- 当前：返回占位 PDF URL。
-- 后续：将 `LectureRenderModel.printable_model` 导出为 PDF，支持页眉页脚、目录、引用、图片、图表和思维导图。
+- 当前：生成最小可下载 PDF 文件，写入 Local storage，并返回资源下载 URL。
+- 后续：将 `LectureRenderModel.printable_model` 导出为完整排版 PDF，支持页眉页脚、目录、引用、图片、图表和思维导图。
 
 `SlideExporter`
 
-- 当前：返回占位 Slide JSON URL。
-- 后续：导出多页 `scenekit.slide/v1` JSON，后续可扩展 PPTX。
+- 当前：将 `SlideRenderModel` 序列化为 JSON 文件，写入 Local storage，并返回资源下载 URL。
+- 后续：完善 scene-content-kit schema 适配，并扩展 PPTX 导出。
 
 `MarkdownExporter`
 
@@ -346,14 +354,14 @@ retrieve_context
 
 `AssetExporter`
 
-- 当前：返回占位资源包 URL。
-- 后续：打包图片、图表静态图、思维导图 SVG/PNG 等资源。
+- 当前：收集渲染模型中的本地图片资源，打包为 ZIP，并在包内写入 `manifest.json`。
+- 后续：纳入图表静态图、思维导图 SVG/PNG 等更多资源类型。
 
 预留接口：
 
 - 新增导出格式时，在 `base.py` 中扩展 `ExportType`。
 - 在 `exporters/` 中新增 exporter。
-- 在 workflow 或 task service 中增加 export_type 到 exporter 的路由。
+- 在 workflow 或 task service 中按显式 `export_type` 路由 exporter。
 
 ### 3.8 Prompts 层
 
@@ -594,10 +602,11 @@ TaskResult.preview_url
 ExportActions
   -> POST /api/content-generation/tasks/{task_id}/export
   -> Exporter
+  -> LocalStorageService
   -> ExportResult
 ```
 
-后续实现时，导出应支持异步执行。长耗时导出不应阻塞 API 请求。
+导出结果会写入 Local storage，`ExportResult.file_url` 指向 `/api/assets/{asset_id}/download`。后续实现时，长耗时导出应支持异步执行，不应阻塞 API 请求。
 
 ## 6. 新增能力的开发方式
 
@@ -634,8 +643,8 @@ ExportActions
 - `StubLLMService` -> 真实 LLM Service。
 - `StubImageGenerationService` -> 真实图片生成服务。
 - `InMemoryTaskService` -> 数据库 + 异步任务队列。
-- `PDFExporter` -> 真实 PDF 渲染。
-- `SlideExporter` -> 真实 Slide JSON/PPTX 导出。
+- `PDFExporter` -> 完整 PDF 排版渲染。
+- `SlideExporter` -> 完整 scene-content-kit Slide JSON/PPTX 导出。
 
 原则上不要让 API 层直接调用外部供应商，也不要让前端直接拼装后端内部 Spec。
 
@@ -644,6 +653,7 @@ ExportActions
 当前测试位于 `backend/tests/`：
 
 - `test_api.py`：验证 API 契约。
+- `test_assets.py`：验证 Local storage、资源 API、下载接口和导出资源落盘。
 - `test_schemas.py`：验证核心 schema。
 - `test_workflow.py`：验证 workflow stub 能产出完整状态。
 
@@ -661,6 +671,7 @@ npm run build
 - schema 最小合法样例测试。
 - workflow 节点输入输出测试。
 - API 成功与失败路径测试。
+- storage、asset service 和 exporter 文件落盘测试。
 - renderer 输出模型测试。
 - exporter 成功、失败和重试测试。
 - 前端类型构建和关键组件渲染测试。
@@ -675,11 +686,10 @@ npm run build
 - 真实图表数据生成。
 - 真实 Markmap 渲染。
 - 真实 scene-content-kit 渲染。
-- 真实 PDF 导出。
-- 真实 Slide JSON 文件写入。
+- 完整 PDF 排版导出。
+- 完整 Slide JSON schema 适配和 PPTX 导出。
 - 任务持久化。
 - 用户鉴权。
 - 任务队列和进度推送。
 
 这些限制是有意保留的工程边界。当前阶段的价值是建立稳定的模块结构和数据契约，让后续功能可以沿着清晰接口逐步替换 stub。
-

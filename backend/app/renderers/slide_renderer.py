@@ -5,6 +5,8 @@ from app.schemas.specs import SlideDeckSpec
 
 class SlideRenderer:
     def render(self, spec: SlideDeckSpec, elements: list[ContentElement]) -> SlideRenderModel:
+        # TODO(MVP-slide-renderer): Convert SlideDeckSpec into full
+        # scene-content-kit JSON, including images, tables, theme, and layouts.
         pages = [
             SlidePageModel(
                 page={

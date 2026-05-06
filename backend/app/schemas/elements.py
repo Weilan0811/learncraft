@@ -23,6 +23,8 @@ class ImageElement(BaseElement):
     prompt: str
     asset_url: str
     alt_text: str
+    # TODO(MVP-image): Add generation parameters required by PRD acceptance:
+    # width, height, format, model, retry count, and source section id.
 
 
 class ChartElement(BaseElement):
@@ -32,11 +34,15 @@ class ChartElement(BaseElement):
     x_axis: dict[str, object] = Field(default_factory=dict)
     y_axis: dict[str, object] = Field(default_factory=dict)
     series: list[dict[str, object]] = Field(default_factory=list)
+    # TODO(P1-chart): Promote x_axis/y_axis/series to typed schemas that map
+    # losslessly to ECharts options and static export artifacts.
 
 
 class MindmapElement(BaseElement):
     type: Literal["mindmap"] = "mindmap"
     markdown: str
+    # TODO(P1-mindmap): Track generated SVG/PNG asset URLs for PDF and Slide
+    # embedding after Markmap rendering is implemented.
 
 
 class TableElement(BaseElement):
@@ -48,6 +54,8 @@ class TableElement(BaseElement):
 class QuizElement(BaseElement):
     type: Literal["quiz"] = "quiz"
     questions: list[dict[str, object]] = Field(default_factory=list)
+    # TODO(P1-quiz): Replace dict questions with typed single-choice,
+    # multi-choice, and short-answer schemas.
 
 
 class Citation(BaseElement):

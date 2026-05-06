@@ -3,6 +3,8 @@ interface CitationListProps {
 }
 
 export function CitationList({ citations }: CitationListProps) {
+  // TODO(P1-citations): Render source title, page/section metadata, URL, and
+  // citation numbering from backend Citation elements.
   return (
     <section className="citation-list">
       <h3>引用来源</h3>

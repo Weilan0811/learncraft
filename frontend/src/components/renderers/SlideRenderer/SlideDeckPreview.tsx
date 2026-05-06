@@ -7,6 +7,8 @@ interface SlideDeckPreviewProps {
 }
 
 export function SlideDeckPreview({ model }: SlideDeckPreviewProps) {
+  // TODO(MVP-slide-renderer): Replace JSON preview with scene-content-kit
+  // SceneRenderer, zoom controls, page thumbnails, and asset rendering.
   const [index, setIndex] = useState(0);
   const page = model.pages[index]?.page;
 

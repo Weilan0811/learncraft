@@ -6,6 +6,8 @@ import type { ExportRequest, ExportResult, PreviewResponse, TaskResult } from ".
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? ""
 });
+// TODO(MVP-api): Add auth headers, unified error normalization, request
+// tracing, task polling helpers, and cancellation/retry endpoints.
 
 export async function createContentGenerationTask(request: ContentGenerationRequest): Promise<TaskResult> {
   const { data } = await api.post<TaskResult>("/api/content-generation/tasks", request);

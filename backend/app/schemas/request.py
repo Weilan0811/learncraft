@@ -10,6 +10,8 @@ class GenerationOptions(SchemaModel):
     include_images: bool = True
     include_charts: bool = False
     include_mindmap: bool = False
+    # TODO(MVP-options): Add PRD fields for audience, duration/slide count,
+    # image style, citation policy, PDF options, and slide theme options.
 
 
 class ContentGenerationRequest(SchemaModel):
@@ -20,3 +22,5 @@ class ContentGenerationRequest(SchemaModel):
     knowledge_base_ids: list[str] = Field(default_factory=list)
     output_formats: list[ExportType] = Field(default_factory=lambda: ["preview"])
     generation_options: GenerationOptions = Field(default_factory=GenerationOptions)
+    # TODO(MVP-request): Add validation rules for output_formats by content_type,
+    # for example lecture -> pdf and slide_deck -> slide_json.

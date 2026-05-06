@@ -12,5 +12,6 @@ dist/
 .env
 .env.local
 
+storage/
 .worktrees/
 worktrees/

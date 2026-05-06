@@ -5,6 +5,8 @@ from app.schemas.specs import LectureSpec, TextBlock
 
 class LectureRenderer:
     def render(self, spec: LectureSpec, elements: list[ContentElement]) -> LectureRenderModel:
+        # TODO(MVP-lecture-renderer): Render title, objectives, table of
+        # contents, sections, summaries, references, reading mode, and print mode.
         element_lookup = {element.id: element for element in elements}
         sections: list[LectureRenderSection] = []
         for section in spec.sections:
