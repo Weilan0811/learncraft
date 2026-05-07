@@ -1,3 +1,28 @@
-from app.workflows.content_generation_graph import render_content
+from app.schemas.specs import LectureSpec, SlideDeckSpec
+from app.schemas.state import ContentGenerationState
+from app.workflows.routers import get_renderer
 
-__all__ = ["render_content"]
+
+def route_renderer(state: ContentGenerationState) -> dict[str, object]:
+    return {"current_node": "route_renderer"}
+
+
+def route_renderer_choice(state: ContentGenerationState) -> str:
+    return state.content_type
+
+
+def lecture_renderer(state: ContentGenerationState) -> dict[str, object]:
+    if not isinstance(state.content_spec, LectureSpec):
+        return {"errors": state.errors + ["LectureSpec is required for lecture rendering"], "current_node": "lecture_renderer"}
+    render_model = get_renderer("lecture").render(state.content_spec, state.elements)
+    return {"render_model": render_model, "current_node": "lecture_renderer", "progress": {"current_stage": "rendering", "percent": 98}}
+
+
+def slide_renderer(state: ContentGenerationState) -> dict[str, object]:
+    if not isinstance(state.content_spec, SlideDeckSpec):
+        return {"errors": state.errors + ["SlideDeckSpec is required for slide rendering"], "current_node": "slide_renderer"}
+    render_model = get_renderer("slide_deck").render(state.content_spec, state.elements)
+    return {"render_model": render_model, "current_node": "slide_renderer", "progress": {"current_stage": "rendering", "percent": 98}}
+
+
+__all__ = ["route_renderer", "route_renderer_choice", "lecture_renderer", "slide_renderer"]

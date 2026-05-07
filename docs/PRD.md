@@ -9,10 +9,9 @@
 1. 讲义生成
 2. Slide 生成
 3. 图片生成
-4. 图表生成
-5. 思维导图生成
-6. PDF 导出
-7. Slide 导出或预览
+4. 思维导图生成
+5. PDF 导出
+6. Slide 导出或预览
 
 模块整体采用统一生成流程：
 
@@ -28,7 +27,7 @@ content_request
 
 - `outline`：内容大纲，由 Planner 生成。
 - `content_spec`：面向具体内容类型的结构化内容描述，例如 `lecture_spec`、`slide_deck_spec`。
-- `elements`：生成内容所需的多模态元素，例如文本、图片、图表、思维导图、表格、引用、音频脚本等。
+- `elements`：生成内容所需的多模态元素，MVP 阶段包括图片和思维导图。
 - `renderer`：将结构化内容渲染为前端可展示内容。
 
 导出流程由前端导出指令触发，基于已生成的预览数据与资源生成 PDF、Slide 文件、图片、Markdown 等格式，并返回可下载 URL。
@@ -57,7 +56,7 @@ content_request
 | RAG 检索 | 自研 Retriever / 可扩展 LlamaIndex、Haystack | MVP 可先接入简单向量检索与关键词检索 |
 | LLM 调用 | 统一 LLM Service | 封装模型调用、结构化输出、重试、日志 |
 | 图片生成 | Image Generation Service | MVP 必须实现，支持生成图片资源并返回可访问 URL |
-| 图表生成 | chart_spec -> ECharts | 后端生成 `chart_spec`，前端使用 ECharts 渲染 |
+| 图表生成 | 暂缓设计 | 暂不纳入 MVP 生成、渲染与导出范围 |
 | 思维导图生成 | Markdown Outline -> Markmap | 后端生成 Markdown 大纲，前端使用 Markmap 渲染 |
 | PDF 渲染 | 自研 PDF Renderer | 生成讲义 PDF 所需的渲染模型或 HTML |
 | Slide 渲染 | scene-content-kit | 使用已有 slide-only renderer 渲染静态 Slide JSON |
@@ -72,7 +71,7 @@ content_request
 | 状态管理 | Zustand / React Context | 管理生成任务、预览状态、导出状态 |
 | 请求库 | Fetch / Axios | 调用后端生成与导出接口 |
 | Markdown 渲染 | react-markdown / MDX 可选 | 渲染正文内容与 Markdown 片段 |
-| 图表渲染 | ECharts / echarts-for-react | 渲染 `chart_spec` |
+| 图表渲染 | 暂缓设计 | 暂不纳入 MVP 前端渲染范围 |
 | 思维导图渲染 | Markmap | 渲染 Markdown 大纲 |
 | Slide 渲染 | scene-content-kit | 渲染 `slide_deck_spec` 中的 Slide 页面 |
 | 讲义渲染 | 自研 LectureRenderer | 渲染 `lecture_spec` 与多模态 elements |
@@ -159,7 +158,6 @@ backend/
       lecture_spec.py
       slide_spec.py
       elements.py
-      chart_spec.py
       mindmap_spec.py
       image_spec.py
       export.py
@@ -315,7 +313,7 @@ Planner 负责生成内容大纲 `outline`。`outline` 是后续生成 `xxx_spec
       "title": "什么是人工智能",
       "goal": "理解人工智能的定义、边界与典型应用",
       "key_points": ["定义", "发展背景", "应用场景"],
-      "recommended_elements": ["text", "image", "mindmap", "quiz"],
+      "recommended_elements": ["image", "mindmap"],
       "estimated_minutes": 15
     }
   ]
@@ -398,7 +396,7 @@ closing
 
 ## 5.3.1 模块目标
 
-Generator 负责基于 `outline` 和知识库上下文生成结构化内容 Spec，并进一步生成所需多模态 elements。
+Generator 负责基于 `outline` 和知识库上下文生成结构化内容 Spec，并进一步生成图片、思维导图等多模态 elements。
 
 Generator 分为两层：
 
@@ -410,7 +408,7 @@ Element Generator
 其中：
 
 - `Spec Generator` 生成目标内容类型的结构化内容，例如 `LectureSpec`、`SlideDeckSpec`。
-- `Element Generator` 生成图片、图表、思维导图、表格、测验、引用等元素。
+- `Element Generator` 生成图片和思维导图元素。
 
 ---
 
@@ -511,18 +509,16 @@ Element Generator 负责生成目标内容所需的多模态元素。
 MVP 必须支持：
 
 ```text
-text
 image
-chart
 mindmap
-table
-quiz
-citation
 ```
 
 后续支持：
 
 ```text
+text
+table
+citation
 audio_script
 audio_file
 video_script
@@ -595,57 +591,13 @@ project_task
 
 ## 5.3.5 图表生成 Element
 
-### 技术路线
+### 开发级别
 
-```text
-chart_spec -> ECharts
-```
+图表生成暂缓设计。
 
-### 输入
+### 范围说明
 
-```json
-{
-  "element_type": "chart",
-  "title": "不同学习方式效果对比",
-  "chart_intent": "comparison",
-  "data_source": "generated_from_context",
-  "section_context": "比较视频学习、阅读学习、项目学习三种学习方式"
-}
-```
-
-### 输出：ChartSpec
-
-```json
-{
-  "id": "chart_001",
-  "type": "chart",
-  "chart_type": "bar",
-  "title": "不同学习方式效果对比",
-  "description": "比较三种学习方式的平均测验成绩",
-  "x_axis": {
-    "name": "学习方式",
-    "data": ["视频学习", "阅读学习", "项目学习"]
-  },
-  "y_axis": {
-    "name": "平均成绩"
-  },
-  "series": [
-    {
-      "name": "平均成绩",
-      "data": [75, 82, 91]
-    }
-  ]
-}
-```
-
-### 功能需求
-
-1. 支持生成 `chart_spec`。
-2. 支持柱状图、折线图、饼图。
-3. 支持图表标题、说明、坐标轴、数据序列。
-4. 支持前端转换为 ECharts option。
-5. 支持 PDF 导出时转为静态图片或 SVG。
-6. 支持 Slide 渲染时转为图片元素。
+图表生成、`chart_spec` 数据结构、ECharts 前端渲染、图表静态导出和 Slide 图表嵌入暂不纳入 MVP。后续启动该能力时，再补充图表数据来源、图表类型、Schema、渲染适配、静态导出和验收标准。
 
 ---
 
@@ -739,7 +691,7 @@ LectureRenderer 负责渲染 `LectureSpec`，生成前端讲义页面与 PDF 导
 ### 功能需求
 
 1. 支持渲染讲义标题、学习目标、目录、章节、总结、引用。
-2. 支持渲染文本、图片、图表、思维导图、表格、测验。
+2. 支持渲染文本、图片、思维导图。
 3. 支持交互式阅读模式。
 4. 支持打印模式。
 5. 支持生成 PDF 导出所需 `printable_model`。
@@ -754,7 +706,7 @@ SlideRenderer 负责将 `SlideDeckSpec` 转换为 slide renderer 可消费的静
 
 ### 已有渲染器
 
-项目使用 `scene-content-kit` 作为 Slide 渲染器。该 renderer 用于渲染静态 Slide 页面，支持 `text`、`image`、`shape`、`line`、`table` 等元素。复杂图表、SmartArt、复杂自由图形在 v1 阶段以图片形式进入 slide JSON。
+项目使用 `scene-content-kit` 作为 Slide 渲染器。该 renderer 用于渲染静态 Slide 页面，支持 `text`、`image`、`shape`、`line`、`table` 等元素。SmartArt、复杂自由图形在 v1 阶段以图片形式进入 slide JSON。
 
 ### Slide JSON 输出示例
 
@@ -801,7 +753,7 @@ SlideRenderer 负责将 `SlideDeckSpec` 转换为 slide renderer 可消费的静
 1. 支持将 `SlideDeckSpec` 转换为 `scenekit.slide/v1` JSON。
 2. 支持生成多页 slide deck。
 3. 支持 text、image、shape、line、table 元素。
-4. 支持将 chart、mindmap 转换为图片后嵌入。
+4. 支持将 mindmap 转换为图片后嵌入。
 5. 支持主题、背景、字体、颜色配置。
 6. 支持调用前端 `SceneRenderer` 预览。
 
@@ -866,7 +818,7 @@ Social Image
 ### 功能需求
 
 1. 支持将讲义导出为 PDF。
-2. 支持图片、图表、思维导图进入 PDF。
+2. 支持图片、思维导图进入 PDF。
 3. 支持目录、页眉页脚、页码。
 4. 支持参考资料输出。
 5. 支持导出失败重试。
@@ -988,12 +940,8 @@ export_type = image_assets
 `generate_elements` 节点支持按元素类型并行生成：
 
 ```text
-text_element_generator
 image_element_generator
-chart_element_generator
 mindmap_element_generator
-table_element_generator
-quiz_element_generator
 ```
 
 ---
@@ -1019,7 +967,6 @@ POST /api/content-generation/tasks
     "language": "zh-CN",
     "difficulty": "introductory",
     "include_images": true,
-    "include_charts": true,
     "include_mindmap": true
   }
 }
@@ -1134,22 +1081,17 @@ frontend/
           blocks/
             TextBlock.tsx
             ImageBlock.tsx
-            ChartBlock.tsx
             MindmapBlock.tsx
-            TableBlock.tsx
-            QuizBlock.tsx
         SlideRenderer/
           index.tsx
           SlideDeckPreview.tsx
       elements/
-        ChartElement.tsx
         MindmapElement.tsx
         ImageElement.tsx
         CitationList.tsx
     stores/
       contentGenerationStore.ts
     utils/
-      chartSpecToEchartsOption.ts
       markmap.ts
       export.ts
 ```
@@ -1180,14 +1122,11 @@ frontend/
 2. 渲染章节内容。
 3. 渲染文本块。
 4. 渲染图片块。
-5. 渲染图表块。
-6. 渲染思维导图块。
-7. 渲染表格块。
-8. 渲染测验块。
-9. 渲染引用列表。
-10. 支持阅读模式。
-11. 支持打印模式。
-12. 支持调用导出 PDF。
+5. 渲染思维导图块。
+6. 渲染引用列表。
+7. 支持阅读模式。
+8. 支持打印模式。
+9. 支持调用导出 PDF。
 
 ---
 
@@ -1204,15 +1143,11 @@ frontend/
 
 ---
 
-# 9.4 ChartElement
+# 9.4 图表能力
 
 ## 功能需求
 
-1. 接收 `chart_spec`。
-2. 将 `chart_spec` 转换为 ECharts option。
-3. 使用 ECharts 渲染图表。
-4. 支持响应式布局。
-5. 支持导出为图片，供 PDF 与 Slide 使用。
+图表生成、ChartElement、ECharts 渲染和静态图导出暂缓设计。
 
 ---
 
@@ -1254,12 +1189,11 @@ frontend/
 7. Slide Deck Spec Generator 实现。
 8. Element Generator 实现。
 9. 图片生成服务实现。
-10. Chart Spec 生成实现。
-11. Mindmap Markdown 生成实现。
-12. Lecture Renderer 数据模型实现。
-13. Slide Renderer 适配实现。
-14. PDF Exporter 实现。
-15. Slide JSON Exporter 实现。
+10. Mindmap Markdown 生成实现。
+11. Lecture Renderer 数据模型实现。
+12. Slide Renderer 适配实现。
+13. PDF Exporter 实现。
+14. Slide JSON Exporter 实现。
 
 ### 10.2 前端 MVP
 
@@ -1267,22 +1201,18 @@ frontend/
 2. 任务状态展示。
 3. LectureRenderer。
 4. SlideRenderer。
-5. ChartElement。
-6. MindmapElement。
-7. ImageElement。
-8. PDF 导出入口。
-9. Slide JSON 预览入口。
+5. MindmapElement。
+6. ImageElement。
+7. PDF 导出入口。
+8. Slide JSON 预览入口。
 
 ### 10.3 内容能力 MVP
 
 1. 讲义生成。
 2. Slide Deck 生成。
 3. 图片生成。
-4. 图表生成。
-5. 思维导图生成。
-6. 表格生成。
-7. 测验生成。
-8. 引用来源展示。
+4. 思维导图生成。
+5. 引用来源展示。
 
 ---
 
@@ -1306,9 +1236,8 @@ frontend/
 1. 生成完整讲义结构。
 2. 讲义包含标题、学习目标、章节、正文、总结、引用。
 3. 讲义包含至少 1 张生成图片。
-4. 讲义支持图表展示。
-5. 讲义支持思维导图展示。
-6. 讲义支持 PDF 导出。
+4. 讲义支持思维导图展示。
+5. 讲义支持 PDF 导出。
 
 ### 11.3 Slide Deck 验收标准
 
@@ -1316,7 +1245,7 @@ frontend/
 2. Slide Deck 包含标题页、内容页、总结页。
 3. Slide 页面可通过 `scene-content-kit` 渲染。
 4. Slide Deck 包含至少 1 张生成图片。
-5. 图表和思维导图可作为图片元素进入 Slide。
+5. 思维导图可作为图片元素进入 Slide。
 6. Slide JSON 可导出。
 
 ### 11.4 图片生成验收标准
@@ -1348,12 +1277,9 @@ frontend/
 
 ### P1
 
-1. Chart Spec 生成与 ECharts 渲染。
-2. Mindmap Markdown 生成与 Markmap 渲染。
-3. 表格生成。
-4. 测验生成。
-5. 引用展示。
-6. Slide JSON 导出。
+1. Mindmap Markdown 生成与 Markmap 渲染。
+2. 引用展示。
+3. Slide JSON 导出。
 
 ### P2
 
@@ -1365,6 +1291,13 @@ frontend/
 6. 用户编辑与二次生成。
 7. 版本管理。
 
+### 暂缓设计
+
+1. Chart Spec 生成与 ECharts 渲染。
+2. 图表静态导出与 PDF/Slide 嵌入。
+3. 表格元素生成。
+4. 测验生成、QuizElement 渲染与题型交互。
+
 ---
 
 ## 13. 开发约定
@@ -1374,9 +1307,8 @@ frontend/
 3. 所有 Spec 必须包含 `id`、`type`、`version`、`metadata`。
 4. 所有元素必须包含 `id`、`type`、`title`。
 5. 图片元素必须包含 `prompt`、`asset_url`、`alt_text`。
-6. 图表元素必须包含 `chart_spec`。
-7. 思维导图元素必须包含 Markdown 大纲。
-8. Renderer 按内容类型拆分。
-9. Exporter 按导出格式拆分，并由导出接口按需调用。
-10. Lecture 与 Slide 使用独立 Spec、Renderer，并声明支持的导出格式。
-11. 后续新增内容类型时新增对应 Spec、Renderer 与导出格式映射。
+6. 思维导图元素必须包含 Markdown 大纲。
+7. Renderer 按内容类型拆分。
+8. Exporter 按导出格式拆分，并由导出接口按需调用。
+9. Lecture 与 Slide 使用独立 Spec、Renderer，并声明支持的导出格式。
+10. 后续新增内容类型时新增对应 Spec、Renderer 与导出格式映射。
