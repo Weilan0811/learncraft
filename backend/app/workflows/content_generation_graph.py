@@ -1,33 +1,51 @@
+from functools import lru_cache
 from uuid import uuid4
 
+from langgraph.graph import END, START, StateGraph
+
 from app.core.task import TaskStatus
-from app.schemas.elements import ChartElement, ImageElement, MindmapElement, TextElement
-from app.schemas.outline import Outline, OutlineSection
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.specs import (
-    ElementReferenceBlock,
-    LectureSection,
-    LectureSpec,
-    SlideDeckSpec,
-    SlideSpecElement,
-    SlideSpecPage,
-    TextBlock,
-)
 from app.schemas.state import ContentGenerationState
-from app.services.image_generation_service import StubImageGenerationService
-from app.services.rag_service import StubRAGService
-from app.workflows.routers import get_renderer
+from app.workflows.nodes.assembler_node import assemble_content_spec
+from app.workflows.nodes.element_flow_node import collect_unit_required_elements, dispatch_element_generation, dispatch_element_generation_node, merge_unit_elements
+from app.workflows.nodes.finalizer_node import fail_task, finalize_task
+from app.workflows.nodes.image_element_node import generate_image_element
+from app.workflows.nodes.mindmap_element_node import generate_mindmap_element
+from app.workflows.nodes.normalize_request_node import normalize_request
+from app.workflows.nodes.planner_node import plan_outline
+from app.workflows.nodes.renderer_node import (
+    lecture_renderer,
+    route_renderer,
+    route_renderer_choice,
+    slide_renderer,
+)
+from app.workflows.nodes.retriever_node import retrieve_for_planning, retrieve_for_unit
+from app.workflows.nodes.unit_loop_node import (
+    initialize_section_units,
+    initialize_slide_units,
+    merge_unit_result,
+    route_content_type,
+    route_content_type_choice,
+    should_continue_units,
+)
+from app.workflows.nodes.unit_spec_generator_node import generate_unit_spec
+from app.workflows.nodes.validator_node import (
+    route_after_content_validation,
+    route_after_outline_validation,
+    route_after_unit_spec_validation,
+    route_after_unit_validation,
+    validate_content,
+    validate_outline,
+    validate_unit,
+    validate_unit_spec,
+)
 
 
 def run_content_generation(
     request: ContentGenerationRequest,
     request_id: str | None = None,
 ) -> ContentGenerationState:
-    """Run the generation workflow through stubbed nodes.
-
-    TODO: Replace this sequential stub with a compiled LangGraph StateGraph once
-    real async nodes, retries, and conditional routing are implemented.
-    """
+    """Run the synchronous MVP content-generation graph."""
     state = ContentGenerationState(
         request_id=request_id or f"task_{uuid4().hex[:12]}",
         content_type=request.content_type,
@@ -35,150 +53,105 @@ def run_content_generation(
         user_prompt=request.user_prompt,
         system_prompt=request.system_prompt,
         knowledge_base_ids=request.knowledge_base_ids,
+        raw_request=request.model_dump(mode="json"),
         status=TaskStatus.running,
     )
-    for node in (
-        retrieve_context,
-        plan_outline,
-        generate_content_spec,
-        generate_elements,
-        validate_content,
-        render_content,
-    ):
-        state = node(state, request)
-    state.status = TaskStatus.completed
-    return state
+    graph = build_content_generation_graph()
+    result = graph.invoke(state)
+    return ContentGenerationState.model_validate(result)
 
 
-def retrieve_context(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
-    # TODO(MVP-retriever): Support planning/generation/reviewer retrieval stages
-    # and pass section_hint for secondary retrieval after outline creation.
-    state.retrieved_chunks = StubRAGService().retrieve(request, stage="planning")
-    return state
+@lru_cache(maxsize=1)
+def build_content_generation_graph():
+    workflow = StateGraph(ContentGenerationState)
 
+    workflow.add_node("normalize_request", normalize_request)
+    workflow.add_node("retrieve_for_planning", retrieve_for_planning)
+    workflow.add_node("plan_outline", plan_outline)
+    workflow.add_node("validate_outline", validate_outline)
+    workflow.add_node("route_content_type", route_content_type)
+    workflow.add_node("initialize_section_units", initialize_section_units)
+    workflow.add_node("initialize_slide_units", initialize_slide_units)
+    workflow.add_node("retrieve_for_unit", retrieve_for_unit)
+    workflow.add_node("generate_unit_spec", generate_unit_spec)
+    workflow.add_node("validate_unit_spec", validate_unit_spec)
+    workflow.add_node("collect_unit_required_elements", collect_unit_required_elements)
+    workflow.add_node("dispatch_element_generation", dispatch_element_generation_node)
+    workflow.add_node("generate_image_element", generate_image_element)
+    workflow.add_node("generate_mindmap_element", generate_mindmap_element)
+    workflow.add_node("merge_unit_elements", merge_unit_elements)
+    workflow.add_node("validate_unit", validate_unit)
+    workflow.add_node("merge_unit_result", merge_unit_result)
+    workflow.add_node("assemble_content_spec", assemble_content_spec)
+    workflow.add_node("validate_content", validate_content)
+    workflow.add_node("route_renderer", route_renderer)
+    workflow.add_node("lecture_renderer", lecture_renderer)
+    workflow.add_node("slide_renderer", slide_renderer)
+    workflow.add_node("finalize_task", finalize_task)
+    workflow.add_node("fail_task", fail_task)
 
-def plan_outline(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
-    # TODO(MVP-planner): Replace placeholder outline with LLM-generated
-    # lecture/slide outlines validated by Outline schema and citation coverage.
-    state.outline = Outline(
-        id=f"outline_{state.request_id}",
-        content_type=request.content_type,
-        title=request.topic,
-        audience="待实现的目标受众",
-        learning_objectives=[f"理解 {request.topic} 的核心概念"],
-        sections=[
-            OutlineSection(
-                id="sec_stub",
-                title=request.topic,
-                goal="建立可扩展内容结构的占位大纲",
-                key_points=["核心概念", "应用场景"],
-                recommended_elements=["text", "image", "chart", "mindmap"],
-                estimated_minutes=10,
-                citations=[chunk.id for chunk in state.retrieved_chunks],
-            )
-        ],
-        metadata={"stub": True},
+    workflow.add_edge(START, "normalize_request")
+    workflow.add_edge("normalize_request", "retrieve_for_planning")
+    workflow.add_edge("retrieve_for_planning", "plan_outline")
+    workflow.add_edge("plan_outline", "validate_outline")
+    workflow.add_conditional_edges(
+        "validate_outline",
+        route_after_outline_validation,
+        {"pass": "route_content_type", "fail": "fail_task"},
     )
-    return state
-
-
-def generate_content_spec(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
-    if state.outline is None:
-        raise ValueError("Outline is required before content spec generation.")
-
-    if request.content_type == "slide_deck":
-        # TODO(MVP-slide-generator): Generate a multi-page SlideDeckSpec with
-        # title/content/summary pages, visual strategy, layouts, and citations.
-        state.content_spec = SlideDeckSpec(
-            id=f"deck_{state.request_id}",
-            title=state.outline.title,
-            metadata={"language": request.generation_options.language, "stub": True},
-            slides=[
-                SlideSpecPage(
-                    id="slide_stub",
-                    title=state.outline.title,
-                    core_message="这里是后续 Slide Generator 的接入点。",
-                    layout="title-content-visual",
-                    elements=[
-                        SlideSpecElement(id="slide_text_stub", type="text", content="Slide 内容占位"),
-                        SlideSpecElement(id="slide_image_stub", type="element_ref", element_id="img_stub"),
-                    ],
-                )
-            ],
-        )
-        return state
-
-    # TODO(MVP-lecture-generator): Generate full LectureSpec sections with
-    # objectives, summaries, text blocks, required elements, and source citations.
-    state.content_spec = LectureSpec(
-        id=f"lecture_{state.request_id}",
-        title=state.outline.title,
-        metadata={"language": request.generation_options.language, "stub": True},
-        objectives=state.outline.learning_objectives,
-        sections=[
-            LectureSection(
-                id="sec_stub",
-                title=state.outline.sections[0].title,
-                summary="这里是后续 Lecture Spec Generator 的接入点。",
-                blocks=[
-                    TextBlock(
-                        id="block_stub",
-                        title="内容占位",
-                        content="真实讲义正文将在 Generator 实现后填充。",
-                        citations=[chunk.id for chunk in state.retrieved_chunks],
-                    ),
-                    ElementReferenceBlock(
-                        id="block_image_stub",
-                        title="图片占位",
-                        element_id="img_stub",
-                    ),
-                ],
-            )
-        ],
+    workflow.add_conditional_edges(
+        "route_content_type",
+        route_content_type_choice,
+        {"lecture": "initialize_section_units", "slide_deck": "initialize_slide_units"},
     )
-    return state
-
-
-def generate_elements(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
-    # TODO(MVP-elements): Fan out element generation for text/image/chart/
-    # mindmap/table/quiz/citation, then merge generated assets by element id.
-    image = StubImageGenerationService().generate_image(
-        title=f"{request.topic} 示意图",
-        description=f"{request.topic} 的教育类概念图",
+    workflow.add_edge("initialize_section_units", "retrieve_for_unit")
+    workflow.add_edge("initialize_slide_units", "retrieve_for_unit")
+    workflow.add_edge("retrieve_for_unit", "generate_unit_spec")
+    workflow.add_edge("generate_unit_spec", "validate_unit_spec")
+    workflow.add_conditional_edges(
+        "validate_unit_spec",
+        route_after_unit_spec_validation,
+        {"pass": "collect_unit_required_elements", "fail": "fail_task"},
     )
-    elements = [
-        TextElement(id="txt_stub", title="文本元素占位", content="后续由 Element Generator 生成。"),
-        image,
-        ChartElement(
-            id="chart_stub",
-            title="图表元素占位",
-            chart_type="bar",
-            description="后续转换为 ECharts option。",
-            x_axis={"name": "类别", "data": ["A", "B"]},
-            y_axis={"name": "数值"},
-            series=[{"name": "示例", "data": [1, 2]}],
-        ),
-        MindmapElement(id="mindmap_stub", title="思维导图占位", markdown=f"# {request.topic}\n## 核心概念\n## 应用场景"),
-    ]
-    state.elements = elements
-    return state
+    workflow.add_edge("collect_unit_required_elements", "dispatch_element_generation")
+    workflow.add_conditional_edges(
+        "dispatch_element_generation",
+        dispatch_element_generation,
+        {"merge": "merge_unit_elements"},
+    )
+    workflow.add_edge("generate_image_element", "merge_unit_elements")
+    workflow.add_edge("generate_mindmap_element", "merge_unit_elements")
+    workflow.add_edge("merge_unit_elements", "validate_unit")
+    workflow.add_conditional_edges(
+        "validate_unit",
+        route_after_unit_validation,
+        {"pass": "merge_unit_result", "fail": "fail_task"},
+    )
+    workflow.add_conditional_edges(
+        "merge_unit_result",
+        should_continue_units,
+        {"continue": "retrieve_for_unit", "done": "assemble_content_spec", "failed": "fail_task"},
+    )
+    workflow.add_edge("assemble_content_spec", "validate_content")
+    workflow.add_conditional_edges(
+        "validate_content",
+        route_after_content_validation,
+        {"pass": "route_renderer", "fail": "fail_task"},
+    )
+    workflow.add_conditional_edges(
+        "route_renderer",
+        route_renderer_choice,
+        {"lecture": "lecture_renderer", "slide_deck": "slide_renderer"},
+    )
+    workflow.add_edge("lecture_renderer", "finalize_task")
+    workflow.add_edge("slide_renderer", "finalize_task")
+    workflow.add_edge("finalize_task", END)
+    workflow.add_edge("fail_task", END)
+
+    return workflow.compile()
 
 
-def validate_content(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
-    # TODO(MVP-validator): Validate schema completeness, source citation
-    # coverage, required element presence, and content quality before rendering.
-    if state.content_spec is None:
-        state.errors.append("content_spec is missing")
-    if state.render_model is not None:
-        state.errors.append("render_model should not be set before render_content")
-    return state
-
-
-def render_content(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
-    # TODO(MVP-renderer): Route to typed content renderers and store render
-    # snapshots for repeatable frontend preview and export.
-    if state.content_spec is None:
-        raise ValueError("Content spec is required before rendering.")
-    renderer = get_renderer(request.content_type)
-    state.render_model = renderer.render(state.content_spec, state.elements)
-    return state
+__all__ = [
+    "run_content_generation",
+    "build_content_generation_graph",
+]

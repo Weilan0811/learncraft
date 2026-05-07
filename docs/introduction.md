@@ -4,7 +4,7 @@
 
 本项目是“内容生成 Agent”的可启动工程骨架，用于承载后续多模态内容生成能力。系统目标是基于系统 Prompt、用户 Prompt 与外部知识库内容，生成可预览、可渲染、可导出、可扩展的结构化内容资源。
 
-当前工程已实现项目结构、统一 schema、API 契约、工作流节点边界、前端预览入口、Local 资源存储与导出资源访问链路，并补充了可配置的 LLM、图片生成与 RAG 检索 service。默认运行仍使用 stub workflow，避免开发和测试时误调用付费 API；真实 provider service 已封装在后端服务层，后续在 workflow 节点中接入并保持整体架构稳定。
+当前工程已实现项目结构、统一 schema、API 契约、已编译 LangGraph workflow、前端预览入口、Local 资源存储与导出资源访问链路，并补充了可配置的 LLM、图片生成与 RAG 检索 service。默认配置仍使用 stub provider，避免开发和测试时误调用付费 API；真实 provider service 已封装在后端服务层，后续可在 planner 与 unit generator 节点中逐步接入真实 LLM，并保持整体架构稳定。
 
 项目采用 monorepo 结构：
 
@@ -24,9 +24,12 @@ content-generator-agent/
 
 ```text
 content_request
+  -> retrieval
   -> outline
+  -> unit_loop
+  -> unit_spec
+  -> image / mindmap elements
   -> content_spec
-  -> elements
   -> renderer
 ```
 
@@ -57,7 +60,7 @@ flowchart LR
 
 后端负责生成任务、工作流编排、schema 校验、渲染模型和按需导出；前端负责提交任务、展示任务状态、展示讲义或 Slide 预览，以及触发导出。
 
-当前内容生成 workflow 仍为同步 stub，创建任务后立即返回 `completed` 并提供预览入口。生成过程中产生的图片占位资源会写入本地 `storage/` 目录；前端触发导出后，PDF 导出文件、Slide JSON 导出文件和资源包会写入本地 `storage/` 目录，并通过 `/api/assets/{asset_id}` 与 `/api/assets/{asset_id}/download` 暴露元数据和下载入口。真实 LLM、图片和检索 provider 已在 service 层实现，后续接入真实异步任务队列和真实生成节点时，应保持 API 响应结构不变，只调整 `TaskService` 与 workflow 执行方式。
+当前内容生成 workflow 已由同步顺序 stub 替换为已编译的 LangGraph `StateGraph`，`run_content_generation` 仍作为同步入口被 `TaskService` 调用，创建任务后立即返回 `completed` 并提供预览入口。workflow 会执行 planning 检索、outline、unit loop、unit spec、image/mindmap 元素生成、校验、content spec 组装和 renderer 路由。生成过程中产生的图片资源会写入本地 `storage/` 目录；前端触发导出后，PDF 导出文件、Slide JSON 导出文件和资源包会写入本地 `storage/` 目录，并通过 `/api/assets/{asset_id}` 与 `/api/assets/{asset_id}/download` 暴露元数据和下载入口。真实 LLM、图片和检索 provider 已在 service 层实现，后续接入真实异步任务队列和真实生成节点时，应保持 API 响应结构不变，只调整 `TaskService` 与 workflow 执行方式。
 
 ## 3. 后端模块说明
 
@@ -156,14 +159,23 @@ GET  /api/assets/{asset_id}/download
 
 - `ContentGenerationRequest`：内容生成请求。
 - `GenerationOptions`：生成配置。
-- `Outline`、`OutlineSection`：统一大纲结构。
+- `Outline`、`OutlineUnit`、`RecommendedElement`、`OutlineSection`：统一大纲结构；`OutlineUnit` 是当前 workflow 的 unit loop 粒度，`OutlineSection` 保留兼容展示。
 - `LectureSpec`：讲义内容结构。
 - `SlideDeckSpec`：Slide Deck 内容结构。
-- `TextElement`、`ImageElement`、`ChartElement`、`MindmapElement`、`TableElement`、`QuizElement`、`Citation`：多模态元素结构。
+- `RequiredElementSpec`、`ElementRequest`：unit spec 到 image/mindmap worker 的元素生成契约。
+- `ImageElement`、`MindmapElement`：MVP 生成元素结构。
+- `TextElement`、`Citation`：内容正文与引用来源展示结构。
 - `LectureRenderModel`、`SlideRenderModel`：前端可渲染模型。
 - `ExportRequest`、`ExportResult`：导出请求与结果。
 - `AssetRecord`、`AssetResponse`：本地资源 manifest 记录与 API 返回结构。
 - `ContentGenerationState`：工作流状态。
+
+当前 workflow state 已包含：
+
+- `normalized_request`、`planning_chunks`、`current_unit_context`、`unit_context_map`。
+- `pending_unit_ids`、`current_unit_index`、`current_unit_id`、`completed_unit_ids`、`failed_unit_ids`。
+- `current_unit_spec`、`current_unit_element_requests`、`current_unit_elements`、`unit_results`。
+- `element_status`、`validation_report`、`workflow_errors`、`current_node`、`progress`。
 
 后续开发预留点：
 
@@ -176,9 +188,9 @@ GET  /api/assets/{asset_id}/download
 schema 约束约定：
 
 - 所有 Spec 必须包含 `id`、`type`、`version`、`metadata`。
+- unit spec 中的 `element_ref` 必须能在 `required_elements` 中找到对应 `element_id`。
 - 所有 Element 必须包含 `id`、`type`、`title`。
 - 图片元素必须包含 `prompt`、`asset_url`、`alt_text`。
-- 图表元素必须包含图表类型、坐标轴和数据序列。
 - 思维导图元素必须包含 Markdown 大纲。
 
 ### 3.4 Workflow 层
@@ -195,41 +207,79 @@ schema 约束约定：
 职责：
 
 - 承载内容生成主流程。
-- 保留 LangGraph 风格的节点边界。
+- 使用 LangGraph `StateGraph` 编译内容生成 workflow。
 - 根据 `content_type` 选择对应 renderer。
 - 通过 `ContentGenerationState` 在各节点之间传递数据。
+- 将 graph 装配、节点实现、unit spec generator 与 validator 分离，方便接入真实 LLM。
 
 当前 workflow 节点：
 
 ```text
-retrieve_context
+normalize_request
+  -> retrieve_for_planning
   -> plan_outline
-  -> generate_content_spec
-  -> generate_elements
+  -> validate_outline
+  -> route_content_type
+  -> initialize_section_units / initialize_slide_units
+  -> retrieve_for_unit
+  -> generate_unit_spec
+  -> validate_unit_spec
+  -> collect_unit_required_elements
+  -> dispatch_element_generation
+      -> generate_image_element
+      -> generate_mindmap_element
+  -> merge_unit_elements
+  -> validate_unit
+  -> merge_unit_result
+  -> assemble_content_spec
   -> validate_content
-  -> render_content
+  -> route_renderer
+      -> lecture_renderer
+      -> slide_renderer
+  -> finalize_task
 ```
 
-当前实现是顺序 stub。`nodes/` 目录下的文件目前只是暴露对应节点函数，用于保持未来拆分边界清晰。
+当前实现是同步执行的 LangGraph workflow。`content_generation_graph.py` 只保留 `run_content_generation`、`build_content_generation_graph` 和 graph wiring；具体节点实现位于 `workflows/nodes/`，unit spec 构造逻辑位于 `backend/app/generators/unit_spec_generators.py`。
+
+当前节点模块：
+
+- `normalize_request_node.py`：标准化请求并初始化进度。
+- `retriever_node.py`：执行 planning/generation 两阶段检索，unit 阶段传入 section hint。
+- `planner_node.py`：当前使用确定性 outline stub，下一步接入 `get_llm_service()`。
+- `unit_initializer_node.py`：按 lecture/slide_deck 初始化 unit loop。
+- `unit_spec_generator_node.py`：根据当前 unit 调用 lecture/slide unit spec generator。
+- `element_collector_node.py`：从 unit spec 收集 `RequiredElementSpec` 并转换为 `ElementRequest`。
+- `element_dispatcher_node.py`：使用 LangGraph `Send` 并行分发 image/mindmap worker。
+- `image_element_node.py`：调用 `get_image_generation_service()` 生成并持久化图片，失败时返回 placeholder。
+- `mindmap_element_node.py`：当前生成 Markmap Markdown fallback。
+- `element_merger_node.py`：按 element id 合并 unit 元素到全局 registry。
+- `validator_node.py`：校验 outline、unit spec、unit result 和 content spec 的结构闭合。
+- `unit_result_node.py`：写入 `unit_results` 并控制 unit loop 是否继续。
+- `assembler_node.py`：将 unit results 组装为 `LectureSpec` 或 `SlideDeckSpec`。
+- `renderer_node.py`：根据内容类型调用 typed renderer。
+- `finalizer_node.py`：设置 completed/failed 状态与最终进度。
 
 后续开发预留点：
 
-- 将 `content_generation_graph.py` 中的顺序执行替换为真正的 LangGraph `StateGraph`。
-- 在 `nodes/retriever_node.py` 中接入真实 RAG 检索。
-- 在 `nodes/planner_node.py` 中接入大纲规划 LLM prompt。
-- 在 `nodes/generator_node.py` 中接入 `LectureSpecGenerator`、`SlideDeckSpecGenerator`。
-- 在 `nodes/element_generator_node.py` 中实现文本、图片、图表、思维导图、表格、测验、引用等并行生成。
-- 在 `nodes/validator_node.py` 中加入结构校验、引用校验、内容安全校验和质量检查。
-- 在 `nodes/renderer_node.py` 中按内容类型选择 renderer。
+- 在 `nodes/planner_node.py` 中接入大纲规划 LLM prompt，输出 `Outline` 并执行 schema repair。
+- 在 `generators/unit_spec_generators.py` 中接入 `LectureSection`、`SlideSpecPage` 真实 LLM generator，保留 deterministic fallback。
+- 在 `nodes/validator_node.py` 中加入引用覆盖校验、内容安全校验、质量检查和 repair 分支。
 - 在导出服务中承接更完整的异步导出、重试和错误恢复逻辑。
 
-预期功能：
+已具备能力：
 
-- 支持任务级错误恢复。
-- 支持节点级重试。
-- 支持按章节二次检索。
-- 支持元素并行生成。
-- 支持任务进度回传。
+- 支持 planning/generation 阶段检索。
+- 支持按 outline unit 串行生成 lecture section 或 slide page。
+- 支持 unit 内 image/mindmap 元素并行生成与按 id 合并。
+- 支持基础 schema 闭合校验。
+- 支持 `current_node`、`progress`、`unit_results`、`element_status` 等节点级状态记录。
+
+预期扩展：
+
+- 支持任务级错误恢复和 repair 节点。
+- 支持节点级重试和 node timing。
+- 支持 reviewer 检索阶段。
+- 支持将节点级进度暴露到 API。
 - 支持后续接入 Celery、Arq 或其他任务队列。
 
 ### 3.5 Services 层
@@ -250,7 +300,7 @@ retrieve_context
 
 - 封装外部能力和业务服务。
 - 将具体供应商、存储系统、任务执行方式从 workflow 中隔离。
-- 当前已提供 Local 存储、资源元数据查询、文件下载服务、真实 LLM service、真实图片 provider service 和 Qdrant RAG service。默认 workflow 仍使用 stub，真实 service 通过 factory 按配置创建。
+- 当前已提供 Local 存储、资源元数据查询、文件下载服务、真实 LLM service、真实图片 provider service 和 Qdrant RAG service。workflow 通过 `get_rag_service()` 与 `get_image_generation_service()` 获取 service；默认 `provider_mode=stub`，真实 service 通过 factory 按配置创建。
 
 模块功能与预留位置：
 
@@ -258,20 +308,22 @@ retrieve_context
 
 - 当前：定义 `LLMService` 协议、`StubLLMService` 和 `BailianLLMService`。
 - `BailianLLMService` 通过百炼兼容 OpenAI 的 `/chat/completions` 接口生成结构化 JSON，支持超时、重试、token usage 记录、Pydantic schema 校验和一次 schema repair。
-- 后续：将 Planner、Generator、Reviewer 节点接入 `get_llm_service()`，并补充任务级 tracing 与模型路由策略。
+- 后续：将 Planner、Unit Generator、Reviewer 节点接入 `get_llm_service()`，并补充任务级 tracing 与模型路由策略。
 
 `rag_service.py`
 
 - 当前：`StubRAGService` 返回知识库占位片段；`QdrantRAGService` 使用 `langchain_qdrant` 读取 `storage/qdrant_data` 下的本地 Qdrant 数据；`BailianEmbeddingService` 负责查询向量。
 - 支持单知识库 collection 选择、按阶段和章节 hint 构造查询、结果去重、按分数排序、字符上限控制和来源 metadata 映射。
-- 后续：补充知识库入库流程、混合检索、rerank 与章节级二次检索在 workflow 中的实际调用。
+- workflow 当前已在 planning 阶段和 unit generation 阶段调用检索 service，并在 unit 阶段传入章节 hint。
+- 后续：补充知识库入库流程、混合检索、rerank 和 reviewer 阶段检索。
 
 `image_generation_service.py`
 
 - 当前：保留确定性的本地 SVG stub；真实图片默认使用 `APIMartImageGenerationService` 调用 APIMart `gpt-image-2`，提交异步任务、轮询完成状态、下载图片并转存到 Local storage。
 - 仍保留 `BailianImageGenerationService`，可通过 `IMAGE_PROVIDER=bailian` 切换。
 - 图片 metadata 会记录 provider、model、resolution、aspect ratio、prompt、task id、格式和尺寸推断。
-- 后续：在 Element Generator 中按 `get_image_generation_service()` 接入真实 provider，并完善图片失败降级策略。
+- workflow 当前已在 `image_element_node.py` 中按 `get_image_generation_service()` 接入图片 provider，并提供 placeholder fallback。
+- 后续：完善图片 prompt generator、失败重试策略、并发限制和资源可用性检查。
 
 `asset_service.py`
 
@@ -328,7 +380,7 @@ retrieve_context
 
 - 新增内容类型时，在 `renderers/` 中新增对应 renderer。
 - 在 `workflows/routers.py` 中增加 content_type 到 renderer 的映射。
-- 复杂图表、思维导图和 SmartArt 在 v1 中建议先转为图片元素后进入 Slide JSON。
+- 思维导图和 SmartArt 在 v1 中建议先转为图片元素后进入 Slide JSON。
 
 ### 3.7 Exporters 层
 
@@ -353,7 +405,7 @@ retrieve_context
 `PDFExporter`
 
 - 当前：生成最小可下载 PDF 文件，写入 Local storage，并返回资源下载 URL。
-- 后续：将 `LectureRenderModel.printable_model` 导出为完整排版 PDF，支持页眉页脚、目录、引用、图片、图表和思维导图。
+- 后续：将 `LectureRenderModel.printable_model` 导出为完整排版 PDF，支持页眉页脚、目录、引用、图片和思维导图。
 
 `SlideExporter`
 
@@ -368,7 +420,7 @@ retrieve_context
 `AssetExporter`
 
 - 当前：收集渲染模型中的本地图片资源，打包为 ZIP，并在包内写入 `manifest.json`。
-- 后续：纳入图表静态图、思维导图 SVG/PNG 等更多资源类型。
+- 后续：纳入思维导图 SVG/PNG 等更多资源类型。
 
 预留接口：
 
@@ -531,7 +583,7 @@ retrieve_context
 `LectureRenderer`
 
 - 当前：展示讲义标题、学习目标、章节和基础 block。
-- 后续：支持文本、图片、图表、思维导图、表格、测验、引用、阅读模式、打印模式。
+- 后续：支持文本、图片、思维导图、引用、阅读模式、打印模式。
 
 `SlideRenderer`
 
@@ -544,7 +596,6 @@ retrieve_context
 
 当前组件：
 
-- `ChartElement.tsx`
 - `MindmapElement.tsx`
 - `ImageElement.tsx`
 - `CitationList.tsx`
@@ -556,7 +607,6 @@ retrieve_context
 
 后续开发预留点：
 
-- `ChartElement` 接入 ECharts，将 `chart_spec` 转换为 ECharts option。
 - `MindmapElement` 接入 Markmap，支持展开、折叠、SVG/PNG 导出。
 - `ImageElement` 支持图片加载、失败占位、点击放大和 alt 文本。
 - `CitationList` 支持引用来源、页码、章节、外链和引用格式。
@@ -567,7 +617,6 @@ retrieve_context
 
 当前文件：
 
-- `chartSpecToEchartsOption.ts`
 - `markmap.ts`
 - `export.ts`
 
@@ -578,7 +627,6 @@ retrieve_context
 
 后续开发预留点：
 
-- 完善 chart spec 到 ECharts option 的转换。
 - 完善 Markmap markdown 解析、清洗和导出。
 - 增加浏览器端图片导出、SVG 转 PNG、下载文件名生成等工具。
 
@@ -669,7 +717,8 @@ ExportActions
 - `test_assets.py`：验证 Local storage、资源 API、下载接口和导出资源落盘。
 - `test_provider_services.py`：使用 mock client 验证配置、LLM、APIMart 图片 provider、百炼图片 provider factory 和 Qdrant RAG 映射逻辑。
 - `test_schemas.py`：验证核心 schema。
-- `test_workflow.py`：验证 workflow stub 能产出完整状态。
+- `test_workflow.py`：验证 LangGraph workflow 能为 lecture 和 slide_deck 产出 outline units、unit_results、content_spec、elements 和 render_model。
+- `test_workflow_structure.py`：验证 workflow 节点已拆分到 focused modules，避免 graph 文件重新承载节点实现细节。
 
 推荐验证命令：
 
@@ -697,10 +746,9 @@ npm run build
 当前骨架尚未实现以下能力：
 
 - workflow 节点接入真实 LLM 调用。
-- workflow 节点接入真实知识库检索。
-- workflow 节点接入真实图片生成。
+- reviewer 阶段检索、混合检索和 rerank。
 - 知识库入库与 Qdrant collection 构建。
-- 真实图表数据生成。
+- 图表生成、ECharts 渲染和静态导出暂缓设计。
 - 真实 Markmap 渲染。
 - 真实 scene-content-kit 渲染。
 - 完整 PDF 排版导出。

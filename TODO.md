@@ -21,16 +21,14 @@
 | [ ] | export-extension | `backend/app/schemas/base.py:37` | 生产环境中仅允许已有具体 exporter 实现的导出格式。 |
 | [ ] | MVP-options | `backend/app/schemas/request.py:13` | 增加受众、时长/slide 数、图片风格、引用策略、PDF 选项、Slide 主题选项。 |
 | [ ] | MVP-request | `backend/app/schemas/request.py:24` | 按 content_type 校验 generation options，例如 lecture 时长、slide_deck 页数和主题配置。 |
-| [ ] | MVP-image | `backend/app/schemas/elements.py:26` | 为图片元素增加 width、height、format、model、retry count、source section id 等生成参数。 |
-| [ ] | P1-chart | `backend/app/schemas/elements.py:37` | 将 x_axis/y_axis/series 升级为可无损映射到 ECharts 和静态导出的 typed schema。 |
+| [x] | MVP-image | `backend/app/schemas/elements.py:26` | ImageElement 已增加 width、height、format、model、retry_count、source_unit_id、source_outline_unit_id、source_chunk_ids 与 generation_info；真实 provider 参数细化后续随生成器接入完善。 |
 | [ ] | P1-mindmap | `backend/app/schemas/elements.py:44` | 为思维导图记录生成后的 SVG/PNG asset URL，供 PDF 和 Slide 嵌入。 |
-| [ ] | P1-quiz | `backend/app/schemas/elements.py:57` | 用 typed schema 替代 dict questions，支持单选、多选、简答等题型。 |
 | [ ] | MVP-pdf | `backend/app/schemas/render.py:29` | 将 printable_model dict 替换为 typed print/PDF model，覆盖目录、页边距、页眉和引用。 |
 | [ ] | MVP-slide-render | `backend/app/schemas/render.py:36` | 将 Slide page dict 替换为 scene-content-kit 官方 page schema。 |
-| [ ] | MVP-lecture | `backend/app/schemas/specs.py:43` | 为 LectureSpec 增加总结、引用、可编辑版本元数据和分节 required element 声明。 |
-| [ ] | MVP-slide | `backend/app/schemas/specs.py:70` | 为 SlideDeckSpec 增加 deck theme、slide count、speaker notes、asset dependency 声明。 |
+| [-] | MVP-lecture | `backend/app/schemas/specs.py:43` | LectureSection 已增加 outline_unit_id、learning_goal、source_chunk_ids 与分节 required_elements；LectureSpec 级总结、引用和可编辑版本元数据待补。 |
+| [-] | MVP-slide | `backend/app/schemas/specs.py:70` | SlideSpecPage 已增加 outline_unit_id、speaker_notes、source_chunk_ids 与 required_elements；deck theme、slide count 与 asset dependency 声明待补。 |
 | [ ] | content-types | `backend/app/schemas/specs.py:75` | 启用 social_post、podcast_script、video_script、project_task、quiz_pack、learning_path 时扩展 ContentSpec union。 |
-| [ ] | MVP-observability | `backend/app/schemas/state.py:36` | 在工作流状态中增加 current_node、progress、node timings、retry records 和结构化错误。 |
+| [-] | MVP-observability | `backend/app/schemas/state.py:36` | 工作流状态已增加 current_node、progress、unit_results、element_status、workflow_errors 等结构；node timings、完整 retry records 与 API 暴露待补。 |
 
 ## 后端 Services
 
@@ -50,14 +48,15 @@
 
 | 状态 | 优先级 | 位置 | TODO 内容 |
 |---|---|---|---|
-| [ ] | MVP-workflow | `backend/app/workflows/content_generation_graph.py:14` | 一旦实现了真正的异步节点、重试机制和条件路由，请将此顺序stub替换为已编译的 LangGraph StateGraph |
-| [ ] | MVP-retriever | `backend/app/workflows/content_generation_graph.py:58` | 支持 planning/generation/reviewer 检索阶段，并在 outline 后传入 section_hint 做二次检索。 |
-| [ ] | MVP-planner | `backend/app/workflows/content_generation_graph.py:65` | 使用 LLM 生成 lecture/slide outline，并通过 Outline schema 与引用覆盖校验。 |
-| [ ] | MVP-slide-generator | `backend/app/workflows/content_generation_graph.py:94` | 生成多页 SlideDeckSpec，包含标题页、内容页、总结页、视觉策略、布局和引用。 |
-| [ ] | MVP-lecture-generator | `backend/app/workflows/content_generation_graph.py:115` | 生成完整 LectureSpec，包含目标、摘要、文本块、required elements 和来源引用。 |
-| [ ] | MVP-elements | `backend/app/workflows/content_generation_graph.py:147` | 并行生成 text/image/chart/mindmap/table/quiz/citation，并按 element id 合并资产。 |
-| [ ] | MVP-validator | `backend/app/workflows/content_generation_graph.py:172` | 校验 schema 完整性、引用覆盖、required element 存在和内容质量。 |
-| [ ] | MVP-renderer | `backend/app/workflows/content_generation_graph.py:178` | 路由到 typed renderer，并持久化 render snapshot 供预览和导出复用。 |
+| [x] | MVP-workflow | `backend/app/workflows/content_generation_graph.py:14` | 已替换为已编译的 LangGraph StateGraph；`run_content_generation` 保持同步入口并调用 compiled graph。 |
+| [-] | MVP-retriever | `backend/app/workflows/nodes/retriever_node.py` | 已支持 planning/generation 两阶段检索，并在 unit 阶段传入 section_hint；reviewer 阶段待真实评审链路接入。 |
+| [ ] | MVP-planner | `backend/app/workflows/nodes/planner_node.py` | 下一步：接入 LLM 生成 lecture/slide outline，并通过 Outline schema、引用覆盖和 repair prompt 校验。 |
+| [-] | MVP-slide-generator | `backend/app/generators/unit_spec_generators.py` | 已生成 SlideSpecPage、视觉布局、speaker notes、required image/mindmap 与引用来源；多页标题/内容/总结结构和 LLM 生成待补。 |
+| [-] | MVP-lecture-generator | `backend/app/generators/unit_spec_generators.py` | 已生成 LectureSection、目标、摘要、文本块、required image/mindmap 与来源引用；完整 LLM 正文、总结和引用策略待补。 |
+| [x] | MVP-elements | `backend/app/workflows/nodes/element_flow_node.py` | 已使用 LangGraph Send 并行分发 image/mindmap worker，并在同一 element flow 模块内按 element id 合并全局资产。 |
+| [-] | MVP-validator | `backend/app/workflows/nodes/validator_node.py` | 已校验 outline/unit spec/content spec 闭合与 required element 存在；引用覆盖质量、内容质量和 repair 路径待补。 |
+| [-] | MVP-renderer | `backend/app/workflows/nodes/renderer_node.py` | 已按 content_type 路由 typed renderer；render snapshot 持久化与预览/导出复用待任务持久化后补齐。 |
+| [x] | workflow-structure | `backend/app/workflows/nodes/` | workflow 节点已从 graph 文件拆分到 focused node modules；已移除旧兼容壳文件，并将元素 fan-out/fan-in 合并到 `element_flow_node.py`、unit loop 合并到 `unit_loop_node.py`。 |
 | [ ] | MVP-export | `backend/app/services/task_service.py:40` | 将长耗时导出交给异步 worker，并按 export_type 追踪导出状态、重试和下载 URL。 |
 | [ ] | content-router | `backend/app/workflows/routers.py:9` | 内容类型增加后，用 mapping 或 plugin-style registry 注册 renderer。 |
 | [x] | export-router | `backend/app/workflows/routers.py:23` | 按显式 export_type 路由 exporter。 |
@@ -68,9 +67,9 @@
 |---|---|---|---|
 | [ ] | MVP-lecture-renderer | `backend/app/renderers/lecture_renderer.py:8` | 渲染标题、目标、目录、章节、总结、引用、阅读模式和打印模式。 |
 | [ ] | MVP-slide-renderer | `backend/app/renderers/slide_renderer.py:8` | 将 SlideDeckSpec 转换为完整 scene-content-kit JSON，支持图片、表格、主题和布局。 |
-| [x] | MVP-assets | `backend/app/exporters/asset_exporter.py:7` | 打包生成图片资源，用于下载；静态图表、思维导图导出资源后续接入。 |
+| [x] | MVP-assets | `backend/app/exporters/asset_exporter.py:7` | 打包生成图片资源，用于下载；思维导图导出资源后续接入。 |
 | [ ] | P2-markdown | `backend/app/exporters/markdown_exporter.py:7` | 将讲义、脚本和未来内容 spec 转换为 Markdown，并保留引用与资产链接。 |
-| [-] | MVP-pdf | `backend/app/exporters/pdf_exporter.py:7` | 将 LectureRenderModel.printable_model 渲染为 PDF，包含图片、图表、思维导图和引用。 |
+| [-] | MVP-pdf | `backend/app/exporters/pdf_exporter.py:7` | 将 LectureRenderModel.printable_model 渲染为 PDF，包含图片、思维导图和引用。 |
 | [-] | MVP-slide-export | `backend/app/exporters/slide_exporter.py:7` | 序列化 scene-content-kit pages 为 Slide JSON，并预留 PPTX exporter 路径。 |
 
 ## 前端 API、状态与页面
@@ -91,19 +90,27 @@
 
 | 状态 | 优先级 | 位置 | TODO 内容 |
 |---|---|---|---|
-| [ ] | P1-chart | `frontend/src/components/elements/ChartElement.tsx:6` | 接收 ChartElementSpec 并用 ECharts 渲染，支持响应式 resize 和静态图导出。 |
 | [ ] | P1-citations | `frontend/src/components/elements/CitationList.tsx:6` | 渲染来源标题、页码/章节、URL 和引用编号。 |
 | [ ] | MVP-image | `frontend/src/components/elements/ImageElement.tsx:8` | 加载真实图片 URL，展示 loading/error，占位图、点击放大和 alt_text。 |
 | [ ] | P1-mindmap | `frontend/src/components/elements/MindmapElement.tsx:7` | 使用 Markmap 渲染 Markdown，并暴露 SVG/PNG 导出给打印和 Slide 嵌入。 |
-| [ ] | MVP-lecture-renderer | `frontend/src/components/renderers/LectureRenderer/index.tsx:10` | 增加目录、引用、阅读模式、打印模式和 chart/mindmap/table/quiz 全 block 支持。 |
+| [ ] | MVP-lecture-renderer | `frontend/src/components/renderers/LectureRenderer/index.tsx:10` | 增加目录、引用、阅读模式、打印模式和 mindmap block 支持。 |
 | [ ] | MVP-slide-renderer | `frontend/src/components/renderers/SlideRenderer/SlideDeckPreview.tsx:10` | 用 scene-content-kit SceneRenderer 替换 JSON 预览，增加缩放、缩略图和资源渲染。 |
 | [ ] | schema-sync | `frontend/src/types/content.ts:10` | 后续从后端 JSON Schema/OpenAPI 自动生成前端类型，避免手写漂移。 |
 | [ ] | MVP-options | `frontend/src/types/content.ts:33` | 与后端新增生成配置字段保持同步。 |
-| [ ] | schema-sync | `frontend/src/types/elements.ts:36` | 添加 table、quiz、citation 以及未来 audio/video element union。 |
+| [ ] | schema-sync | `frontend/src/types/elements.ts:36` | 添加 citation 以及未来 audio/video element union。 |
 | [ ] | MVP-task | `frontend/src/types/export.ts:19` | 增加 progress、current_node、timestamps 和结构化错误详情。 |
-| [ ] | P1-chart | `frontend/src/utils/chartSpecToEchartsOption.ts:4` | 完善 bar/line/pie option 生成、校验、颜色/主题、标签、图例和导出安全默认值。 |
 | [ ] | MVP-export | `frontend/src/utils/export.ts:2` | 集中管理导出 label、扩展名、MIME type 和下载文件名生成。 |
 | [ ] | P1-mindmap | `frontend/src/utils/markmap.ts:2` | 清洗生成 Markdown 并规范标题层级后再传给 Markmap。 |
+
+## 暂缓设计
+
+| 状态 | 优先级 | 位置 | TODO 内容 |
+|---|---|---|---|
+| [ ] | deferred-chart | `backend/app/schemas/elements.py:37` | 设计图表元素 schema、数据来源、图表类型和静态导出契约。 |
+| [ ] | deferred-chart | `frontend/src/components/elements/ChartElement.tsx:6` | 设计 ChartElement、ECharts 渲染适配和响应式交互。 |
+| [ ] | deferred-chart | `frontend/src/utils/chartSpecToEchartsOption.ts:4` | 设计 chart spec 到 ECharts option 的转换规则。 |
+| [ ] | deferred-table | `backend/app/schemas/elements.py:50` | 设计表格元素 schema、数据来源、渲染和导出契约。 |
+| [ ] | deferred-quiz | `backend/app/schemas/elements.py:57` | 设计测验生成 schema、题型、交互渲染和作答反馈。 |
 
 ## 优先级说明
 
@@ -111,3 +118,11 @@
 - `P1-*`：PRD P1 能力，通常依赖 MVP 数据流稳定后接入。
 - `P2-*`：后续扩展能力。
 - `schema-*`、`content-*`、`export-*`：横向扩展与契约治理任务。
+
+## 接真实 LLM 前的下一步
+
+1. `backend/app/workflows/nodes/planner_node.py`：将确定性 outline stub 替换为 `get_llm_service().generate_structured(...)`，输出 `Outline`，失败时走 repair/fail 路径。
+2. `backend/app/generators/unit_spec_generators.py`：拆出 lecture 与 slide 的 LLM prompt/generator，分别生成 `LectureSection` 与 `SlideSpecPage`，保留当前 deterministic fallback。
+3. `backend/app/workflows/nodes/validator_node.py`：补引用覆盖校验、LLM 输出质量校验与 repair 节点，避免坏 schema 直接进入 renderer。
+4. `backend/app/schemas/request.py`：补 audience、duration/slide_count、image_style、citation_policy、slide_theme 等 generation options，并按 content_type 校验。
+5. `backend/app/services/task_service.py`：在真实 LLM/图片耗时变长后，将同步内存任务迁移到异步执行与持久化进度。

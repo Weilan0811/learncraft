@@ -1,3 +1,6 @@
+import operator
+from typing import Annotated, Literal
+
 from pydantic import Field
 
 from app.core.task import TaskStatus
@@ -5,7 +8,7 @@ from app.schemas.base import MvpContentType, SchemaModel
 from app.schemas.elements import ContentElement
 from app.schemas.outline import Outline
 from app.schemas.render import RenderModel
-from app.schemas.specs import ContentSpec
+from app.schemas.specs import ContentSpec, ElementRequest, LectureSection, SlideSpecPage
 
 
 class RetrievedChunk(SchemaModel):
@@ -17,6 +20,32 @@ class RetrievedChunk(SchemaModel):
     metadata: dict[str, object] = Field(default_factory=dict)
 
 
+class WorkflowError(SchemaModel):
+    stage: str
+    code: str
+    message: str
+    detail: dict[str, object] = Field(default_factory=dict)
+    recoverable: bool = True
+
+
+class ElementStatus(SchemaModel):
+    element_id: str
+    type: Literal["image", "mindmap"]
+    status: Literal["pending", "generating", "completed", "failed", "skipped"] = "pending"
+    retry_count: int = 0
+    error: str | None = None
+
+
+class UnitGenerationResult(SchemaModel):
+    unit_id: str
+    status: Literal["pending", "completed", "failed"] = "pending"
+    unit_spec: LectureSection | SlideSpecPage | None = None
+    element_requests: dict[str, ElementRequest] = Field(default_factory=dict)
+    elements: dict[str, ContentElement] = Field(default_factory=dict)
+    validation_report: dict[str, object] | None = None
+    errors: list[WorkflowError] = Field(default_factory=list)
+
+
 class ContentGenerationState(SchemaModel):
     request_id: str
     content_type: MvpContentType
@@ -24,12 +53,39 @@ class ContentGenerationState(SchemaModel):
     user_prompt: str
     system_prompt: str | None = None
     knowledge_base_ids: list[str] = Field(default_factory=list)
+    raw_request: dict[str, object] = Field(default_factory=dict)
+    normalized_request: dict[str, object] | None = None
     retrieved_chunks: list[RetrievedChunk] = Field(default_factory=list)
+    planning_chunks: list[RetrievedChunk] = Field(default_factory=list)
+    current_unit_context: list[RetrievedChunk] = Field(default_factory=list)
+    unit_context_map: dict[str, list[RetrievedChunk]] = Field(default_factory=dict)
     outline: Outline | None = None
+    outline_validation_report: dict[str, object] | None = None
+    pending_unit_ids: list[str] = Field(default_factory=list)
+    completed_unit_ids: list[str] = Field(default_factory=list)
+    failed_unit_ids: list[str] = Field(default_factory=list)
+    current_unit_index: int = 0
+    current_unit_id: str | None = None
+    current_unit_spec: LectureSection | SlideSpecPage | None = None
+    current_unit_element_requests: list[ElementRequest] = Field(default_factory=list)
+    current_unit_elements: Annotated[list[ContentElement], operator.add] = Field(default_factory=list)
+    element_request: ElementRequest | None = None
+    unit_results: dict[str, UnitGenerationResult] = Field(default_factory=dict)
     content_spec: ContentSpec | None = None
     elements: list[ContentElement] = Field(default_factory=list)
+    element_status: dict[str, ElementStatus] = Field(default_factory=dict)
     render_model: RenderModel | None = None
+    spec_validation_report: dict[str, object] | None = None
+    validation_report: dict[str, object] | None = None
+    retry_counts: dict[str, int] = Field(default_factory=dict)
+    failed_element_requests: Annotated[list[ElementRequest], operator.add] = Field(default_factory=list)
+    max_allowed_failed_units: int = 0
     errors: list[str] = Field(default_factory=list)
+    workflow_errors: list[WorkflowError] = Field(default_factory=list)
+    token_usage: dict[str, object] = Field(default_factory=dict)
+    logs: list[dict[str, object]] = Field(default_factory=list)
+    current_node: str | None = None
+    progress: dict[str, object] = Field(default_factory=dict)
     status: TaskStatus = TaskStatus.queued
     # TODO(MVP-observability): Add current_node, progress percentage, node
     # timings, retry records, and structured error details for task tracking.
