@@ -21,7 +21,6 @@ def test_content_generation_task_lifecycle_exposes_stub_result() -> None:
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份适合本科一年级学生学习的多模态讲义",
             "knowledge_base_ids": ["kb_ai_basic"],
-            "output_formats": ["preview", "pdf"],
             "generation_options": {
                 "language": "zh-CN",
                 "difficulty": "introductory",
@@ -36,6 +35,7 @@ def test_content_generation_task_lifecycle_exposes_stub_result() -> None:
     created = create_response.json()
     assert created["status"] == "completed"
     assert created["content_type"] == "lecture"
+    assert created["export_files"] == []
 
     task_id = created["task_id"]
     status_response = client.get(f"/api/content-generation/tasks/{task_id}")
@@ -59,6 +59,10 @@ def test_content_generation_task_lifecycle_exposes_stub_result() -> None:
     assert exported["file_url"].startswith("/api/assets/")
     assert exported["file_url"].endswith("/download")
 
+    status_after_export = client.get(f"/api/content-generation/tasks/{task_id}")
+    assert status_after_export.status_code == 200
+    assert status_after_export.json()["export_files"] == [{"type": "pdf", "url": exported["file_url"]}]
+
     download_response = client.get(exported["file_url"])
     assert download_response.status_code == 200
     assert download_response.headers["content-type"].startswith("application/pdf")
@@ -72,7 +76,6 @@ def test_asset_endpoint_returns_local_asset_metadata() -> None:
             "content_type": "lecture",
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份讲义",
-            "output_formats": ["preview"],
             "generation_options": {"include_images": True},
         },
     )

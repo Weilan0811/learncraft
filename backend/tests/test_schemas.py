@@ -2,6 +2,7 @@ from app.schemas.elements import ChartElement, ImageElement, MindmapElement, Tex
 from app.schemas.outline import Outline, OutlineSection
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.specs import LectureSection, LectureSpec, TextBlock
+from pydantic import ValidationError
 
 
 def test_content_generation_request_accepts_mvp_content_types() -> None:
@@ -9,11 +10,24 @@ def test_content_generation_request_accepts_mvp_content_types() -> None:
         content_type="slide_deck",
         topic="人工智能基础导论",
         user_prompt="生成课程幻灯片",
-        output_formats=["preview", "slide_json"],
     )
 
     assert request.content_type == "slide_deck"
     assert request.generation_options.language == "zh-CN"
+
+
+def test_content_generation_request_rejects_output_formats() -> None:
+    try:
+        ContentGenerationRequest(
+            content_type="slide_deck",
+            topic="AI basics",
+            user_prompt="Generate a slide deck",
+            output_formats=["slide_json"],
+        )
+    except ValidationError as exc:
+        assert "output_formats" in str(exc)
+    else:
+        raise AssertionError("output_formats should be rejected by ContentGenerationRequest")
 
 
 def test_core_content_schemas_keep_required_extension_fields() -> None:

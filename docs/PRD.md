@@ -22,7 +22,6 @@ content_request
   -> content_spec
   -> elements
   -> renderer
-  -> exporter
 ```
 
 其中：
@@ -31,7 +30,8 @@ content_request
 - `content_spec`：面向具体内容类型的结构化内容描述，例如 `lecture_spec`、`slide_deck_spec`。
 - `elements`：生成内容所需的多模态元素，例如文本、图片、图表、思维导图、表格、引用、音频脚本等。
 - `renderer`：将结构化内容渲染为前端可展示内容。
-- `exporter`：将渲染结果或结构化内容导出为 PDF、Slide 文件、图片、Markdown 等格式。
+
+导出流程由前端导出指令触发，基于已生成的预览数据与资源生成 PDF、Slide 文件、图片、Markdown 等格式，并返回可下载 URL。
 
 后续可扩展支持：
 
@@ -52,7 +52,7 @@ content_request
 | 层级 | 技术选型 | 说明 |
 |---|---|---|
 | Web API | Python + FastAPI | 提供内容生成、任务查询、导出、资源访问接口 |
-| Agent / Workflow 编排 | LangGraph | 编排 Retriever、Planner、Generator、Renderer、Exporter 节点 |
+| Agent / Workflow 编排 | LangGraph | 编排 Retriever、Planner、Generator、Renderer 等生成节点 |
 | 数据模型 | Pydantic v2 | 定义请求、Outline、Spec、Element、Export Result 等结构 |
 | RAG 检索 | 自研 Retriever / 可扩展 LlamaIndex、Haystack | MVP 可先接入简单向量检索与关键词检索 |
 | LLM 调用 | 统一 LLM Service | 封装模型调用、结构化输出、重试、日志 |
@@ -93,8 +93,9 @@ content_request
   -> Generator 生成 SectionElement / ContentElement
   -> Validator 校验结构与内容
   -> Renderer 生成前端可渲染模型
-  -> Exporter 导出目标文件
 ```
+
+预览生成完成后，前端通过导出接口提交导出指令，后端基于任务的渲染快照执行目标格式导出。
 
 ### 3.2 内容类型扩展机制
 
@@ -121,18 +122,18 @@ learning_path
 不同内容类型共享以下流程：
 
 ```text
-outline -> xxx_spec -> elements -> renderer -> exporter
+outline -> xxx_spec -> elements -> renderer
 ```
 
 不同内容类型拥有独立 Spec：
 
-| content_type | Spec 名称 | Renderer | Exporter |
+| content_type | Spec 名称 | Renderer | 可用导出格式 |
 |---|---|---|---|
-| lecture | `LectureSpec` | `LectureRenderer` | `PDFExporter` |
-| slide_deck | `SlideDeckSpec` | `SlideRenderer` | `SlideExporter` |
-| social_post | `SocialPostSpec` | `SocialPostRenderer` | `Text/ImageExporter` |
-| podcast_script | `PodcastSpec` | `PodcastRenderer` | `Audio/TextExporter` |
-| video_script | `VideoScriptSpec` | `VideoScriptRenderer` | `ScriptExporter` |
+| lecture | `LectureSpec` | `LectureRenderer` | `pdf` |
+| slide_deck | `SlideDeckSpec` | `SlideRenderer` | `slide_json`、`pptx` |
+| social_post | `SocialPostSpec` | `SocialPostRenderer` | `markdown`、`image_assets` |
+| podcast_script | `PodcastSpec` | `PodcastRenderer` | `markdown`、`audio` |
+| video_script | `VideoScriptSpec` | `VideoScriptRenderer` | `markdown`、`html` |
 
 ---
 
@@ -812,6 +813,8 @@ SlideRenderer 负责将 `SlideDeckSpec` 转换为 slide renderer 可消费的静
 
 Exporter 负责将渲染结果导出为目标格式。
 
+Exporter 由导出接口按需调用，输入为 `task_id`、`export_type`、导出选项以及任务已持久化的 `render_model`、`content_spec`、资源引用。导出完成后返回可下载 URL，并更新任务的 `export_files`。
+
 MVP 支持：
 
 ```text
@@ -931,7 +934,6 @@ class ContentGenerationState(BaseModel):
     content_spec: Optional[dict] = None
     elements: list[dict] = []
     render_model: Optional[dict] = None
-    export_result: Optional[dict] = None
 
     errors: list[str] = []
     status: str = "pending"
@@ -947,7 +949,6 @@ START
   -> generate_elements
   -> validate_content
   -> render_content
-  -> export_content
   -> END
 ```
 
@@ -959,17 +960,27 @@ START
 content_type = lecture
   -> LectureSpecGenerator
   -> LectureRenderer
-  -> PDFExporter
 
 content_type = slide_deck
   -> SlideDeckSpecGenerator
   -> SlideRenderer
-  -> SlideExporter
 
 content_type = social_post
   -> SocialPostSpecGenerator
   -> SocialPostRenderer
-  -> Text/ImageExporter
+```
+
+导出路径根据 `export_type` 选择 Exporter：
+
+```text
+export_type = pdf
+  -> PDFExporter
+
+export_type = slide_json
+  -> SlideExporter
+
+export_type = image_assets
+  -> AssetExporter
 ```
 
 ### 6.4 并行元素生成
@@ -1004,7 +1015,6 @@ POST /api/content-generation/tasks
   "user_prompt": "生成一份适合本科一年级学生学习的多模态讲义",
   "system_prompt": "内容准确、结构清晰、适合教学",
   "knowledge_base_ids": ["kb_ai_basic"],
-  "output_formats": ["preview", "pdf"],
   "generation_options": {
     "language": "zh-CN",
     "difficulty": "introductory",
@@ -1040,14 +1050,11 @@ GET /api/content-generation/tasks/{task_id}
   "status": "completed",
   "content_type": "lecture",
   "preview_url": "/preview/lecture/task_001",
-  "export_files": [
-    {
-      "type": "pdf",
-      "url": "https://assets.example.com/export/lecture_001.pdf"
-    }
-  ]
+  "export_files": []
 }
 ```
+
+`export_files` 在导出接口成功返回后更新。
 
 ---
 
@@ -1079,6 +1086,16 @@ POST /api/content-generation/tasks/{task_id}/export
 ```json
 {
   "export_type": "pdf"
+}
+```
+
+### 响应体
+
+```json
+{
+  "export_type": "pdf",
+  "file_url": "https://assets.example.com/export/lecture_001.pdf",
+  "status": "success"
 }
 ```
 
@@ -1353,14 +1370,13 @@ frontend/
 ## 13. 开发约定
 
 1. 所有 LLM 输出必须经过结构化 Schema 校验。
-2. 所有内容类型必须遵循 `outline -> xxx_spec -> elements -> renderer -> exporter` 流程。
+2. 所有内容类型必须遵循 `outline -> xxx_spec -> elements -> renderer` 生成流程。
 3. 所有 Spec 必须包含 `id`、`type`、`version`、`metadata`。
 4. 所有元素必须包含 `id`、`type`、`title`。
 5. 图片元素必须包含 `prompt`、`asset_url`、`alt_text`。
 6. 图表元素必须包含 `chart_spec`。
 7. 思维导图元素必须包含 Markdown 大纲。
 8. Renderer 按内容类型拆分。
-9. Exporter 按导出格式拆分。
-10. Lecture 与 Slide 使用独立 Spec、Renderer、Exporter。
-11. 后续新增内容类型时新增对应 Spec、Renderer、Exporter。
-
+9. Exporter 按导出格式拆分，并由导出接口按需调用。
+10. Lecture 与 Slide 使用独立 Spec、Renderer，并声明支持的导出格式。
+11. 后续新增内容类型时新增对应 Spec、Renderer 与导出格式映射。

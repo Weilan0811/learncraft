@@ -8,7 +8,6 @@ def test_workflow_stub_populates_generation_state() -> None:
             content_type="lecture",
             topic="人工智能基础导论",
             user_prompt="生成一份讲义",
-            output_formats=["preview", "pdf"],
         )
     )
 
@@ -17,4 +16,4 @@ def test_workflow_stub_populates_generation_state() -> None:
     assert state.content_spec is not None
     assert state.elements
     assert state.render_model is not None
-    assert state.export_result is not None
+    assert not hasattr(state, "export_result")

@@ -4,7 +4,7 @@
 
 本项目是“内容生成 Agent”的可启动工程骨架，用于承载后续多模态内容生成能力。系统目标是基于系统 Prompt、用户 Prompt 与外部知识库内容，生成可预览、可渲染、可导出、可扩展的结构化内容资源。
 
-当前工程已实现项目结构、统一 schema、API 契约、工作流节点边界、前端预览入口、Local 资源存储与导出资源访问链路，并补充了可配置的 LLM、图片生成与 RAG 检索 service。默认运行仍使用 stub workflow，避免开发和测试时误调用付费 API；真实 provider service 已封装在后端服务层，后续只需要在 workflow 节点中接入，而不是改变整体架构。
+当前工程已实现项目结构、统一 schema、API 契约、工作流节点边界、前端预览入口、Local 资源存储与导出资源访问链路，并补充了可配置的 LLM、图片生成与 RAG 检索 service。默认运行仍使用 stub workflow，避免开发和测试时误调用付费 API；真实 provider service 已封装在后端服务层，后续在 workflow 节点中接入并保持整体架构稳定。
 
 项目采用 monorepo 结构：
 
@@ -28,10 +28,9 @@ content_request
   -> content_spec
   -> elements
   -> renderer
-  -> exporter
 ```
 
-该流程是后续新增内容类型、元素类型和导出格式时必须遵守的主线。
+该流程是后续新增内容类型和元素类型时必须遵守的生成主线。导出由前端导出动作触发，后端基于已生成的渲染快照和资源执行目标格式导出。
 
 ## 2. 总体架构
 
@@ -48,16 +47,17 @@ flowchart LR
   Workflow --> Generator["Spec / Element Generator"]
   Workflow --> Validator["Validator"]
   Workflow --> Renderer["Renderer"]
-  Workflow --> Exporter["Exporter"]
   Renderer --> Preview["Preview Render Model"]
+  Frontend --> ExportAPI["Export API"]
+  ExportAPI --> Exporter["Exporter"]
   Exporter --> File["Export Result / Asset URL"]
   Preview --> Frontend
   File --> Frontend
 ```
 
-后端负责生成任务、工作流编排、schema 校验、渲染模型和导出结果；前端负责提交任务、展示任务状态、展示讲义或 Slide 预览，以及触发导出。
+后端负责生成任务、工作流编排、schema 校验、渲染模型和按需导出；前端负责提交任务、展示任务状态、展示讲义或 Slide 预览，以及触发导出。
 
-当前内容生成 workflow 仍为同步 stub，创建任务后立即返回 `completed`。生成过程中产生的图片占位资源、PDF 导出文件、Slide JSON 导出文件和资源包会写入本地 `storage/` 目录，并通过 `/api/assets/{asset_id}` 与 `/api/assets/{asset_id}/download` 暴露元数据和下载入口。真实 LLM、图片和检索 provider 已在 service 层实现，后续接入真实异步任务队列和真实生成节点时，应保持 API 响应结构不变，只调整 `TaskService` 与 workflow 执行方式。
+当前内容生成 workflow 仍为同步 stub，创建任务后立即返回 `completed` 并提供预览入口。生成过程中产生的图片占位资源会写入本地 `storage/` 目录；前端触发导出后，PDF 导出文件、Slide JSON 导出文件和资源包会写入本地 `storage/` 目录，并通过 `/api/assets/{asset_id}` 与 `/api/assets/{asset_id}/download` 暴露元数据和下载入口。真实 LLM、图片和检索 provider 已在 service 层实现，后续接入真实异步任务队列和真实生成节点时，应保持 API 响应结构不变，只调整 `TaskService` 与 workflow 执行方式。
 
 ## 3. 后端模块说明
 
@@ -119,7 +119,7 @@ GET  /api/assets/{asset_id}/download
 - 在 `config.py` 中继续增加 OSS/S3、任务队列等配置。
 - 在 `exceptions.py` 中扩展业务异常，例如 schema 校验失败、LLM 调用失败、导出失败、资源不存在。
 - 在 `logging.py` 中接入结构化日志、trace id、request id 和任务级日志。
-- 在 `task.py` 中扩展任务阶段状态，例如 `retrieving`、`planning`、`generating`、`rendering`、`exporting`。
+- 在 `task.py` 中扩展内容生成阶段状态，例如 `retrieving`、`planning`、`generating`、`rendering`。
 
 关键配置从根目录 `.env` 读取，变量前缀为 `CONTENT_GENERATOR_`。默认值包括：
 
@@ -196,7 +196,7 @@ schema 约束约定：
 
 - 承载内容生成主流程。
 - 保留 LangGraph 风格的节点边界。
-- 根据 `content_type` 选择对应 renderer，并根据显式 `export_type` 选择 exporter。
+- 根据 `content_type` 选择对应 renderer。
 - 通过 `ContentGenerationState` 在各节点之间传递数据。
 
 当前 workflow 节点：
@@ -208,7 +208,6 @@ retrieve_context
   -> generate_elements
   -> validate_content
   -> render_content
-  -> export_content
 ```
 
 当前实现是顺序 stub。`nodes/` 目录下的文件目前只是暴露对应节点函数，用于保持未来拆分边界清晰。
@@ -222,7 +221,7 @@ retrieve_context
 - 在 `nodes/element_generator_node.py` 中实现文本、图片、图表、思维导图、表格、测验、引用等并行生成。
 - 在 `nodes/validator_node.py` 中加入结构校验、引用校验、内容安全校验和质量检查。
 - 在 `nodes/renderer_node.py` 中按内容类型选择 renderer。
-- 在 `nodes/exporter_node.py` 中承接更完整的异步导出、重试和错误恢复逻辑。
+- 在导出服务中承接更完整的异步导出、重试和错误恢复逻辑。
 
 预期功能：
 
@@ -291,7 +290,7 @@ retrieve_context
 
 `task_service.py`
 
-- 当前：使用内存字典保存任务，创建任务时同步执行 workflow；手动导出会按 `export_type` 调用对应 exporter，并持久化导出文件资源。
+- 当前：使用内存字典保存任务，创建任务时同步执行 workflow；按需导出会按 `export_type` 调用对应 exporter，并持久化导出文件资源。
 - 后续：接入数据库和异步任务队列，支持任务恢复、任务历史、用户隔离、取消、重试和状态推送。
 
 ### 3.6 Renderers 层
@@ -347,6 +346,7 @@ retrieve_context
 
 - 将渲染模型或结构化内容导出为目标格式。
 - 按导出格式拆分 exporter。
+- 由导出接口按显式 `export_type` 调用，基于已保存的预览渲染模型生成导出文件。
 
 当前模块：
 
@@ -374,7 +374,7 @@ retrieve_context
 
 - 新增导出格式时，在 `base.py` 中扩展 `ExportType`。
 - 在 `exporters/` 中新增 exporter。
-- 在 workflow 或 task service 中按显式 `export_type` 路由 exporter。
+- 在 task service 中按显式 `export_type` 路由 exporter。
 
 ### 3.8 Prompts 层
 
@@ -511,7 +511,7 @@ retrieve_context
 后续开发预留点：
 
 - 表单支持更多生成配置，例如受众、难度、风格、页数、时长、知识库选择。
-- 进度组件支持细分阶段，例如检索中、规划中、生成中、渲染中、导出中。
+- 进度组件支持细分阶段，例如检索中、规划中、生成中、渲染中。
 - 导出组件支持多格式导出、导出队列、下载状态和失败重试。
 
 ### 4.6 Renderer Components

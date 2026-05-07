@@ -2,7 +2,6 @@ from uuid import uuid4
 
 from app.core.task import TaskStatus
 from app.schemas.elements import ChartElement, ImageElement, MindmapElement, TextElement
-from app.schemas.export import ExportRequest
 from app.schemas.outline import Outline, OutlineSection
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.specs import (
@@ -17,7 +16,7 @@ from app.schemas.specs import (
 from app.schemas.state import ContentGenerationState
 from app.services.image_generation_service import StubImageGenerationService
 from app.services.rag_service import StubRAGService
-from app.workflows.routers import get_exporter, get_renderer
+from app.workflows.routers import get_renderer
 
 
 def run_content_generation(
@@ -45,7 +44,6 @@ def run_content_generation(
         generate_elements,
         validate_content,
         render_content,
-        export_content,
     ):
         state = node(state, request)
     state.status = TaskStatus.completed
@@ -183,24 +181,4 @@ def render_content(state: ContentGenerationState, request: ContentGenerationRequ
         raise ValueError("Content spec is required before rendering.")
     renderer = get_renderer(request.content_type)
     state.render_model = renderer.render(state.content_spec, state.elements)
-    return state
-
-
-def export_content(state: ContentGenerationState, request: ContentGenerationRequest) -> ContentGenerationState:
-    # TODO(MVP-export): Support multiple requested output_formats in one task
-    # and defer long-running exports to async workers.
-    if state.render_model is None:
-        raise ValueError("Render model is required before exporting.")
-    if request.content_type == "slide_deck":
-        state.export_result = get_exporter("slide_json").export(
-            state.request_id,
-            state.render_model,
-            ExportRequest(export_type="slide_json"),
-        )
-    elif "pdf" in request.output_formats:
-        state.export_result = get_exporter("pdf").export(
-            state.request_id,
-            state.render_model,
-            ExportRequest(export_type="pdf"),
-        )
     return state

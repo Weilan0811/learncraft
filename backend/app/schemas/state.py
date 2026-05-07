@@ -3,7 +3,6 @@ from pydantic import Field
 from app.core.task import TaskStatus
 from app.schemas.base import MvpContentType, SchemaModel
 from app.schemas.elements import ContentElement
-from app.schemas.export import ExportResult
 from app.schemas.outline import Outline
 from app.schemas.render import RenderModel
 from app.schemas.specs import ContentSpec
@@ -30,7 +29,6 @@ class ContentGenerationState(SchemaModel):
     content_spec: ContentSpec | None = None
     elements: list[ContentElement] = Field(default_factory=list)
     render_model: RenderModel | None = None
-    export_result: ExportResult | None = None
     errors: list[str] = Field(default_factory=list)
     status: TaskStatus = TaskStatus.queued
     # TODO(MVP-observability): Add current_node, progress percentage, node
