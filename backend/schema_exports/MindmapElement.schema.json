@@ -15,14 +15,67 @@
       "title": "Title",
       "type": "string"
     },
+    "status": {
+      "default": "completed",
+      "enum": [
+        "pending",
+        "generating",
+        "completed",
+        "failed",
+        "skipped"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "source_unit_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Unit Id"
+    },
+    "source_outline_unit_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Outline Unit Id"
+    },
+    "source_chunk_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Chunk Ids",
+      "type": "array"
+    },
     "metadata": {
       "additionalProperties": true,
       "title": "Metadata",
       "type": "object"
     },
+    "generation_info": {
+      "additionalProperties": true,
+      "title": "Generation Info",
+      "type": "object"
+    },
     "markdown": {
       "title": "Markdown",
       "type": "string"
+    },
+    "render_hints": {
+      "additionalProperties": true,
+      "title": "Render Hints",
+      "type": "object"
     }
   },
   "required": [

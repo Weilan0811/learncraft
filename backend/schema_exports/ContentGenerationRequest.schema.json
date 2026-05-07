@@ -77,22 +77,6 @@
       "title": "Knowledge Base Ids",
       "type": "array"
     },
-    "output_formats": {
-      "items": {
-        "enum": [
-          "preview",
-          "pdf",
-          "slide_json",
-          "image_assets",
-          "pptx",
-          "markdown",
-          "html"
-        ],
-        "type": "string"
-      },
-      "title": "Output Formats",
-      "type": "array"
-    },
     "generation_options": {
       "$ref": "#/$defs/GenerationOptions"
     }

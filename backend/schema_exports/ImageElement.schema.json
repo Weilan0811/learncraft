@@ -15,9 +15,57 @@
       "title": "Title",
       "type": "string"
     },
+    "status": {
+      "default": "completed",
+      "enum": [
+        "pending",
+        "generating",
+        "completed",
+        "failed",
+        "skipped"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "source_unit_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Unit Id"
+    },
+    "source_outline_unit_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Outline Unit Id"
+    },
+    "source_chunk_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Chunk Ids",
+      "type": "array"
+    },
     "metadata": {
       "additionalProperties": true,
       "title": "Metadata",
+      "type": "object"
+    },
+    "generation_info": {
+      "additionalProperties": true,
+      "title": "Generation Info",
       "type": "object"
     },
     "prompt": {
@@ -31,6 +79,59 @@
     "alt_text": {
       "title": "Alt Text",
       "type": "string"
+    },
+    "width": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Width"
+    },
+    "height": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Height"
+    },
+    "format": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Format"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "retry_count": {
+      "default": 0,
+      "title": "Retry Count",
+      "type": "integer"
     }
   },
   "required": [
