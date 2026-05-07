@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from app.schemas.base import ExportType, MvpContentType, SchemaModel
+from app.schemas.base import MvpContentType, SchemaModel
 
 
 class GenerationOptions(SchemaModel):
@@ -20,7 +20,6 @@ class ContentGenerationRequest(SchemaModel):
     user_prompt: str = Field(min_length=1)
     system_prompt: str | None = None
     knowledge_base_ids: list[str] = Field(default_factory=list)
-    output_formats: list[ExportType] = Field(default_factory=lambda: ["preview"])
     generation_options: GenerationOptions = Field(default_factory=GenerationOptions)
-    # TODO(MVP-request): Add validation rules for output_formats by content_type,
-    # for example lecture -> pdf and slide_deck -> slide_json.
+    # TODO(MVP-request): Add validation rules for generation options by
+    # content_type, for example lecture duration and slide deck page count.

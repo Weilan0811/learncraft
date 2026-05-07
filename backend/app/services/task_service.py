@@ -15,20 +15,16 @@ class InMemoryTaskService:
         # execution through BackgroundTasks/Celery/Arq instead of running inline.
         task_id = f"task_{uuid4().hex[:12]}"
         state = run_content_generation(request, request_id=task_id)
-        export_files: list[ExportFile] = []
-        if state.export_result is not None:
-            export_files.append(ExportFile(type=state.export_result.export_type, url=state.export_result.file_url))
-
         result = TaskResult(
             task_id=task_id,
             status=state.status,
             content_type=state.content_type,
             preview_url=f"/api/content-generation/tasks/{task_id}/preview",
-            export_files=export_files,
+            export_files=[],
             errors=state.errors,
         )
         preview = PreviewResponse(content_type=state.content_type, render_model=state.render_model) if state.render_model else None
-        self._tasks[task_id] = StoredTask(result=result, preview=preview, export_result=state.export_result)
+        self._tasks[task_id] = StoredTask(result=result, preview=preview)
         return result
 
     def get_task(self, task_id: str) -> TaskResult | None:

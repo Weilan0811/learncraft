@@ -69,7 +69,6 @@ def test_content_generation_persists_downloadable_image_asset() -> None:
             "content_type": "lecture",
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份讲义",
-            "output_formats": ["preview"],
             "generation_options": {"include_images": True},
         },
     )
@@ -100,7 +99,6 @@ def test_pdf_export_persists_real_downloadable_asset() -> None:
             "content_type": "lecture",
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份讲义",
-            "output_formats": ["preview"],
         },
     )
     task_id = create_response.json()["task_id"]
@@ -125,7 +123,6 @@ def test_slide_json_export_persists_valid_json_asset() -> None:
             "content_type": "slide_deck",
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份 Slide",
-            "output_formats": ["preview"],
         },
     )
     task_id = create_response.json()["task_id"]
@@ -149,7 +146,6 @@ def test_image_assets_export_writes_zip_manifest() -> None:
             "content_type": "lecture",
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份讲义",
-            "output_formats": ["preview"],
             "generation_options": {"include_images": True},
         },
     )

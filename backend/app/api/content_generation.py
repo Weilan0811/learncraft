@@ -20,7 +20,7 @@ def create_content_generation_task(request: ContentGenerationRequest) -> TaskRes
 @router.get("/tasks/{task_id}", response_model=TaskResult)
 def get_content_generation_task(task_id: str) -> TaskResult:
     # TODO(MVP-task): Return node-level progress once workflow execution becomes
-    # asynchronous: retrieving, planning, generating, rendering, exporting.
+    # asynchronous: retrieving, planning, generating, and rendering.
     task = task_service.get_task(task_id)
     if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
