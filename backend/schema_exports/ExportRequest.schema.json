@@ -3,7 +3,6 @@
   "properties": {
     "export_type": {
       "enum": [
-        "preview",
         "pdf",
         "slide_json",
         "image_assets",
