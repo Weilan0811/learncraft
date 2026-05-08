@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     db_username: str = Field(default="root", validation_alias=AliasChoices("DB_USERNAME", "CONTENT_GENERATOR_DB_USERNAME"))
     db_password: str = Field(default="", validation_alias=AliasChoices("DB_PASSWORD", "CONTENT_GENERATOR_DB_PASSWORD"))
     db_database: str = Field(default="future_learning", validation_alias=AliasChoices("DB_DATABASE", "CONTENT_GENERATOR_DB_DATABASE"))
-    db_log_echo: bool = Field(default=True, validation_alias=AliasChoices("DB_LOG_ECHO", "CONTENT_GENERATOR_DB_LOG_ECHO"))
+    db_log_echo: bool = Field(default=False, validation_alias=AliasChoices("DB_LOG_ECHO", "CONTENT_GENERATOR_DB_LOG_ECHO"))
 
     provider_mode: Literal["stub", "real"] = "stub"
 

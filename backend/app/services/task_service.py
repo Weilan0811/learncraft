@@ -6,7 +6,8 @@ from app.schemas.render import RenderModel
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.task import PreviewResponse, TaskResult
 from app.services.task_repository import SQLModelTaskRepository
-from app.workflows.content_generation_graph import run_content_generation
+from app.schemas.state import ContentGenerationState
+from app.workflows.content_generation_graph import run_content_generation, stream_content_generation
 from app.workflows.routers import get_exporter
 
 
@@ -28,7 +29,13 @@ class PersistentTaskService:
         self.repository.mark_running(task_id)
         try:
             request = ContentGenerationRequest.model_validate(task.request_payload)
-            state = run_content_generation(request, request_id=task_id)
+            # state = run_content_generation(request, request_id=task_id)
+            final_state = None
+            for update in stream_content_generation(request, request_id=task_id):
+                partial_state = ContentGenerationState.model_validate(update)
+                self.repository.save_state(task_id, partial_state)
+                final_state = partial_state
+
         except Exception as exc:
             running = self.repository.get_task(task_id)
             progress = dict(running.progress if running else {})
@@ -41,7 +48,10 @@ class PersistentTaskService:
                 errors=[str(exc)],
             )
             return
-        self.repository.save_state(task_id, state)
+            
+        # self.repository.save_state(task_id, state)
+        if final_state is not None:
+            self.repository.save_state(task_id, final_state)
 
     def get_task(self, task_id: str) -> TaskResult | None:
         task = self.repository.get_task(task_id)
