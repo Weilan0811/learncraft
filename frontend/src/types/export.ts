@@ -9,6 +9,18 @@ export interface ExportFile {
   url: string;
 }
 
+export interface TaskProgress {
+  stage?: string;
+  display_stage?: string;
+  current_stage?: string;
+  current_node?: string | null;
+  current_unit_id?: string | null;
+  completed_units?: number;
+  total_units?: number;
+  percent?: number;
+  [key: string]: unknown;
+}
+
 export interface TaskResult {
   task_id: string;
   status: "queued" | "running" | "completed" | "failed";
@@ -16,8 +28,10 @@ export interface TaskResult {
   preview_url?: string | null;
   export_files: ExportFile[];
   errors: string[];
-  // TODO(MVP-task): Add progress, current_node, timestamps, and structured
-  // error details after backend task state is persisted.
+  current_node?: string | null;
+  progress?: TaskProgress;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface PreviewResponse {

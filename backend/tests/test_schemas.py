@@ -159,12 +159,23 @@ def test_core_content_schemas_keep_required_extension_fields() -> None:
         ],
     )
     slide = SlideSpecPage(
-        id="slide_stub",
+        id="slide_unit_stub",
         outline_unit_id="unit_stub",
+        order=1,
         title="什么是人工智能",
         core_message="人工智能研究机器智能行为。",
-        elements=[],
-        required_elements=[required_image.model_copy(update={"source_unit_id": "slide_stub"})],
+        design_intent="Explain the concept with a title and concise body.",
+        layout_hints={"supported_renderer": "scenekit.slide/v1"},
+        elements=[
+            SlideSpecElement(id="slide_stub_title", type="text", content="什么是人工智能", metadata={"role": "title"}),
+            SlideSpecElement(
+                id="slide_stub_body",
+                type="text",
+                content="人工智能研究机器智能行为。",
+                metadata={"role": "body"},
+            ),
+        ],
+        required_elements=[required_image.model_copy(update={"source_unit_id": "slide_unit_stub"})],
         speaker_notes="用于建立基本概念。",
     )
 
@@ -274,11 +285,22 @@ def test_slide_page_model_rejects_elements_without_position() -> None:
 
 def test_slide_spec_page_rejects_unknown_layouts_and_keeps_element_roles() -> None:
     slide = SlideSpecPage(
-        id="slide_stub",
+        id="slide_unit_stub",
+        outline_unit_id="unit_stub",
+        order=1,
         title="什么是人工智能",
         core_message="人工智能研究机器智能行为。",
         layout="title-content-visual",
+        design_intent="Pair the core message with concise body text.",
+        layout_hints={"supported_renderer": "scenekit.slide/v1"},
+        speaker_notes="Explain the definition and connect it to the unit goal.",
         elements=[
+            SlideSpecElement(
+                id="slide_stub_title",
+                type="text",
+                content="什么是人工智能",
+                metadata={"role": "title"},
+            ),
             SlideSpecElement(
                 id="slide_stub_body",
                 type="text",
@@ -289,16 +311,133 @@ def test_slide_spec_page_rejects_unknown_layouts_and_keeps_element_roles() -> No
     )
 
     assert slide.layout == "title-content-visual"
-    assert slide.elements[0].metadata["role"] == "body"
+    assert slide.elements[1].metadata["role"] == "body"
 
     try:
         SlideSpecPage(
-            id="slide_bad",
+            id="slide_unit_stub",
+            outline_unit_id="unit_stub",
+            order=1,
             title="未知布局",
             core_message="这应该被拒绝。",
+            design_intent="Reject unsupported layouts.",
+            layout_hints={"supported_renderer": "scenekit.slide/v1"},
             layout="freeform-poster",
         )
     except ValidationError as exc:
         assert "layout" in str(exc)
     else:
         raise AssertionError("SlideSpecPage should reject unsupported slide layouts")
+
+
+def test_slide_spec_page_rejects_outputs_that_fail_workflow_contract() -> None:
+    try:
+        SlideSpecPage(
+            id="slide_1",
+            outline_unit_id=None,
+            order=None,
+            title="Example Slide",
+            core_message="This is the core message.",
+            layout="title-content",
+            layout_hints={},
+            elements=[
+                SlideSpecElement(
+                    id="elem_1",
+                    type="text",
+                    content="Some content",
+                    metadata={},
+                ),
+            ],
+            required_elements=[
+                RequiredElementSpec(
+                    element_id="req_elem_1",
+                    type="image",
+                    title="Required Image",
+                    purpose="To illustrate the point",
+                    instruction="Insert relevant image here",
+                    source_unit_id="unit_1",
+                    source_outline_unit_id="outline_1",
+                )
+            ],
+        )
+    except ValidationError as exc:
+        message = str(exc)
+        assert "outline_unit_id" in message
+        assert "order" in message
+    else:
+        raise AssertionError("SlideSpecPage should reject workflow-invalid LLM output")
+
+    try:
+        SlideSpecPage(
+            id="slide_slide_3",
+            outline_unit_id="slide_3",
+            order=3,
+            title="Example Slide",
+            core_message="This is the core message.",
+            layout="title-content",
+            design_intent="Explain the core message.",
+            speaker_notes="Use this slide to introduce the topic.",
+            layout_hints={},
+            elements=[
+                SlideSpecElement(id="elem_1", type="text", content="Some content", metadata={}),
+            ],
+        )
+    except ValidationError as exc:
+        message = str(exc)
+        assert "supported_renderer" in message
+    else:
+        raise AssertionError("SlideSpecPage should reject missing renderer hints")
+
+    try:
+        SlideSpecPage(
+            id="slide_slide_3",
+            outline_unit_id="slide_3",
+            order=3,
+            title="Example Slide",
+            core_message="This is the core message.",
+            layout="title-content",
+            design_intent="Explain the core message.",
+            speaker_notes="Use this slide to introduce the topic.",
+            layout_hints={"supported_renderer": "scenekit.slide/v1"},
+            elements=[
+                SlideSpecElement(id="elem_1", type="text", content="Some content", metadata={}),
+            ],
+        )
+    except ValidationError as exc:
+        assert "role" in str(exc)
+    else:
+        raise AssertionError("SlideSpecPage should reject missing title/body roles")
+
+    try:
+        SlideSpecPage(
+            id="slide_1",
+            outline_unit_id="slide_3",
+            order=1,
+            title="Example Slide",
+            core_message="This is the core message.",
+            layout="title-content",
+            design_intent="Explain the core message.",
+            speaker_notes="Use this slide to introduce the topic.",
+            layout_hints={"supported_renderer": "scenekit.slide/v1"},
+            elements=[
+                SlideSpecElement(id="elem_title", type="text", content="Example Slide", metadata={"role": "title"}),
+                SlideSpecElement(id="elem_body", type="text", content="Some content", metadata={"role": "body"}),
+            ],
+        )
+    except ValidationError as exc:
+        message = str(exc)
+        assert "slide id" in message
+    else:
+        raise AssertionError("SlideSpecPage should reject mismatched slide id and outline unit")
+
+    try:
+        SlideSpecElement(
+            id="elem_2",
+            type="image",
+            element_id="req_elem_1",
+            metadata={"role": "visual"},
+        )
+    except ValidationError as exc:
+        assert "type" in str(exc)
+    else:
+        raise AssertionError("SlideSpecElement should reject non-contract element types")

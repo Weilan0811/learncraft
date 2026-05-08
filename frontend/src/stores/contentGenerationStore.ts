@@ -3,7 +3,8 @@ import { create } from "zustand";
 import {
   createContentGenerationTask,
   exportContentGenerationTask,
-  getContentGenerationPreview
+  getContentGenerationPreview,
+  getContentGenerationTask
 } from "../api/contentGenerationApi";
 import type { ContentGenerationRequest } from "../types/content";
 import type { ExportResult, PreviewResponse, TaskResult } from "../types/export";
@@ -18,23 +19,49 @@ interface ContentGenerationState {
   exportTask: (exportType: "pdf" | "slide_json") => Promise<void>;
 }
 
+const POLL_INTERVAL_MS = 1200;
+const MAX_POLL_TIMES = 120;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function waitForCompletedTask(taskId: string): Promise<TaskResult> {
+  let task = await getContentGenerationTask(taskId);
+
+  for (let i = 0; i < MAX_POLL_TIMES; i += 1) {
+    if (task.status === "completed" || task.status === "failed") {
+      return task;
+    }
+    await sleep(POLL_INTERVAL_MS);
+    task = await getContentGenerationTask(taskId);
+  }
+
+  throw new Error("任务执行超时，请稍后在任务历史中重新查看。送达后端的请求已创建成功。");
+}
+
 export const useContentGenerationStore = create<ContentGenerationState>((set, get) => ({
   loading: false,
   async submitTask(request) {
-    // TODO(MVP-task): Start polling or subscribe to SSE/WebSocket progress once
-    // backend task execution becomes asynchronous instead of immediately complete.
-    set({ loading: true, error: undefined });
+    set({ loading: true, error: undefined, preview: undefined, exportResult: undefined });
     try {
-      const task = await createContentGenerationTask(request);
-      const preview = await getContentGenerationPreview(task.task_id);
-      set({ task, preview, loading: false });
+      const createdTask = await createContentGenerationTask(request);
+      set({ task: createdTask });
+
+      const completedTask = await waitForCompletedTask(createdTask.task_id);
+      set({ task: completedTask });
+
+      if (completedTask.status === "failed") {
+        throw new Error(completedTask.errors.join("；") || "内容生成任务执行失败。");
+      }
+
+      const preview = await getContentGenerationPreview(completedTask.task_id);
+      set({ preview, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unknown request error", loading: false });
     }
   },
   async exportTask(exportType) {
-    // TODO(MVP-export): Track long-running export jobs separately from content
-    // generation and expose retry/download states in the UI.
     const taskId = get().task?.task_id;
     if (!taskId) {
       set({ error: "No task is available to export." });

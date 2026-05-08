@@ -97,6 +97,10 @@
           "type": "string"
         },
         "type": {
+          "enum": [
+            "text",
+            "element_ref"
+          ],
           "title": "Type",
           "type": "string"
         },
@@ -145,28 +149,12 @@
       "type": "string"
     },
     "outline_unit_id": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Outline Unit Id"
+      "title": "Outline Unit Id",
+      "type": "string"
     },
     "order": {
-      "anyOf": [
-        {
-          "type": "integer"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Order"
+      "title": "Order",
+      "type": "integer"
     },
     "title": {
       "title": "Title",
@@ -190,16 +178,8 @@
       "type": "string"
     },
     "design_intent": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Design Intent"
+      "title": "Design Intent",
+      "type": "string"
     },
     "theme_variant": {
       "anyOf": [
@@ -233,16 +213,8 @@
       "type": "array"
     },
     "speaker_notes": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Speaker Notes"
+      "title": "Speaker Notes",
+      "type": "string"
     },
     "source_chunk_ids": {
       "items": {
@@ -254,8 +226,12 @@
   },
   "required": [
     "id",
+    "outline_unit_id",
+    "order",
     "title",
-    "core_message"
+    "core_message",
+    "design_intent",
+    "speaker_notes"
   ],
   "title": "SlideSpecPage",
   "type": "object"
