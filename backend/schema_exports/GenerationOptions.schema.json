@@ -1,0 +1,154 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "language": {
+      "default": "zh-CN",
+      "title": "Language",
+      "type": "string"
+    },
+    "audience": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Audience"
+    },
+    "difficulty": {
+      "default": "introductory",
+      "enum": [
+        "introductory",
+        "intermediate",
+        "advanced"
+      ],
+      "title": "Difficulty",
+      "type": "string"
+    },
+    "style": {
+      "default": "educational",
+      "title": "Style",
+      "type": "string"
+    },
+    "duration_minutes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Duration Minutes"
+    },
+    "section_count": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Section Count"
+    },
+    "slide_count": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Slide Count"
+    },
+    "max_section_count": {
+      "default": 8,
+      "title": "Max Section Count",
+      "type": "integer"
+    },
+    "max_slide_count": {
+      "default": 12,
+      "title": "Max Slide Count",
+      "type": "integer"
+    },
+    "output_depth": {
+      "default": "standard",
+      "enum": [
+        "brief",
+        "standard",
+        "detailed"
+      ],
+      "title": "Output Depth",
+      "type": "string"
+    },
+    "include_images": {
+      "default": true,
+      "title": "Include Images",
+      "type": "boolean"
+    },
+    "include_charts": {
+      "default": false,
+      "title": "Include Charts",
+      "type": "boolean"
+    },
+    "include_mindmap": {
+      "default": false,
+      "title": "Include Mindmap",
+      "type": "boolean"
+    },
+    "image_style": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Image Style"
+    },
+    "citation_policy": {
+      "default": "light",
+      "enum": [
+        "none",
+        "light",
+        "strict"
+      ],
+      "title": "Citation Policy",
+      "type": "string"
+    },
+    "slide_theme": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Slide Theme"
+    },
+    "speaker_notes": {
+      "default": true,
+      "title": "Speaker Notes",
+      "type": "boolean"
+    },
+    "pdf_options": {
+      "additionalProperties": true,
+      "title": "Pdf Options",
+      "type": "object"
+    }
+  },
+  "title": "GenerationOptions",
+  "type": "object"
+}

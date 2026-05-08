@@ -1,3 +1,4 @@
+import base64
 from html import escape
 import time
 from pathlib import Path
@@ -67,6 +68,9 @@ class StubImageGenerationService:
             asset_url=record.url,
             alt_text=title,
             metadata=record.metadata,
+            width=record.metadata.get("width"),
+            height=record.metadata.get("height"),
+            format="svg",
         )
 
     @staticmethod
@@ -118,10 +122,26 @@ class APIMartImageGenerationService:
         aspect_ratio: str = "16:9",
         asset_id: str | None = None,
     ) -> ImageElement:
+        if not description.strip():
+            raise APIMartImageGenerationError(f"Image prompt is empty for title: {title}")
         prompt = self._build_prompt(description=description, aspect_ratio=aspect_ratio)
-        task_id = self._submit_task(prompt=prompt, aspect_ratio=aspect_ratio)
-        remote_url = self._wait_for_image_url(task_id)
-        content, content_type = self._download_image(remote_url)
+        data = self._submit_generation_request(prompt=prompt, aspect_ratio=aspect_ratio)
+        response_mode = "task"
+        task_id = self._extract_task_id(data)
+        direct_image = self._extract_direct_image(data)
+        remote_url = ""
+        if direct_image is not None:
+            response_mode, payload, content_type = direct_image
+            if response_mode == "url":
+                remote_url = payload.decode("utf-8")
+                content, content_type = self._download_image(remote_url)
+            else:
+                content = payload
+        else:
+            if task_id is None:
+                raise APIMartImageGenerationError("APIMart response did not include task_id or image data.")
+            remote_url = self._wait_for_image_url(task_id)
+            content, content_type = self._download_image(remote_url)
         file_format = self._format_from_content_type(content_type, remote_url)
         asset_id = asset_id or f"img_{uuid4().hex[:12]}"
         record = self.storage_service.save_bytes(
@@ -138,6 +158,7 @@ class APIMartImageGenerationService:
                 "size": aspect_ratio,
                 "prompt": prompt,
                 "task_id": task_id,
+                "response_mode": response_mode,
                 "retry_count": 0,
                 "format": file_format,
                 **self._dimensions_for_aspect_ratio(aspect_ratio),
@@ -150,9 +171,13 @@ class APIMartImageGenerationService:
             asset_url=record.url,
             alt_text=title,
             metadata=record.metadata,
+            width=record.metadata.get("width"),
+            height=record.metadata.get("height"),
+            format=file_format,
+            model=self.model,
         )
 
-    def _submit_task(self, prompt: str, aspect_ratio: str) -> str:
+    def _submit_generation_request(self, prompt: str, aspect_ratio: str) -> dict[str, object]:
         payload = {
             "model": self.model,
             "prompt": prompt,
@@ -168,11 +193,14 @@ class APIMartImageGenerationService:
         )
         response.raise_for_status()
         data = response.json()
-        task_id = data.get("task_id")
-        if not isinstance(task_id, str):
-            nested = data.get("data", {}) if isinstance(data, dict) else {}
-            task_id = nested.get("task_id") if isinstance(nested, dict) else None
-        if not isinstance(task_id, str):
+        if not isinstance(data, dict):
+            raise APIMartImageGenerationError("APIMart response was not a JSON object.")
+        return data
+
+    def _submit_task(self, prompt: str, aspect_ratio: str) -> str:
+        data = self._submit_generation_request(prompt=prompt, aspect_ratio=aspect_ratio)
+        task_id = self._extract_task_id(data)
+        if task_id is None:
             raise APIMartImageGenerationError("APIMart response did not include task_id.")
         return task_id
 
@@ -211,7 +239,43 @@ class APIMartImageGenerationService:
 
     @staticmethod
     def _build_prompt(description: str, aspect_ratio: str) -> str:
-        return f"Clean educational illustration, {description}, aspect ratio {aspect_ratio}"
+        return (
+            "Create a standalone illustration or diagram asset for educational content, not a presentation slide. "
+            "Render only the focused visual object requested, such as a timeline, process diagram, comparison graphic, "
+            "architecture sketch, or concept illustration. Do not create a slide title, header banner, footer, agenda "
+            "section, summary panel, bullet-list page, or full-page lecture layout. Keep text labels minimal and only "
+            f"where necessary. Description: {description}. Aspect ratio {aspect_ratio}."
+        )
+
+    @staticmethod
+    def _extract_task_id(data: dict[str, object]) -> str | None:
+        task_id = data.get("task_id")
+        if isinstance(task_id, str):
+            return task_id
+        nested = data.get("data", {})
+        if isinstance(nested, dict) and isinstance(nested.get("task_id"), str):
+            return nested["task_id"]
+        if isinstance(nested, list):
+            for item in nested:
+                if isinstance(item, dict) and isinstance(item.get("task_id"), str):
+                    return item["task_id"]
+        return None
+
+    @staticmethod
+    def _extract_direct_image(data: dict[str, object]) -> tuple[str, bytes, str] | None:
+        entries = data.get("data", [])
+        if isinstance(entries, dict):
+            entries = [entries]
+        if not isinstance(entries, list) or not entries or not isinstance(entries[0], dict):
+            return None
+        first = entries[0]
+        b64_json = first.get("b64_json")
+        if isinstance(b64_json, str) and b64_json.strip():
+            return ("b64_json", base64.b64decode(b64_json), "image/png")
+        url = first.get("url")
+        if isinstance(url, str) and url.strip():
+            return ("url", url.encode("utf-8"), "text/uri-list")
+        return None
 
     @staticmethod
     def _extract_image_url(payload: dict[str, object]) -> str:

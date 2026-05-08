@@ -1,0 +1,37 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "element_ref",
+      "default": "element_ref",
+      "title": "Type",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "citations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Citations",
+      "type": "array"
+    },
+    "element_id": {
+      "title": "Element Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "element_id"
+  ],
+  "title": "ElementReferenceBlock",
+  "type": "object"
+}

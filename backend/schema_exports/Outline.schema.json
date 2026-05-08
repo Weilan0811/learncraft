@@ -22,27 +22,6 @@
           "title": "Key Points",
           "type": "array"
         },
-        "recommended_elements": {
-          "items": {
-            "enum": [
-              "text",
-              "image",
-              "chart",
-              "mindmap",
-              "table",
-              "quiz",
-              "citation",
-              "audio_script",
-              "audio_file",
-              "video_script",
-              "interactive_task",
-              "project_task"
-            ],
-            "type": "string"
-          },
-          "title": "Recommended Elements",
-          "type": "array"
-        },
         "estimated_minutes": {
           "anyOf": [
             {
@@ -128,13 +107,6 @@
           "default": null,
           "title": "Visual Strategy"
         },
-        "recommended_elements": {
-          "items": {
-            "$ref": "#/$defs/RecommendedElement"
-          },
-          "title": "Recommended Elements",
-          "type": "array"
-        },
         "retrieval_queries": {
           "items": {
             "type": "string"
@@ -159,49 +131,6 @@
         "core_message"
       ],
       "title": "OutlineUnit",
-      "type": "object"
-    },
-    "RecommendedElement": {
-      "additionalProperties": false,
-      "properties": {
-        "type": {
-          "enum": [
-            "text",
-            "image",
-            "chart",
-            "mindmap",
-            "table",
-            "quiz",
-            "citation",
-            "audio_script",
-            "audio_file",
-            "video_script",
-            "interactive_task",
-            "project_task"
-          ],
-          "title": "Type",
-          "type": "string"
-        },
-        "purpose": {
-          "default": "",
-          "title": "Purpose",
-          "type": "string"
-        },
-        "priority": {
-          "default": "medium",
-          "enum": [
-            "low",
-            "medium",
-            "high"
-          ],
-          "title": "Priority",
-          "type": "string"
-        }
-      },
-      "required": [
-        "type"
-      ],
-      "title": "RecommendedElement",
       "type": "object"
     }
   },

@@ -1,0 +1,57 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "goal": {
+      "title": "Goal",
+      "type": "string"
+    },
+    "key_points": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Key Points",
+      "type": "array"
+    },
+    "estimated_minutes": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Estimated Minutes"
+    },
+    "assessment_points": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Assessment Points",
+      "type": "array"
+    },
+    "citations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Citations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "goal"
+  ],
+  "title": "OutlineSection",
+  "type": "object"
+}

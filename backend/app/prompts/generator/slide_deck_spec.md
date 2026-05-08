@@ -14,7 +14,7 @@ The output must be valid JSON for the backend `SlideSpecPage` schema. A slide is
 - `layout`: one of `cover`, `section-divider`, `title-content`, `title-content-visual`, `visual-left-content-right`, `summary-cards`.
 - `design_intent`: one sentence explaining why this layout fits the slide.
 - `theme_variant`: a compact style label such as `teaching-clean`.
-- `layout_hints`: renderer-facing hints. Include `density`, `primary_visual`, `secondary_visual`, and `supported_renderer: "scenekit.slide/v1"` when applicable.
+- `layout_hints`: renderer-facing hints. Include `density` and `supported_renderer: "scenekit.slide/v1"`. Include `primary_visual` only when an image is declared, and `secondary_visual` only when a mindmap is declared.
 - `speaker_notes`: presenter notes that expand the slide without overcrowding it.
 - `source_chunk_ids`: source chunks used for the slide.
 
@@ -28,6 +28,14 @@ The output must be valid JSON for the backend `SlideSpecPage` schema. A slide is
 - mindmap reference: `role = "mindmap"`, `placement = "supporting"`, `downgrade = "text"` until mindmap SVG/PNG assets are available
 
 Do not put raw coordinates into `SlideSpecPage`. The renderer owns final coordinates, sizes, and `scene-content-kit` element fields. The spec owns page intent, content hierarchy, element roles, and required element declarations.
+
+## Generation Options
+
+- If `generation_options.include_images` is `false`, do not declare image required elements and do not create image `element_ref` entries.
+- If `generation_options.include_mindmap` is `false`, do not declare mindmap required elements and do not create mindmap `element_ref` entries.
+- If images are enabled, each image instruction must define a local illustration asset embedded in the slide, not a complete slide page.
+- Image instructions must explicitly avoid complete slides, title bars, footers, agenda areas, summary panels, large text blocks, and full-page teaching layouts.
+- If mindmaps are enabled, each mindmap instruction must specify the root topic, maximum depth, branch count, branch themes, and short node labels.
 
 ## Renderer Capability Constraints
 
@@ -48,3 +56,11 @@ Unsupported semantics such as chart, SmartArt, complex SVG, audio, video, and an
 - Choose a visual layout when an image or mindmap is required.
 - Use `summary-cards` only when the slide contains several comparable key points.
 - Use `cover` only for the first slide or clear section-opening slide.
+- Output JSON only. Do not output Markdown code fences or explanatory prose.
+
+## Input
+
+- unit_spec_id: {unit_spec_id}
+- outline_unit: {outline_unit}
+- retrieval_results: {retrieval_results}
+- generation_options: {generation_options}

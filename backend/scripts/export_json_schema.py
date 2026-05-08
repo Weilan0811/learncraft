@@ -5,31 +5,41 @@ from pathlib import Path
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
+from app.schemas.assets import AssetResponse
 from app.schemas.elements import ChartElement, ImageElement, MindmapElement, TextElement
 from app.schemas.export import ExportRequest, ExportResult
-from app.schemas.outline import Outline
-from app.schemas.request import ContentGenerationRequest
-from app.schemas.assets import AssetResponse
-from app.schemas.render import SlideRenderModel
-from app.schemas.specs import LectureSpec, SlideDeckSpec
+from app.schemas.outline import Outline, OutlineSection, OutlineUnit
+from app.schemas.render import LectureRenderModel, RenderBlock, SlidePageModel, SlideRenderModel
+from app.schemas.request import ContentGenerationRequest, GenerationOptions
+from app.schemas.specs import ElementReferenceBlock, LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage, TextBlock
 from app.schemas.task import PreviewResponse, TaskResult
 
 
 SCHEMA_MODELS = [
     ContentGenerationRequest,
+    GenerationOptions,
     Outline,
+    OutlineSection,
+    OutlineUnit,
     LectureSpec,
+    LectureSection,
     SlideDeckSpec,
-    SlideRenderModel,
-    TextElement,
+    SlideSpecPage,
+    TextBlock,
+    ElementReferenceBlock,
     ImageElement,
-    ChartElement,
     MindmapElement,
-    PreviewResponse,
-    TaskResult,
+    TextElement,
+    ChartElement,
+    LectureRenderModel,
+    RenderBlock,
+    SlidePageModel,
+    SlideRenderModel,
+    AssetResponse,
     ExportRequest,
     ExportResult,
-    AssetResponse,
+    PreviewResponse,
+    TaskResult,
 ]
 
 

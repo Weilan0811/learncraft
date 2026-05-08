@@ -44,7 +44,8 @@ def content_element_ref_ids(content_spec: LectureSpec | SlideDeckSpec) -> list[s
     return [element_id for slide in content_spec.slides for element_id in element_ref_ids(slide)]
 
 
-def fallback_image_element(request: ElementRequest, reason: str) -> ImageElement:
+def fallback_image_element(request: ElementRequest, reason: str, prompt: str | None = None) -> ImageElement:
+    final_prompt = prompt or request.instruction
     try:
         svg = _fallback_svg(request.title, reason)
         record = LocalStorageService().save_bytes(
@@ -61,14 +62,14 @@ def fallback_image_element(request: ElementRequest, reason: str) -> ImageElement
     return ImageElement(
         id=request.element_id,
         title=request.title,
-        prompt=request.instruction,
+        prompt=final_prompt,
         asset_url=asset_url,
-        alt_text=f"{request.title} 占位图",
+        alt_text=f"{request.title} placeholder image",
         source_unit_id=request.source_unit_id,
         source_outline_unit_id=request.source_outline_unit_id,
         source_chunk_ids=request.source_chunk_ids,
-        metadata={"fallback": True, "reason": reason},
-        generation_info={"generator": "image_generation_service", "fallback": True},
+        metadata={"fallback": True, "reason": reason, "prompt": final_prompt},
+        generation_info={"generator": "image_generation_service", "fallback": True, "prompt": final_prompt},
     )
 
 
@@ -111,6 +112,9 @@ def unit_progress(
         completed_units=len(state.completed_unit_ids),
         total_units=len(state.pending_unit_ids),
     )
+    if percent is not None:
+        progress["percent"] = percent
+    return ensure_monotonic_progress(state.progress, progress)
 
 
 def _fallback_svg(title: str, reason: str) -> str:
@@ -126,7 +130,6 @@ def _fallback_svg(title: str, reason: str) -> str:
         '<circle cx="950" cy="490" r="44" fill="#2563eb" opacity="0.9"/>'
         "</svg>"
     )
-    return ensure_monotonic_progress(state.progress, progress)
 
 
 def _percent_for_stage(stage: str, completed_units: int = 0, total_units: int = 0) -> int:

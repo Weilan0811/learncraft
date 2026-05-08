@@ -1,8 +1,11 @@
 from app.schemas.elements import ChartElement, ImageElement, MindmapElement, TextElement
-from app.schemas.outline import Outline, OutlineSection, OutlineUnit, RecommendedElement
+from app.core.task import TaskStatus
+from app.schemas.outline import Outline, OutlineSection, OutlineUnit
 from app.schemas.render import SlidePageModel
 from app.schemas.request import ContentGenerationRequest
+from app.schemas.state import ContentGenerationState
 from app.schemas.specs import LectureSection, LectureSpec, RequiredElementSpec, SlideSpecElement, SlideSpecPage, TextBlock
+from app.workflows.nodes.normalize_request_node import normalize_request
 from pydantic import ValidationError
 
 
@@ -15,6 +18,66 @@ def test_content_generation_request_accepts_mvp_content_types() -> None:
 
     assert request.content_type == "slide_deck"
     assert request.generation_options.language == "zh-CN"
+    assert request.generation_options.slide_count is None
+    assert request.generation_options.max_slide_count == 12
+
+
+def test_generation_options_use_max_counts_without_forcing_exact_counts() -> None:
+    slide_request = ContentGenerationRequest(
+        content_type="slide_deck",
+        topic="AI basics",
+        user_prompt="Generate a slide deck",
+    )
+    lecture_request = ContentGenerationRequest(
+        content_type="lecture",
+        topic="AI basics",
+        user_prompt="Generate a lecture",
+    )
+
+    assert slide_request.generation_options.slide_count is None
+    assert slide_request.generation_options.max_slide_count == 12
+    assert lecture_request.generation_options.section_count is None
+    assert lecture_request.generation_options.max_section_count == 8
+
+
+def test_normalize_request_maps_legacy_counts_to_maximums() -> None:
+    request = ContentGenerationRequest(
+        content_type="slide_deck",
+        topic="AI basics",
+        user_prompt="Generate a slide deck",
+        generation_options={"slide_count": 5, "include_mindmap": False},
+    )
+    state = ContentGenerationState(
+        request_id="test_legacy_counts",
+        content_type=request.content_type,
+        topic=request.topic,
+        user_prompt=request.user_prompt,
+        raw_request=request.model_dump(mode="json"),
+        status=TaskStatus.running,
+    )
+
+    normalized = normalize_request(state)["normalized_request"]
+
+    assert normalized["slide_count"] == 5
+    assert normalized["max_slide_count"] == 5
+
+
+def test_outline_units_reject_recommended_elements() -> None:
+    try:
+        OutlineUnit(
+            id="unit_stub",
+            order=1,
+            unit_type="section",
+            title="What is AI",
+            goal="Explain the core idea",
+            core_message="AI systems model intelligent behavior.",
+            recommended_elements=[{"type": "image", "purpose": "show concept"}],
+            retrieval_queries=["AI definition"],
+        )
+    except ValidationError as exc:
+        assert "recommended_elements" in str(exc)
+    else:
+        raise AssertionError("recommended_elements should not be part of OutlineUnit")
 
 
 def test_content_generation_request_rejects_output_formats() -> None:
@@ -57,9 +120,6 @@ def test_core_content_schemas_keep_required_extension_fields() -> None:
                 goal="理解基本定义",
                 core_message="人工智能研究机器智能行为。",
                 key_points=["定义"],
-                recommended_elements=[
-                    RecommendedElement(type="image", purpose="展示核心概念", priority="high"),
-                ],
                 retrieval_queries=["人工智能 定义"],
                 source_chunk_ids=["chunk_stub"],
             )
@@ -70,7 +130,6 @@ def test_core_content_schemas_keep_required_extension_fields() -> None:
                 title="什么是人工智能",
                 goal="理解基本定义",
                 key_points=["定义"],
-                recommended_elements=["text", "image"],
                 citations=["chunk_stub"],
             )
         ],
@@ -111,7 +170,6 @@ def test_core_content_schemas_keep_required_extension_fields() -> None:
 
     assert spec.type == "lecture"
     assert spec.version == "content.spec/v1"
-    assert outline.units[0].recommended_elements[0].type == "image"
     assert spec.sections[0].blocks[0].type == "text"
     assert spec.sections[0].required_elements[0].element_id == "img_stub"
     assert slide.required_elements[0].source_outline_unit_id == "unit_stub"
