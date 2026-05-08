@@ -1,0 +1,2497 @@
+{
+  "$id": "https://example.com/schemas/combined.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Content Generator Agent Schemas",
+  "description": "Combined schemas for content generation workflow",
+  "definitions": {
+    "ContentGenerationRequest": {
+      "$defs": {
+        "GenerationOptions": {
+          "additionalProperties": false,
+          "properties": {
+            "language": {
+              "default": "zh-CN",
+              "title": "Language",
+              "type": "string"
+            },
+            "audience": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Audience"
+            },
+            "difficulty": {
+              "default": "introductory",
+              "enum": [
+                "introductory",
+                "intermediate",
+                "advanced"
+              ],
+              "title": "Difficulty",
+              "type": "string"
+            },
+            "style": {
+              "default": "educational",
+              "title": "Style",
+              "type": "string"
+            },
+            "duration_minutes": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Duration Minutes"
+            },
+            "section_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Section Count"
+            },
+            "slide_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Slide Count"
+            },
+            "output_depth": {
+              "default": "standard",
+              "enum": [
+                "brief",
+                "standard",
+                "detailed"
+              ],
+              "title": "Output Depth",
+              "type": "string"
+            },
+            "include_images": {
+              "default": true,
+              "title": "Include Images",
+              "type": "boolean"
+            },
+            "include_charts": {
+              "default": false,
+              "title": "Include Charts",
+              "type": "boolean"
+            },
+            "include_mindmap": {
+              "default": false,
+              "title": "Include Mindmap",
+              "type": "boolean"
+            },
+            "image_style": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Image Style"
+            },
+            "citation_policy": {
+              "default": "light",
+              "enum": [
+                "none",
+                "light",
+                "strict"
+              ],
+              "title": "Citation Policy",
+              "type": "string"
+            },
+            "slide_theme": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Slide Theme"
+            },
+            "speaker_notes": {
+              "default": true,
+              "title": "Speaker Notes",
+              "type": "boolean"
+            },
+            "pdf_options": {
+              "additionalProperties": true,
+              "title": "Pdf Options",
+              "type": "object"
+            }
+          },
+          "title": "GenerationOptions",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "content_type": {
+          "enum": [
+            "lecture",
+            "slide_deck"
+          ],
+          "title": "Content Type",
+          "type": "string"
+        },
+        "topic": {
+          "minLength": 1,
+          "title": "Topic",
+          "type": "string"
+        },
+        "user_prompt": {
+          "minLength": 1,
+          "title": "User Prompt",
+          "type": "string"
+        },
+        "system_prompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "System Prompt"
+        },
+        "knowledge_base_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Knowledge Base Ids",
+          "type": "array"
+        },
+        "generation_options": {
+          "$ref": "#/$defs/GenerationOptions"
+        }
+      },
+      "required": [
+        "content_type",
+        "topic",
+        "user_prompt"
+      ],
+      "title": "ContentGenerationRequest",
+      "type": "object",
+      "$id": "https://example.com/schemas/ContentGenerationRequest.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "GenerationOptions": {
+      "additionalProperties": false,
+      "properties": {
+        "language": {
+          "default": "zh-CN",
+          "title": "Language",
+          "type": "string"
+        },
+        "audience": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audience"
+        },
+        "difficulty": {
+          "default": "introductory",
+          "enum": [
+            "introductory",
+            "intermediate",
+            "advanced"
+          ],
+          "title": "Difficulty",
+          "type": "string"
+        },
+        "style": {
+          "default": "educational",
+          "title": "Style",
+          "type": "string"
+        },
+        "duration_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration Minutes"
+        },
+        "section_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Section Count"
+        },
+        "slide_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slide Count"
+        },
+        "output_depth": {
+          "default": "standard",
+          "enum": [
+            "brief",
+            "standard",
+            "detailed"
+          ],
+          "title": "Output Depth",
+          "type": "string"
+        },
+        "include_images": {
+          "default": true,
+          "title": "Include Images",
+          "type": "boolean"
+        },
+        "include_charts": {
+          "default": false,
+          "title": "Include Charts",
+          "type": "boolean"
+        },
+        "include_mindmap": {
+          "default": false,
+          "title": "Include Mindmap",
+          "type": "boolean"
+        },
+        "image_style": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Style"
+        },
+        "citation_policy": {
+          "default": "light",
+          "enum": [
+            "none",
+            "light",
+            "strict"
+          ],
+          "title": "Citation Policy",
+          "type": "string"
+        },
+        "slide_theme": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slide Theme"
+        },
+        "speaker_notes": {
+          "default": true,
+          "title": "Speaker Notes",
+          "type": "boolean"
+        },
+        "pdf_options": {
+          "additionalProperties": true,
+          "title": "Pdf Options",
+          "type": "object"
+        }
+      },
+      "title": "GenerationOptions",
+      "type": "object",
+      "$id": "https://example.com/schemas/GenerationOptions.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "Outline": {
+      "$defs": {
+        "OutlineSection": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "goal": {
+              "title": "Goal",
+              "type": "string"
+            },
+            "key_points": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Key Points",
+              "type": "array"
+            },
+            "recommended_elements": {
+              "items": {
+                "enum": [
+                  "text",
+                  "image",
+                  "chart",
+                  "mindmap",
+                  "table",
+                  "quiz",
+                  "citation",
+                  "audio_script",
+                  "audio_file",
+                  "video_script",
+                  "interactive_task",
+                  "project_task"
+                ],
+                "type": "string"
+              },
+              "title": "Recommended Elements",
+              "type": "array"
+            },
+            "estimated_minutes": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Estimated Minutes"
+            },
+            "assessment_points": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Assessment Points",
+              "type": "array"
+            },
+            "citations": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Citations",
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "goal"
+          ],
+          "title": "OutlineSection",
+          "type": "object"
+        },
+        "OutlineUnit": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "order": {
+              "title": "Order",
+              "type": "integer"
+            },
+            "unit_type": {
+              "enum": [
+                "section",
+                "slide"
+              ],
+              "title": "Unit Type",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "goal": {
+              "title": "Goal",
+              "type": "string"
+            },
+            "core_message": {
+              "title": "Core Message",
+              "type": "string"
+            },
+            "key_points": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Key Points",
+              "type": "array"
+            },
+            "visual_strategy": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Visual Strategy"
+            },
+            "recommended_elements": {
+              "items": {
+                "$ref": "#/$defs/RecommendedElement"
+              },
+              "title": "Recommended Elements",
+              "type": "array"
+            },
+            "retrieval_queries": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Retrieval Queries",
+              "type": "array"
+            },
+            "source_chunk_ids": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Source Chunk Ids",
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "order",
+            "unit_type",
+            "title",
+            "goal",
+            "core_message"
+          ],
+          "title": "OutlineUnit",
+          "type": "object"
+        },
+        "RecommendedElement": {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "enum": [
+                "text",
+                "image",
+                "chart",
+                "mindmap",
+                "table",
+                "quiz",
+                "citation",
+                "audio_script",
+                "audio_file",
+                "video_script",
+                "interactive_task",
+                "project_task"
+              ],
+              "title": "Type",
+              "type": "string"
+            },
+            "purpose": {
+              "default": "",
+              "title": "Purpose",
+              "type": "string"
+            },
+            "priority": {
+              "default": "medium",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "title": "Priority",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "title": "RecommendedElement",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "content_type": {
+          "enum": [
+            "lecture",
+            "slide_deck"
+          ],
+          "title": "Content Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "audience": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Audience"
+        },
+        "learning_objectives": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Learning Objectives",
+          "type": "array"
+        },
+        "units": {
+          "items": {
+            "$ref": "#/$defs/OutlineUnit"
+          },
+          "title": "Units",
+          "type": "array"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/OutlineSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "content_type",
+        "title"
+      ],
+      "title": "Outline",
+      "type": "object",
+      "$id": "https://example.com/schemas/Outline.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "OutlineSection": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "goal": {
+          "title": "Goal",
+          "type": "string"
+        },
+        "key_points": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Points",
+          "type": "array"
+        },
+        "recommended_elements": {
+          "items": {
+            "enum": [
+              "text",
+              "image",
+              "chart",
+              "mindmap",
+              "table",
+              "quiz",
+              "citation",
+              "audio_script",
+              "audio_file",
+              "video_script",
+              "interactive_task",
+              "project_task"
+            ],
+            "type": "string"
+          },
+          "title": "Recommended Elements",
+          "type": "array"
+        },
+        "estimated_minutes": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Estimated Minutes"
+        },
+        "assessment_points": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assessment Points",
+          "type": "array"
+        },
+        "citations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Citations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "goal"
+      ],
+      "title": "OutlineSection",
+      "type": "object",
+      "$id": "https://example.com/schemas/OutlineSection.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "OutlineUnit": {
+      "$defs": {
+        "RecommendedElement": {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "enum": [
+                "text",
+                "image",
+                "chart",
+                "mindmap",
+                "table",
+                "quiz",
+                "citation",
+                "audio_script",
+                "audio_file",
+                "video_script",
+                "interactive_task",
+                "project_task"
+              ],
+              "title": "Type",
+              "type": "string"
+            },
+            "purpose": {
+              "default": "",
+              "title": "Purpose",
+              "type": "string"
+            },
+            "priority": {
+              "default": "medium",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "title": "Priority",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "title": "RecommendedElement",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "order": {
+          "title": "Order",
+          "type": "integer"
+        },
+        "unit_type": {
+          "enum": [
+            "section",
+            "slide"
+          ],
+          "title": "Unit Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "goal": {
+          "title": "Goal",
+          "type": "string"
+        },
+        "core_message": {
+          "title": "Core Message",
+          "type": "string"
+        },
+        "key_points": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Points",
+          "type": "array"
+        },
+        "visual_strategy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visual Strategy"
+        },
+        "recommended_elements": {
+          "items": {
+            "$ref": "#/$defs/RecommendedElement"
+          },
+          "title": "Recommended Elements",
+          "type": "array"
+        },
+        "retrieval_queries": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Retrieval Queries",
+          "type": "array"
+        },
+        "source_chunk_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Chunk Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "order",
+        "unit_type",
+        "title",
+        "goal",
+        "core_message"
+      ],
+      "title": "OutlineUnit",
+      "type": "object",
+      "$id": "https://example.com/schemas/OutlineUnit.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "RecommendedElement": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "text",
+            "image",
+            "chart",
+            "mindmap",
+            "table",
+            "quiz",
+            "citation",
+            "audio_script",
+            "audio_file",
+            "video_script",
+            "interactive_task",
+            "project_task"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "purpose": {
+          "default": "",
+          "title": "Purpose",
+          "type": "string"
+        },
+        "priority": {
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Priority",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "RecommendedElement",
+      "type": "object",
+      "$id": "https://example.com/schemas/RecommendedElement.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "LectureSpec": {
+      "$defs": {
+        "ElementReferenceBlock": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "type": {
+              "const": "element_ref",
+              "default": "element_ref",
+              "title": "Type",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "citations": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Citations",
+              "type": "array"
+            },
+            "element_id": {
+              "title": "Element Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "element_id"
+          ],
+          "title": "ElementReferenceBlock",
+          "type": "object"
+        },
+        "LectureSection": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "summary": {
+              "title": "Summary",
+              "type": "string"
+            },
+            "outline_unit_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Outline Unit Id"
+            },
+            "order": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Order"
+            },
+            "learning_goal": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Learning Goal"
+            },
+            "blocks": {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/TextBlock"
+                  },
+                  {
+                    "$ref": "#/$defs/ElementReferenceBlock"
+                  }
+                ]
+              },
+              "title": "Blocks",
+              "type": "array"
+            },
+            "required_elements": {
+              "items": {
+                "$ref": "#/$defs/RequiredElementSpec"
+              },
+              "title": "Required Elements",
+              "type": "array"
+            },
+            "source_chunk_ids": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Source Chunk Ids",
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "summary"
+          ],
+          "title": "LectureSection",
+          "type": "object"
+        },
+        "RequiredElementSpec": {
+          "additionalProperties": false,
+          "properties": {
+            "element_id": {
+              "title": "Element Id",
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "image",
+                "mindmap"
+              ],
+              "title": "Type",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "purpose": {
+              "title": "Purpose",
+              "type": "string"
+            },
+            "instruction": {
+              "title": "Instruction",
+              "type": "string"
+            },
+            "style": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Style"
+            },
+            "aspect_ratio": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Aspect Ratio"
+            },
+            "source_unit_id": {
+              "title": "Source Unit Id",
+              "type": "string"
+            },
+            "source_outline_unit_id": {
+              "title": "Source Outline Unit Id",
+              "type": "string"
+            },
+            "source_chunk_ids": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Source Chunk Ids",
+              "type": "array"
+            },
+            "priority": {
+              "default": "medium",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "title": "Priority",
+              "type": "string"
+            }
+          },
+          "required": [
+            "element_id",
+            "type",
+            "title",
+            "purpose",
+            "instruction",
+            "source_unit_id",
+            "source_outline_unit_id"
+          ],
+          "title": "RequiredElementSpec",
+          "type": "object"
+        },
+        "TextBlock": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "type": {
+              "const": "text",
+              "default": "text",
+              "title": "Type",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "citations": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Citations",
+              "type": "array"
+            },
+            "content": {
+              "title": "Content",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "content"
+          ],
+          "title": "TextBlock",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "lecture",
+          "default": "lecture",
+          "title": "Type",
+          "type": "string"
+        },
+        "version": {
+          "default": "content.spec/v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "objectives": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Objectives",
+          "type": "array"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/LectureSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "LectureSpec",
+      "type": "object",
+      "$id": "https://example.com/schemas/LectureSpec.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "LectureSection": {
+      "$defs": {
+        "ElementReferenceBlock": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "type": {
+              "const": "element_ref",
+              "default": "element_ref",
+              "title": "Type",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "citations": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Citations",
+              "type": "array"
+            },
+            "element_id": {
+              "title": "Element Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "element_id"
+          ],
+          "title": "ElementReferenceBlock",
+          "type": "object"
+        },
+        "RequiredElementSpec": {
+          "additionalProperties": false,
+          "properties": {
+            "element_id": {
+              "title": "Element Id",
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "image",
+                "mindmap"
+              ],
+              "title": "Type",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "purpose": {
+              "title": "Purpose",
+              "type": "string"
+            },
+            "instruction": {
+              "title": "Instruction",
+              "type": "string"
+            },
+            "style": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Style"
+            },
+            "aspect_ratio": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Aspect Ratio"
+            },
+            "source_unit_id": {
+              "title": "Source Unit Id",
+              "type": "string"
+            },
+            "source_outline_unit_id": {
+              "title": "Source Outline Unit Id",
+              "type": "string"
+            },
+            "source_chunk_ids": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Source Chunk Ids",
+              "type": "array"
+            },
+            "priority": {
+              "default": "medium",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "title": "Priority",
+              "type": "string"
+            }
+          },
+          "required": [
+            "element_id",
+            "type",
+            "title",
+            "purpose",
+            "instruction",
+            "source_unit_id",
+            "source_outline_unit_id"
+          ],
+          "title": "RequiredElementSpec",
+          "type": "object"
+        },
+        "TextBlock": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "type": {
+              "const": "text",
+              "default": "text",
+              "title": "Type",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "citations": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Citations",
+              "type": "array"
+            },
+            "content": {
+              "title": "Content",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "content"
+          ],
+          "title": "TextBlock",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "outline_unit_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outline Unit Id"
+        },
+        "order": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Order"
+        },
+        "learning_goal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Learning Goal"
+        },
+        "blocks": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TextBlock"
+              },
+              {
+                "$ref": "#/$defs/ElementReferenceBlock"
+              }
+            ]
+          },
+          "title": "Blocks",
+          "type": "array"
+        },
+        "required_elements": {
+          "items": {
+            "$ref": "#/$defs/RequiredElementSpec"
+          },
+          "title": "Required Elements",
+          "type": "array"
+        },
+        "source_chunk_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Chunk Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "summary"
+      ],
+      "title": "LectureSection",
+      "type": "object",
+      "$id": "https://example.com/schemas/LectureSection.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "SlideDeckSpec": {
+      "$defs": {
+        "RequiredElementSpec": {
+          "additionalProperties": false,
+          "properties": {
+            "element_id": {
+              "title": "Element Id",
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "image",
+                "mindmap"
+              ],
+              "title": "Type",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "purpose": {
+              "title": "Purpose",
+              "type": "string"
+            },
+            "instruction": {
+              "title": "Instruction",
+              "type": "string"
+            },
+            "style": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Style"
+            },
+            "aspect_ratio": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Aspect Ratio"
+            },
+            "source_unit_id": {
+              "title": "Source Unit Id",
+              "type": "string"
+            },
+            "source_outline_unit_id": {
+              "title": "Source Outline Unit Id",
+              "type": "string"
+            },
+            "source_chunk_ids": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Source Chunk Ids",
+              "type": "array"
+            },
+            "priority": {
+              "default": "medium",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "title": "Priority",
+              "type": "string"
+            }
+          },
+          "required": [
+            "element_id",
+            "type",
+            "title",
+            "purpose",
+            "instruction",
+            "source_unit_id",
+            "source_outline_unit_id"
+          ],
+          "title": "RequiredElementSpec",
+          "type": "object"
+        },
+        "SlideSpecElement": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "type": {
+              "title": "Type",
+              "type": "string"
+            },
+            "content": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Content"
+            },
+            "element_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Element Id"
+            },
+            "metadata": {
+              "additionalProperties": true,
+              "title": "Metadata",
+              "type": "object"
+            }
+          },
+          "required": [
+            "id",
+            "type"
+          ],
+          "title": "SlideSpecElement",
+          "type": "object"
+        },
+        "SlideSpecPage": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "outline_unit_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Outline Unit Id"
+            },
+            "order": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Order"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "core_message": {
+              "title": "Core Message",
+              "type": "string"
+            },
+            "layout": {
+              "default": "title-content",
+              "title": "Layout",
+              "type": "string"
+            },
+            "elements": {
+              "items": {
+                "$ref": "#/$defs/SlideSpecElement"
+              },
+              "title": "Elements",
+              "type": "array"
+            },
+            "required_elements": {
+              "items": {
+                "$ref": "#/$defs/RequiredElementSpec"
+              },
+              "title": "Required Elements",
+              "type": "array"
+            },
+            "speaker_notes": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Speaker Notes"
+            },
+            "source_chunk_ids": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Source Chunk Ids",
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "core_message"
+          ],
+          "title": "SlideSpecPage",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "slide_deck",
+          "default": "slide_deck",
+          "title": "Type",
+          "type": "string"
+        },
+        "version": {
+          "default": "content.spec/v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "slides": {
+          "items": {
+            "$ref": "#/$defs/SlideSpecPage"
+          },
+          "title": "Slides",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "SlideDeckSpec",
+      "type": "object",
+      "$id": "https://example.com/schemas/SlideDeckSpec.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "SlideSpecPage": {
+      "$defs": {
+        "RequiredElementSpec": {
+          "additionalProperties": false,
+          "properties": {
+            "element_id": {
+              "title": "Element Id",
+              "type": "string"
+            },
+            "type": {
+              "enum": [
+                "image",
+                "mindmap"
+              ],
+              "title": "Type",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "purpose": {
+              "title": "Purpose",
+              "type": "string"
+            },
+            "instruction": {
+              "title": "Instruction",
+              "type": "string"
+            },
+            "style": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Style"
+            },
+            "aspect_ratio": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Aspect Ratio"
+            },
+            "source_unit_id": {
+              "title": "Source Unit Id",
+              "type": "string"
+            },
+            "source_outline_unit_id": {
+              "title": "Source Outline Unit Id",
+              "type": "string"
+            },
+            "source_chunk_ids": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Source Chunk Ids",
+              "type": "array"
+            },
+            "priority": {
+              "default": "medium",
+              "enum": [
+                "low",
+                "medium",
+                "high"
+              ],
+              "title": "Priority",
+              "type": "string"
+            }
+          },
+          "required": [
+            "element_id",
+            "type",
+            "title",
+            "purpose",
+            "instruction",
+            "source_unit_id",
+            "source_outline_unit_id"
+          ],
+          "title": "RequiredElementSpec",
+          "type": "object"
+        },
+        "SlideSpecElement": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "type": {
+              "title": "Type",
+              "type": "string"
+            },
+            "content": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Content"
+            },
+            "element_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Element Id"
+            },
+            "metadata": {
+              "additionalProperties": true,
+              "title": "Metadata",
+              "type": "object"
+            }
+          },
+          "required": [
+            "id",
+            "type"
+          ],
+          "title": "SlideSpecElement",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "outline_unit_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outline Unit Id"
+        },
+        "order": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Order"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "core_message": {
+          "title": "Core Message",
+          "type": "string"
+        },
+        "layout": {
+          "default": "title-content",
+          "title": "Layout",
+          "type": "string"
+        },
+        "elements": {
+          "items": {
+            "$ref": "#/$defs/SlideSpecElement"
+          },
+          "title": "Elements",
+          "type": "array"
+        },
+        "required_elements": {
+          "items": {
+            "$ref": "#/$defs/RequiredElementSpec"
+          },
+          "title": "Required Elements",
+          "type": "array"
+        },
+        "speaker_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Speaker Notes"
+        },
+        "source_chunk_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Chunk Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "core_message"
+      ],
+      "title": "SlideSpecPage",
+      "type": "object",
+      "$id": "https://example.com/schemas/SlideSpecPage.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "TextBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "text",
+          "default": "text",
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content"
+      ],
+      "title": "TextBlock",
+      "type": "object",
+      "$id": "https://example.com/schemas/TextBlock.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "ElementReferenceBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "element_ref",
+          "default": "element_ref",
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Citations",
+          "type": "array"
+        },
+        "element_id": {
+          "title": "Element Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "element_id"
+      ],
+      "title": "ElementReferenceBlock",
+      "type": "object",
+      "$id": "https://example.com/schemas/ElementReferenceBlock.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "ImageElement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "image",
+          "default": "image",
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "status": {
+          "default": "completed",
+          "enum": [
+            "pending",
+            "generating",
+            "completed",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "source_unit_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Unit Id"
+        },
+        "source_outline_unit_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Outline Unit Id"
+        },
+        "source_chunk_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Chunk Ids",
+          "type": "array"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "generation_info": {
+          "additionalProperties": true,
+          "title": "Generation Info",
+          "type": "object"
+        },
+        "prompt": {
+          "title": "Prompt",
+          "type": "string"
+        },
+        "asset_url": {
+          "title": "Asset Url",
+          "type": "string"
+        },
+        "alt_text": {
+          "title": "Alt Text",
+          "type": "string"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Height"
+        },
+        "format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Format"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "retry_count": {
+          "default": 0,
+          "title": "Retry Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "prompt",
+        "asset_url",
+        "alt_text"
+      ],
+      "title": "ImageElement",
+      "type": "object",
+      "$id": "https://example.com/schemas/ImageElement.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "MindmapElement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "mindmap",
+          "default": "mindmap",
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "status": {
+          "default": "completed",
+          "enum": [
+            "pending",
+            "generating",
+            "completed",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "source_unit_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Unit Id"
+        },
+        "source_outline_unit_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Outline Unit Id"
+        },
+        "source_chunk_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Chunk Ids",
+          "type": "array"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        },
+        "generation_info": {
+          "additionalProperties": true,
+          "title": "Generation Info",
+          "type": "object"
+        },
+        "markdown": {
+          "title": "Markdown",
+          "type": "string"
+        },
+        "render_hints": {
+          "additionalProperties": true,
+          "title": "Render Hints",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "markdown"
+      ],
+      "title": "MindmapElement",
+      "type": "object",
+      "$id": "https://example.com/schemas/MindmapElement.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "LectureRenderModel": {
+      "$defs": {
+        "LectureRenderSection": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "render_blocks": {
+              "items": {
+                "$ref": "#/$defs/RenderBlock"
+              },
+              "title": "Render Blocks",
+              "type": "array"
+            }
+          },
+          "required": [
+            "id",
+            "title"
+          ],
+          "title": "LectureRenderSection",
+          "type": "object"
+        },
+        "RenderBlock": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "type": {
+              "title": "Type",
+              "type": "string"
+            },
+            "title": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Title"
+            },
+            "content": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Content"
+            },
+            "asset_url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Asset Url"
+            },
+            "metadata": {
+              "additionalProperties": true,
+              "title": "Metadata",
+              "type": "object"
+            }
+          },
+          "required": [
+            "id",
+            "type"
+          ],
+          "title": "RenderBlock",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "render_type": {
+          "const": "lecture_page",
+          "default": "lecture_page",
+          "title": "Render Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "objectives": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Objectives",
+          "type": "array"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/LectureRenderSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "printable_model": {
+          "additionalProperties": true,
+          "title": "Printable Model",
+          "type": "object"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "LectureRenderModel",
+      "type": "object",
+      "$id": "https://example.com/schemas/LectureRenderModel.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "SlideRenderModel": {
+      "$defs": {
+        "SlidePageModel": {
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "const": "scenekit.slide/v1",
+              "default": "scenekit.slide/v1",
+              "title": "Version",
+              "type": "string"
+            },
+            "page": {
+              "additionalProperties": true,
+              "title": "Page",
+              "type": "object"
+            }
+          },
+          "required": [
+            "page"
+          ],
+          "title": "SlidePageModel",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "render_type": {
+          "const": "slide_deck",
+          "default": "slide_deck",
+          "title": "Render Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "pages": {
+          "items": {
+            "$ref": "#/$defs/SlidePageModel"
+          },
+          "title": "Pages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "SlideRenderModel",
+      "type": "object",
+      "$id": "https://example.com/schemas/SlideRenderModel.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "RenderBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content"
+        },
+        "asset_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Url"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "RenderBlock",
+      "type": "object",
+      "$id": "https://example.com/schemas/RenderBlock.json",
+      "$schema": "http://json-schema.org/draft-07/schema#"
+    }
+  }
+}

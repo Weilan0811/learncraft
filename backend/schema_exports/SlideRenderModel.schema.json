@@ -1,0 +1,50 @@
+{
+  "$defs": {
+    "SlidePageModel": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": "scenekit.slide/v1",
+          "default": "scenekit.slide/v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "page": {
+          "additionalProperties": true,
+          "title": "Page",
+          "type": "object"
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "title": "SlidePageModel",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "render_type": {
+      "const": "slide_deck",
+      "default": "slide_deck",
+      "title": "Render Type",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/SlidePageModel"
+      },
+      "title": "Pages",
+      "type": "array"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "SlideRenderModel",
+  "type": "object"
+}

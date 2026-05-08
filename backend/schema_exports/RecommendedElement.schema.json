@@ -1,0 +1,43 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "enum": [
+        "text",
+        "image",
+        "chart",
+        "mindmap",
+        "table",
+        "quiz",
+        "citation",
+        "audio_script",
+        "audio_file",
+        "video_script",
+        "interactive_task",
+        "project_task"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "purpose": {
+      "default": "",
+      "title": "Purpose",
+      "type": "string"
+    },
+    "priority": {
+      "default": "medium",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "Priority",
+      "type": "string"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "title": "RecommendedElement",
+  "type": "object"
+}

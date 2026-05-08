@@ -1,0 +1,127 @@
+{
+  "$defs": {
+    "LectureRenderSection": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "render_blocks": {
+          "items": {
+            "$ref": "#/$defs/RenderBlock"
+          },
+          "title": "Render Blocks",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title"
+      ],
+      "title": "LectureRenderSection",
+      "type": "object"
+    },
+    "RenderBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content"
+        },
+        "asset_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Url"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "RenderBlock",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "render_type": {
+      "const": "lecture_page",
+      "default": "lecture_page",
+      "title": "Render Type",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "objectives": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Objectives",
+      "type": "array"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/LectureRenderSection"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "printable_model": {
+      "additionalProperties": true,
+      "title": "Printable Model",
+      "type": "object"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "title": "LectureRenderModel",
+  "type": "object"
+}

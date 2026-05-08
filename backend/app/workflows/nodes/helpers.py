@@ -41,18 +41,19 @@ def content_element_ref_ids(content_spec: LectureSpec | SlideDeckSpec) -> list[s
     return [element_id for slide in content_spec.slides for element_id in element_ref_ids(slide)]
 
 
-def fallback_image_element(request: ElementRequest, reason: str) -> ImageElement:
+def fallback_image_element(request: ElementRequest, reason: str, prompt: str | None = None) -> ImageElement:
+    final_prompt = prompt or request.instruction
     return ImageElement(
         id=request.element_id,
         title=request.title,
-        prompt=request.instruction,
+        prompt=final_prompt,
         asset_url="/api/assets/placeholder_image/download",
-        alt_text=f"{request.title} 占位图",
+        alt_text=f"{request.title} placeholder image",
         source_unit_id=request.source_unit_id,
         source_outline_unit_id=request.source_outline_unit_id,
         source_chunk_ids=request.source_chunk_ids,
-        metadata={"fallback": True, "reason": reason},
-        generation_info={"generator": "image_generation_service", "fallback": True},
+        metadata={"fallback": True, "reason": reason, "prompt": final_prompt},
+        generation_info={"generator": "image_generation_service", "fallback": True, "prompt": final_prompt},
     )
 
 

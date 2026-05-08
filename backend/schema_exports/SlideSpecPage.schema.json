@@ -1,0 +1,225 @@
+{
+  "$defs": {
+    "RequiredElementSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "element_id": {
+          "title": "Element Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "image",
+            "mindmap"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "purpose": {
+          "title": "Purpose",
+          "type": "string"
+        },
+        "instruction": {
+          "title": "Instruction",
+          "type": "string"
+        },
+        "style": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Style"
+        },
+        "aspect_ratio": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Aspect Ratio"
+        },
+        "source_unit_id": {
+          "title": "Source Unit Id",
+          "type": "string"
+        },
+        "source_outline_unit_id": {
+          "title": "Source Outline Unit Id",
+          "type": "string"
+        },
+        "source_chunk_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Source Chunk Ids",
+          "type": "array"
+        },
+        "priority": {
+          "default": "medium",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "title": "Priority",
+          "type": "string"
+        }
+      },
+      "required": [
+        "element_id",
+        "type",
+        "title",
+        "purpose",
+        "instruction",
+        "source_unit_id",
+        "source_outline_unit_id"
+      ],
+      "title": "RequiredElementSpec",
+      "type": "object"
+    },
+    "SlideSpecElement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content"
+        },
+        "element_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Element Id"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "SlideSpecElement",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "outline_unit_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Outline Unit Id"
+    },
+    "order": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Order"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "core_message": {
+      "title": "Core Message",
+      "type": "string"
+    },
+    "layout": {
+      "default": "title-content",
+      "title": "Layout",
+      "type": "string"
+    },
+    "elements": {
+      "items": {
+        "$ref": "#/$defs/SlideSpecElement"
+      },
+      "title": "Elements",
+      "type": "array"
+    },
+    "required_elements": {
+      "items": {
+        "$ref": "#/$defs/RequiredElementSpec"
+      },
+      "title": "Required Elements",
+      "type": "array"
+    },
+    "speaker_notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Speaker Notes"
+    },
+    "source_chunk_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Chunk Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "core_message"
+  ],
+  "title": "SlideSpecPage",
+  "type": "object"
+}

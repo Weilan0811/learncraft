@@ -17,7 +17,7 @@ def test_lecture(monkeypatch: pytest.MonkeyPatch) -> None:
     request = ContentGenerationRequest(
         content_type="lecture",
         topic="人工智能基础",
-        user_prompt="生成一份面向初学者的 Agent 学习讲义，重点讲解 harness engineering 的基本概念、工作流、工具调用与调试方法",
+        user_prompt="生成一份面向初学者的 Agent 学习讲义",
         knowledge_base_ids=["default"],
         generation_options={
             "language": "zh-CN",
@@ -39,7 +39,7 @@ def test_slides(monkeypatch: pytest.MonkeyPatch) -> None:
     request = ContentGenerationRequest(
         content_type="slide_deck",
         topic="人工智能基础",
-        user_prompt="生成一份适合课堂导入的 Agent 学习 slides，重点介绍 harness engineering 的核心流程、典型组件和实践案例",
+        user_prompt="我是刚刚接触AI的新生，想要学习Agent相关的知识。",
         knowledge_base_ids=["default"],
         generation_options={
             "language": "zh-CN",
