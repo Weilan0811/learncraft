@@ -1,0 +1,41 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "export_type": {
+      "enum": [
+        "pdf",
+        "slide_json",
+        "image_assets",
+        "pptx",
+        "markdown",
+        "html"
+      ],
+      "title": "Export Type",
+      "type": "string"
+    },
+    "file_url": {
+      "title": "File Url",
+      "type": "string"
+    },
+    "status": {
+      "default": "success",
+      "enum": [
+        "success",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "export_type",
+    "file_url"
+  ],
+  "title": "ExportResult",
+  "type": "object"
+}

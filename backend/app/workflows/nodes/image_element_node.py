@@ -12,6 +12,7 @@ def generate_image_element(state: dict[str, object]) -> dict[str, object]:
             title=request.title,
             description=description,
             aspect_ratio=aspect_ratio,
+            asset_id=request.element_id,
         )
         element = generated.model_copy(
             update={

@@ -5,14 +5,20 @@ interface ImageElementProps {
 }
 
 export function ImageElement({ title, assetUrl, altText }: ImageElementProps) {
-  // TODO(MVP-image): Load real generated image URLs, show loading/error
-  // placeholders, support click-to-zoom, and preserve alt_text for accessibility.
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+  const fullUrl = assetUrl && !assetUrl.startsWith("http") ? `${apiBaseUrl}${assetUrl}` : assetUrl;
+
   return (
-    <figure className="content-block image-placeholder">
-      <div className="image-frame">{assetUrl ? <span>{assetUrl}</span> : <span>图片资源占位</span>}</div>
+    <figure className="content-block image-element">
+      <div className="image-frame">
+        {fullUrl ? (
+          <img src={fullUrl} alt={altText} loading="lazy" />
+        ) : (
+          <div className="image-placeholder-text">图片资源占位</div>
+        )}
+      </div>
       <figcaption>
         <strong>{title}</strong>
-        <span>{altText}</span>
       </figcaption>
     </figure>
   );

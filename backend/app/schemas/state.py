@@ -85,7 +85,7 @@ class ContentGenerationState(SchemaModel):
     token_usage: dict[str, object] = Field(default_factory=dict)
     logs: list[dict[str, object]] = Field(default_factory=list)
     current_node: str | None = None
-    progress: dict[str, object] = Field(default_factory=dict)
+    progress: dict[str, object] | None = Field(default_factory=dict)
     status: TaskStatus = TaskStatus.queued
     # TODO(MVP-observability): Add current_node, progress percentage, node
     # timings, retry records, and structured error details for task tracking.

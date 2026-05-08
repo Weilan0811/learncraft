@@ -6,6 +6,7 @@ from langgraph.graph import END, START, StateGraph
 from app.core.task import TaskStatus
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.state import ContentGenerationState
+from app.workflows.nodes.helpers import build_progress
 from app.workflows.nodes.assembler_node import assemble_content_spec
 from app.workflows.nodes.element_flow_node import collect_unit_required_elements, dispatch_element_generation, dispatch_element_generation_node, merge_unit_elements
 from app.workflows.nodes.finalizer_node import fail_task, finalize_task
@@ -55,9 +56,12 @@ def run_content_generation(
         knowledge_base_ids=request.knowledge_base_ids,
         raw_request=request.model_dump(mode="json"),
         status=TaskStatus.running,
+        progress=build_progress(stage="running", current_node="run_content_generation"),
     )
     graph = build_content_generation_graph()
     result = graph.invoke(state)
+    if result.get("progress") is None:
+        result["progress"] = build_progress(stage=str(result.get("status", TaskStatus.running)), current_node=result.get("current_node"))
     return ContentGenerationState.model_validate(result)
 
 

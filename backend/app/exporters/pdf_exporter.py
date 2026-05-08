@@ -9,7 +9,13 @@ class PDFExporter:
     def __init__(self, storage_service: StorageService | None = None) -> None:
         self.storage_service = storage_service or LocalStorageService()
 
-    def export(self, task_id: str, render_model: RenderModel, request: ExportRequest) -> ExportResult:
+    def export(
+        self,
+        task_id: str,
+        render_model: RenderModel,
+        request: ExportRequest,
+        asset_ids: list[str] | None = None,
+    ) -> ExportResult:
         content = self._minimal_pdf(title=getattr(render_model, "title", task_id))
         asset_id = f"export_{task_id}_pdf"
         record = self.storage_service.save_bytes(

@@ -175,8 +175,45 @@ h1 {
   padding: 18px;
 }
 
+.lecture-header {
+  margin-bottom: 24px;
+}
+
+.lecture-header h2 {
+  margin-bottom: 16px;
+}
+
+.objectives {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.objectives h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #0f766e;
+}
+
 .objective-list {
+  margin: 0;
   padding-left: 20px;
+}
+
+.objective-list li {
+  margin-bottom: 8px;
+  color: #43516b;
+}
+
+.lecture-content {
+  display: grid;
+  gap: 24px;
+}
+
+.lecture-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .lecture-section {
@@ -185,12 +222,96 @@ h1 {
   margin-top: 18px;
 }
 
+.lecture-section:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.lecture-section h3 {
+  margin: 0 0 16px;
+  color: #1e293b;
+}
+
 .content-block {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 14px;
   margin-top: 12px;
   background: #ffffff;
+}
+
+.text-block h4 {
+  margin: 0 0 8px;
+  color: #1e293b;
+}
+
+.text-block p {
+  margin: 0 0 8px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.text-block p:last-child {
+  margin-bottom: 0;
+}
+
+.image-element .image-frame {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  border-radius: 6px;
+  color: #475569;
+  background: #eef2f7;
+  overflow: hidden;
+}
+
+.image-element .image-frame img {
+  max-width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+}
+
+.image-element .image-placeholder-text {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.image-element figcaption {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.mindmap-element {
+  background: #fafbfc;
+}
+
+.mindmap-element h4 {
+  margin: 0 0 12px;
+  color: #1e293b;
+}
+
+.mindmap-content {
+  display: grid;
+  gap: 4px;
+}
+
+.mindmap-node {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.mindmap-bullet {
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.mindmap-text {
+  color: #475569;
+  line-height: 1.5;
 }
 
 .image-frame {
@@ -213,14 +334,13 @@ figcaption {
   min-height: 320px;
   border-radius: 8px;
   padding: 16px;
-  color: #dce6f5;
-  background: #111827;
+  background: #f8fafc;
 }
 
-.slide-stage pre,
-.mindmap-placeholder pre {
-  overflow: auto;
-  margin: 0;
+.slide-stage.empty {
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
 }
 
 .slide-controls,
@@ -229,6 +349,27 @@ figcaption {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.speaker-notes {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+
+.speaker-notes h4 {
+  margin: 0 0 8px;
+  color: #92400e;
+  font-size: 14px;
+}
+
+.speaker-notes p {
+  margin: 0;
+  color: #78350f;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .export-actions a {

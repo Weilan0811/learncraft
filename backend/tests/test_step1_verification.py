@@ -37,7 +37,8 @@ def test_step1_old_request_without_options():
         topic="Python入门",
         user_prompt="生成课件",
     )
-    assert request.generation_options.slide_count == 6
+    assert request.generation_options.slide_count is None
+    assert request.generation_options.max_slide_count == 12
     print("✅ 无新增字段的旧请求仍能跑通，默认值正确")
 
 

@@ -1,5 +1,6 @@
 from app.core.task import TaskStatus
 from app.schemas.state import ContentGenerationState
+from app.workflows.nodes.helpers import build_progress
 
 
 def normalize_request(state: ContentGenerationState) -> dict[str, object]:
@@ -43,5 +44,5 @@ def normalize_request(state: ContentGenerationState) -> dict[str, object]:
         "normalized_request": normalized,
         "current_node": "normalize_request",
         "status": TaskStatus.running,
-        "progress": {"current_stage": "normalizing", "percent": 5},
+        "progress": build_progress(stage="normalizing", current_node="normalize_request"),
     }

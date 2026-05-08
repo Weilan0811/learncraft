@@ -1,4 +1,5 @@
 from pydantic import Field
+from datetime import datetime
 
 from app.core.task import TaskStatus
 from app.schemas.base import MvpContentType, SchemaModel
@@ -13,6 +14,10 @@ class TaskResult(SchemaModel):
     preview_url: str | None = None
     export_files: list[ExportFile] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+    current_node: str | None = None
+    progress: dict[str, object] = Field(default_factory=dict)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class PreviewResponse(SchemaModel):

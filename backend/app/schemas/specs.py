@@ -60,6 +60,15 @@ class ElementReferenceBlock(BaseBlock):
 
 LectureBlock = TextBlock | ElementReferenceBlock
 
+SlideLayout = Literal[
+    "cover",
+    "section-divider",
+    "title-content",
+    "title-content-visual",
+    "visual-left-content-right",
+    "summary-cards",
+]
+
 
 class LectureSection(SchemaModel):
     id: str
@@ -99,7 +108,10 @@ class SlideSpecPage(SchemaModel):
     order: int | None = None
     title: str
     core_message: str
-    layout: str = "title-content"
+    layout: SlideLayout = "title-content"
+    design_intent: str | None = None
+    theme_variant: str | None = None
+    layout_hints: Metadata = Field(default_factory=dict)
     elements: list[SlideSpecElement] = Field(default_factory=list)
     required_elements: list[RequiredElementSpec] = Field(default_factory=list)
     speaker_notes: str | None = None

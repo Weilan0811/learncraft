@@ -16,6 +16,12 @@ from app.workflows.routers import get_exporter
 client = TestClient(app)
 
 
+def wait_for_completed_task(task_id: str) -> None:
+    response = client.get(f"/api/content-generation/tasks/{task_id}")
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+
+
 def storage_test_root() -> Path:
     root = Path("storage") / "test_assets" / uuid4().hex
     root.mkdir(parents=True, exist_ok=True)
@@ -75,14 +81,17 @@ def test_content_generation_persists_downloadable_image_asset() -> None:
 
     assert create_response.status_code == 201
     task_id = create_response.json()["task_id"]
+    wait_for_completed_task(task_id)
     preview_response = client.get(f"/api/content-generation/tasks/{task_id}/preview")
     blocks = preview_response.json()["render_model"]["sections"][0]["render_blocks"]
     image_block = next(block for block in blocks if block["type"] == "image")
 
-    asset_response = client.get("/api/assets/img_stub")
+    asset_id = image_block["asset_url"].split("/api/assets/", 1)[1].split("/", 1)[0]
+    asset_response = client.get(f"/api/assets/{asset_id}")
     assert asset_response.status_code == 200
     asset = asset_response.json()
     assert image_block["asset_url"] == asset["url"]
+    assert asset["asset_id"] != "img_stub"
     assert asset["kind"] == "image"
     assert asset["content_type"] == "image/svg+xml"
 
@@ -102,6 +111,7 @@ def test_pdf_export_persists_real_downloadable_asset() -> None:
         },
     )
     task_id = create_response.json()["task_id"]
+    wait_for_completed_task(task_id)
 
     export_response = client.post(f"/api/content-generation/tasks/{task_id}/export", json={"export_type": "pdf"})
 
@@ -126,6 +136,7 @@ def test_slide_json_export_persists_valid_json_asset() -> None:
         },
     )
     task_id = create_response.json()["task_id"]
+    wait_for_completed_task(task_id)
 
     export_response = client.post(
         f"/api/content-generation/tasks/{task_id}/export",
@@ -150,6 +161,7 @@ def test_image_assets_export_writes_zip_manifest() -> None:
         },
     )
     task_id = create_response.json()["task_id"]
+    wait_for_completed_task(task_id)
 
     export_response = client.post(
         f"/api/content-generation/tasks/{task_id}/export",
@@ -162,7 +174,7 @@ def test_image_assets_export_writes_zip_manifest() -> None:
     with zipfile.ZipFile(BytesIO(zip_asset.content)) as archive:
         assert "manifest.json" in archive.namelist()
         manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
-    assert manifest["assets"][0]["asset_id"] == "img_stub"
+    assert manifest["assets"][0]["asset_id"].startswith("image_")
 
 
 def test_get_exporter_routes_by_explicit_export_type() -> None:
@@ -176,7 +188,23 @@ def test_exporters_persist_expected_formats() -> None:
     lecture_model = LectureRenderModel(title="Title")
     slide_model = SlideRenderModel(
         title="Deck",
-        pages=[SlidePageModel(page={"id": "slide-1", "elements": []})],
+        pages=[
+            SlidePageModel(
+                page={
+                    "id": "slide-1",
+                    "title": "Slide 1",
+                    "width": 960,
+                    "height": 540,
+                    "theme": {
+                        "backgroundColor": "#FFFFFF",
+                        "themeColors": ["#2563eb"],
+                        "fontColor": "#111827",
+                        "fontName": "Arial",
+                    },
+                    "elements": [],
+                }
+            )
+        ],
     )
 
     pdf = get_exporter("pdf", storage_service=storage).export("task_pdf", lecture_model, ExportRequest(export_type="pdf"))

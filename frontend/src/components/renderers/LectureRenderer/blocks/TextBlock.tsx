@@ -5,10 +5,14 @@ interface TextBlockProps {
 }
 
 export function TextBlock({ block }: TextBlockProps) {
+  const paragraphs = (block.content ?? "").split(/\n\n+/);
+
   return (
     <div className="content-block text-block">
       {block.title ? <h4>{block.title}</h4> : null}
-      <p>{block.content ?? "文本内容将在后续 Generator 实现后填充。"}</p>
+      {paragraphs.map((p, i) => (
+        <p key={i}>{p}</p>
+      ))}
     </div>
   );
 }

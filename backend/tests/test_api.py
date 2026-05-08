@@ -6,6 +6,14 @@ from app.main import app
 client = TestClient(app)
 
 
+def wait_for_completed_task(task_id: str) -> dict[str, object]:
+    response = client.get(f"/api/content-generation/tasks/{task_id}")
+    assert response.status_code == 200
+    task = response.json()
+    assert task["status"] == "completed"
+    return task
+
+
 def test_health_check_returns_service_status() -> None:
     response = client.get("/health")
 
@@ -33,14 +41,14 @@ def test_content_generation_task_lifecycle_exposes_stub_result() -> None:
 
     assert create_response.status_code == 201
     created = create_response.json()
-    assert created["status"] == "completed"
+    assert created["status"] in {"queued", "running"}
     assert created["content_type"] == "lecture"
     assert created["export_files"] == []
 
     task_id = created["task_id"]
-    status_response = client.get(f"/api/content-generation/tasks/{task_id}")
-    assert status_response.status_code == 200
-    assert status_response.json()["preview_url"] == f"/api/content-generation/tasks/{task_id}/preview"
+    task = wait_for_completed_task(task_id)
+    assert task["preview_url"] == f"/api/content-generation/tasks/{task_id}/preview"
+    assert task["progress"]["percent"] == 100
 
     preview_response = client.get(f"/api/content-generation/tasks/{task_id}/preview")
     assert preview_response.status_code == 200
@@ -80,11 +88,16 @@ def test_asset_endpoint_returns_local_asset_metadata() -> None:
         },
     )
     assert create_response.status_code == 201
+    task_id = create_response.json()["task_id"]
+    wait_for_completed_task(task_id)
+    preview = client.get(f"/api/content-generation/tasks/{task_id}/preview").json()
+    image_block = next(block for block in preview["render_model"]["sections"][0]["render_blocks"] if block["type"] == "image")
+    asset_id = image_block["asset_url"].split("/api/assets/", 1)[1].split("/", 1)[0]
 
-    response = client.get("/api/assets/img_stub")
+    response = client.get(f"/api/assets/{asset_id}")
 
     assert response.status_code == 200
     asset = response.json()
-    assert asset["asset_id"] == "img_stub"
+    assert asset["asset_id"] == asset_id
     assert asset["kind"] == "image"
-    assert asset["url"] == "/api/assets/img_stub/download"
+    assert asset["url"] == f"/api/assets/{asset_id}/download"

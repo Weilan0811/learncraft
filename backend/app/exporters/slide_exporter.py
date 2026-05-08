@@ -11,7 +11,13 @@ class SlideExporter:
     def __init__(self, storage_service: StorageService | None = None) -> None:
         self.storage_service = storage_service or LocalStorageService()
 
-    def export(self, task_id: str, render_model: RenderModel, request: ExportRequest) -> ExportResult:
+    def export(
+        self,
+        task_id: str,
+        render_model: RenderModel,
+        request: ExportRequest,
+        asset_ids: list[str] | None = None,
+    ) -> ExportResult:
         payload = render_model.model_dump(mode="json")
         content = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
         asset_id = f"export_{task_id}_slide_json"

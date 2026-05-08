@@ -1,5 +1,5 @@
 from app.schemas.state import ContentGenerationState, UnitGenerationResult
-from app.workflows.nodes.helpers import current_outline_unit
+from app.workflows.nodes.helpers import build_progress, current_outline_unit, ensure_monotonic_progress
 
 
 def route_content_type(state: ContentGenerationState) -> dict[str, object]:
@@ -40,13 +40,16 @@ def merge_unit_result(state: ContentGenerationState) -> dict[str, object]:
         "current_unit_index": next_index,
         "current_unit_id": next_unit_id,
         "current_node": "merge_unit_result",
-        "progress": {
-            "current_stage": "unit_completed",
-            "current_unit_id": unit.id,
-            "completed_units": len(completed),
-            "total_units": len(state.pending_unit_ids),
-            "percent": 85,
-        },
+        "progress": ensure_monotonic_progress(
+            state.progress,
+            build_progress(
+                stage="unit_completed",
+                current_node="merge_unit_result",
+                current_unit_id=unit.id,
+                completed_units=len(completed),
+                total_units=len(state.pending_unit_ids),
+            ),
+        ),
     }
 
 
@@ -67,12 +70,13 @@ def _initialize_units(state: ContentGenerationState, current_node: str) -> dict[
         "failed_unit_ids": [],
         "current_unit_id": unit_ids[0] if unit_ids else None,
         "current_node": current_node,
-        "progress": {
-            "current_stage": "initializing_units",
-            "completed_units": 0,
-            "total_units": len(unit_ids),
-            "percent": 35,
-        },
+        "progress": build_progress(
+            stage="initializing_units",
+            current_node=current_node,
+            current_unit_id=unit_ids[0] if unit_ids else None,
+            completed_units=0,
+            total_units=len(unit_ids),
+        ),
     }
 
 

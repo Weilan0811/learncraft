@@ -5,7 +5,7 @@ Step 2-5 验收测试
 import os
 import pytest
 from app.core.config import get_settings
-from app.schemas.outline import Outline, OutlineUnit, RecommendedElement
+from app.schemas.outline import Outline, OutlineUnit
 from app.schemas.request import ContentGenerationRequest, GenerationOptions
 from app.workflows.content_generation_graph import run_content_generation
 from app.workflows.nodes.planner_node import _build_fallback_outline

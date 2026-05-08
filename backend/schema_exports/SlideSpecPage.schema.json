@@ -178,8 +178,45 @@
     },
     "layout": {
       "default": "title-content",
+      "enum": [
+        "cover",
+        "section-divider",
+        "title-content",
+        "title-content-visual",
+        "visual-left-content-right",
+        "summary-cards"
+      ],
       "title": "Layout",
       "type": "string"
+    },
+    "design_intent": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Design Intent"
+    },
+    "theme_variant": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Theme Variant"
+    },
+    "layout_hints": {
+      "additionalProperties": true,
+      "title": "Layout Hints",
+      "type": "object"
     },
     "elements": {
       "items": {

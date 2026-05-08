@@ -1,5 +1,1186 @@
 {
   "$defs": {
+    "KitElementOutline": {
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "style": {
+          "anyOf": [
+            {
+              "enum": [
+                "solid",
+                "dashed",
+                "dotted"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Style"
+        }
+      },
+      "title": "KitElementOutline",
+      "type": "object"
+    },
+    "KitElementShadow": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "title": "Y",
+          "type": "integer"
+        },
+        "blur": {
+          "title": "Blur",
+          "type": "integer"
+        },
+        "color": {
+          "title": "Color",
+          "type": "string"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "blur",
+        "color"
+      ],
+      "title": "KitElementShadow",
+      "type": "object"
+    },
+    "KitImageElement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "image",
+          "default": "image",
+          "title": "Type",
+          "type": "string"
+        },
+        "left": {
+          "title": "Left",
+          "type": "number"
+        },
+        "top": {
+          "title": "Top",
+          "type": "number"
+        },
+        "width": {
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "title": "Height",
+          "type": "number"
+        },
+        "rotate": {
+          "title": "Rotate",
+          "type": "number"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "src": {
+          "title": "Src",
+          "type": "string"
+        },
+        "fixedRatio": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fixedratio"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Radius"
+        },
+        "opacity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opacity"
+        },
+        "shadow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitElementShadow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "left",
+        "top",
+        "width",
+        "height",
+        "rotate",
+        "src"
+      ],
+      "title": "KitImageElement",
+      "type": "object"
+    },
+    "KitLineElement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "line",
+          "default": "line",
+          "title": "Type",
+          "type": "string"
+        },
+        "left": {
+          "title": "Left",
+          "type": "number"
+        },
+        "top": {
+          "title": "Top",
+          "type": "number"
+        },
+        "width": {
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "title": "Height",
+          "type": "number"
+        },
+        "rotate": {
+          "title": "Rotate",
+          "type": "number"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "start": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Start",
+          "type": "array"
+        },
+        "end": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "End",
+          "type": "array"
+        },
+        "color": {
+          "title": "Color",
+          "type": "string"
+        },
+        "style": {
+          "anyOf": [
+            {
+              "enum": [
+                "solid",
+                "dashed",
+                "dotted"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Style"
+        },
+        "strokeWidth": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strokewidth"
+        }
+      },
+      "required": [
+        "id",
+        "left",
+        "top",
+        "width",
+        "height",
+        "rotate",
+        "start",
+        "end",
+        "color"
+      ],
+      "title": "KitLineElement",
+      "type": "object"
+    },
+    "KitShapeElement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "shape",
+          "default": "shape",
+          "title": "Type",
+          "type": "string"
+        },
+        "left": {
+          "title": "Left",
+          "type": "number"
+        },
+        "top": {
+          "title": "Top",
+          "type": "number"
+        },
+        "width": {
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "title": "Height",
+          "type": "number"
+        },
+        "rotate": {
+          "title": "Rotate",
+          "type": "number"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "shape": {
+          "anyOf": [
+            {
+              "enum": [
+                "rect",
+                "roundRect",
+                "ellipse"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shape"
+        },
+        "fill": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fill"
+        },
+        "opacity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opacity"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Radius"
+        },
+        "outline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitElementOutline"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "shadow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitElementShadow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "left",
+        "top",
+        "width",
+        "height",
+        "rotate"
+      ],
+      "title": "KitShapeElement",
+      "type": "object"
+    },
+    "KitSlideBackground": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "default": "solid",
+          "enum": [
+            "solid",
+            "gradient",
+            "image"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitSlideBackgroundImage"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "gradient": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitSlideGradient"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "KitSlideBackground",
+      "type": "object"
+    },
+    "KitSlideBackgroundImage": {
+      "additionalProperties": false,
+      "properties": {
+        "src": {
+          "title": "Src",
+          "type": "string"
+        },
+        "size": {
+          "default": "cover",
+          "enum": [
+            "cover",
+            "contain",
+            "repeat"
+          ],
+          "title": "Size",
+          "type": "string"
+        }
+      },
+      "required": [
+        "src"
+      ],
+      "title": "KitSlideBackgroundImage",
+      "type": "object"
+    },
+    "KitSlideGradient": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "default": "linear",
+          "enum": [
+            "linear",
+            "radial"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "rotate": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rotate"
+        },
+        "colors": {
+          "items": {
+            "$ref": "#/$defs/KitSlideGradientStop"
+          },
+          "title": "Colors",
+          "type": "array"
+        }
+      },
+      "title": "KitSlideGradient",
+      "type": "object"
+    },
+    "KitSlideGradientStop": {
+      "additionalProperties": false,
+      "properties": {
+        "pos": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Pos",
+          "type": "number"
+        },
+        "color": {
+          "title": "Color",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pos",
+        "color"
+      ],
+      "title": "KitSlideGradientStop",
+      "type": "object"
+    },
+    "KitSlidePage": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "width": {
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "title": "Height",
+          "type": "integer"
+        },
+        "background": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitSlideBackground"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "theme": {
+          "$ref": "#/$defs/KitTheme"
+        },
+        "elements": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/KitTextElement"
+              },
+              {
+                "$ref": "#/$defs/KitImageElement"
+              },
+              {
+                "$ref": "#/$defs/KitShapeElement"
+              },
+              {
+                "$ref": "#/$defs/KitLineElement"
+              },
+              {
+                "$ref": "#/$defs/KitTableElement"
+              }
+            ]
+          },
+          "title": "Elements",
+          "type": "array"
+        },
+        "speakerNotes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Speakernotes"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "width",
+        "height",
+        "theme"
+      ],
+      "title": "KitSlidePage",
+      "type": "object"
+    },
+    "KitTableCell": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "colspan": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Colspan"
+        },
+        "rowspan": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rowspan"
+        },
+        "style": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitTableCellStyle"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "KitTableCell",
+      "type": "object"
+    },
+    "KitTableCellStyle": {
+      "additionalProperties": false,
+      "properties": {
+        "bold": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bold"
+        },
+        "italic": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Italic"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "backcolor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Backcolor"
+        },
+        "align": {
+          "anyOf": [
+            {
+              "enum": [
+                "left",
+                "center",
+                "right",
+                "justify"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Align"
+        },
+        "fontSize": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fontsize"
+        }
+      },
+      "title": "KitTableCellStyle",
+      "type": "object"
+    },
+    "KitTableElement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "table",
+          "default": "table",
+          "title": "Type",
+          "type": "string"
+        },
+        "left": {
+          "title": "Left",
+          "type": "number"
+        },
+        "top": {
+          "title": "Top",
+          "type": "number"
+        },
+        "width": {
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "title": "Height",
+          "type": "number"
+        },
+        "rotate": {
+          "title": "Rotate",
+          "type": "number"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "data": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/KitTableCell"
+            },
+            "type": "array"
+          },
+          "title": "Data",
+          "type": "array"
+        },
+        "outline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitElementOutline"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "fontSize": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fontsize"
+        },
+        "fontName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fontname"
+        },
+        "textColor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Textcolor"
+        }
+      },
+      "required": [
+        "id",
+        "left",
+        "top",
+        "width",
+        "height",
+        "rotate",
+        "data"
+      ],
+      "title": "KitTableElement",
+      "type": "object"
+    },
+    "KitTextElement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "text",
+          "default": "text",
+          "title": "Type",
+          "type": "string"
+        },
+        "left": {
+          "title": "Left",
+          "type": "number"
+        },
+        "top": {
+          "title": "Top",
+          "type": "number"
+        },
+        "width": {
+          "title": "Width",
+          "type": "number"
+        },
+        "height": {
+          "title": "Height",
+          "type": "number"
+        },
+        "rotate": {
+          "title": "Rotate",
+          "type": "number"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "defaultFontName": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Defaultfontname"
+        },
+        "defaultColor": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Defaultcolor"
+        },
+        "fontSize": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fontsize"
+        },
+        "bold": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bold"
+        },
+        "italic": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Italic"
+        },
+        "underline": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Underline"
+        },
+        "align": {
+          "anyOf": [
+            {
+              "enum": [
+                "left",
+                "center",
+                "right",
+                "justify"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Align"
+        },
+        "verticalAlign": {
+          "anyOf": [
+            {
+              "enum": [
+                "top",
+                "middle",
+                "bottom"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verticalalign"
+        },
+        "fill": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fill"
+        },
+        "opacity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Opacity"
+        },
+        "lineHeight": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lineheight"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Radius"
+        },
+        "outline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitElementOutline"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "shadow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/KitElementShadow"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "left",
+        "top",
+        "width",
+        "height",
+        "rotate",
+        "content"
+      ],
+      "title": "KitTextElement",
+      "type": "object"
+    },
+    "KitTheme": {
+      "additionalProperties": false,
+      "properties": {
+        "backgroundColor": {
+          "title": "Backgroundcolor",
+          "type": "string"
+        },
+        "themeColors": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Themecolors",
+          "type": "array"
+        },
+        "fontColor": {
+          "title": "Fontcolor",
+          "type": "string"
+        },
+        "fontName": {
+          "title": "Fontname",
+          "type": "string"
+        }
+      },
+      "required": [
+        "backgroundColor",
+        "themeColors",
+        "fontColor",
+        "fontName"
+      ],
+      "title": "KitTheme",
+      "type": "object"
+    },
     "SlidePageModel": {
       "additionalProperties": false,
       "properties": {
@@ -10,9 +1191,7 @@
           "type": "string"
         },
         "page": {
-          "additionalProperties": true,
-          "title": "Page",
-          "type": "object"
+          "$ref": "#/$defs/KitSlidePage"
         }
       },
       "required": [

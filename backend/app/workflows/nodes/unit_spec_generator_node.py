@@ -13,7 +13,7 @@ def generate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
     return {
         "current_unit_spec": unit_spec,
         "current_node": "generate_unit_spec",
-        "progress": unit_progress(state, "generating_unit", 55),
+        "progress": unit_progress(state, "generating_unit", current_node="generate_unit_spec"),
     }
 
 

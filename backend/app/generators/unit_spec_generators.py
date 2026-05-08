@@ -135,10 +135,13 @@ def build_lecture_unit_spec_fallback(
     ]
 
     if include_images:
-        image_spec = RequiredElementSpec(
-            element_id=f"image_{unit.id}",
-            type="image",
-            title=f"{unit.title} visual explanation",
+        image_spec = _image_spec_for_unit(
+            unit=unit,
+            unit_spec_id=section_id,
+            request_id=state.request_id,
+            chunk_ids=chunk_ids,
+            aspect_ratio="4:3",
+            style=str(options.get("image_style") or "clean educational illustration"),
             purpose="Use a visual only where it makes the concept easier to understand than text alone.",
             instruction=(
                 f"Create a local illustration asset for '{unit.title}', meant to be embedded inside a lecture section. "
@@ -147,12 +150,6 @@ def build_lecture_unit_spec_fallback(
                 "slide title, banner, footer, agenda, summary panel, or page-like teaching layout. Avoid decorative "
                 "backgrounds, tiny text, unrelated people, and vague stock imagery."
             ),
-            style=str(options.get("image_style") or "clean educational illustration"),
-            aspect_ratio="4:3",
-            source_unit_id=section_id,
-            source_outline_unit_id=unit.id,
-            source_chunk_ids=chunk_ids,
-            priority="high",
         )
         required_elements.append(image_spec)
         blocks.append(
@@ -177,19 +174,16 @@ def build_lecture_unit_spec_fallback(
     )
 
     if include_mindmap:
-        mindmap_spec = RequiredElementSpec(
-            element_id=f"mindmap_{unit.id}",
-            type="mindmap",
-            title=f"{unit.title} knowledge map",
+        mindmap_spec = _mindmap_spec_for_unit(
+            unit=unit,
+            unit_spec_id=section_id,
+            request_id=state.request_id,
+            chunk_ids=chunk_ids,
             purpose="Summarize the structure only when the section has several related concepts.",
             instruction=(
                 f"Create Markmap-compatible Markdown with root '{unit.title}'. Use at most 3 levels and 3-5 first-level "
                 "branches covering definitions, key points, relationships, and applications. Keep node labels short."
             ),
-            source_unit_id=section_id,
-            source_outline_unit_id=unit.id,
-            source_chunk_ids=chunk_ids,
-            priority="medium",
         )
         required_elements.append(mindmap_spec)
         blocks.append(
@@ -232,18 +226,31 @@ def build_slide_unit_spec_fallback(
     options = state.normalized_request or {}
     include_images = bool(options.get("include_images", True))
     include_mindmap = bool(options.get("include_mindmap", False))
+    layout = _choose_slide_layout(unit)
 
     required_elements: list[RequiredElementSpec] = []
     elements = [
-        SlideSpecElement(id=f"{slide_id}_title", type="text", content=unit.title),
-        SlideSpecElement(id=f"{slide_id}_body", type="text", content=unit.core_message),
+        SlideSpecElement(id=f"{slide_id}_title", type="text", content=unit.title, metadata={"role": "title"}),
+        SlideSpecElement(
+            id=f"{slide_id}_body",
+            type="text",
+            content=unit.core_message,
+            metadata={"role": "body", "emphasis": "primary"},
+        ),
     ]
+    layout_hints: dict[str, object] = {
+        "density": "balanced",
+        "supported_renderer": "scenekit.slide/v1",
+    }
 
     if include_images:
-        image_spec = RequiredElementSpec(
-            element_id=f"image_{unit.id}",
-            type="image",
-            title=f"{unit.title} visual explanation",
+        image_spec = _image_spec_for_unit(
+            unit=unit,
+            unit_spec_id=slide_id,
+            request_id=state.request_id,
+            chunk_ids=chunk_ids,
+            aspect_ratio="16:9",
+            style=str(options.get("image_style") or "clean educational illustration"),
             purpose="Support the slide's single core message with a simple teaching visual.",
             instruction=(
                 f"Create a local illustration asset for '{unit.title}', meant to be placed inside a slide rather than "
@@ -251,33 +258,40 @@ def build_slide_unit_spec_fallback(
                 "graphic, or concept illustration with concise labels. Do not create a full presentation slide, title "
                 "bar, footer, agenda, bullet list panel, or summary strip."
             ),
-            style=str(options.get("image_style") or "clean educational illustration"),
-            aspect_ratio="16:9",
-            source_unit_id=slide_id,
-            source_outline_unit_id=unit.id,
-            source_chunk_ids=chunk_ids,
-            priority="high",
         )
         required_elements.append(image_spec)
-        elements.append(SlideSpecElement(id=f"{slide_id}_image_ref", type="element_ref", element_id=image_spec.element_id))
+        layout_hints["primary_visual"] = image_spec.element_id
+        elements.append(
+            SlideSpecElement(
+                id=f"{slide_id}_image_ref",
+                type="element_ref",
+                element_id=image_spec.element_id,
+                metadata={"role": "visual", "placement": "primary"},
+            )
+        )
 
     if include_mindmap:
-        mindmap_spec = RequiredElementSpec(
-            element_id=f"mindmap_{unit.id}",
-            type="mindmap",
-            title=f"{unit.title} knowledge map",
+        mindmap_spec = _mindmap_spec_for_unit(
+            unit=unit,
+            unit_spec_id=slide_id,
+            request_id=state.request_id,
+            chunk_ids=chunk_ids,
             purpose="Show relationships among slide concepts only when helpful.",
             instruction=(
                 f"Create Markmap-compatible Markdown with root '{unit.title}', at most 3 levels, and 3-5 branches. "
                 "Use short labels suitable for a slide."
             ),
-            source_unit_id=slide_id,
-            source_outline_unit_id=unit.id,
-            source_chunk_ids=chunk_ids,
-            priority="medium",
         )
         required_elements.append(mindmap_spec)
-        elements.append(SlideSpecElement(id=f"{slide_id}_mindmap_ref", type="element_ref", element_id=mindmap_spec.element_id))
+        layout_hints["secondary_visual"] = mindmap_spec.element_id
+        elements.append(
+            SlideSpecElement(
+                id=f"{slide_id}_mindmap_ref",
+                type="element_ref",
+                element_id=mindmap_spec.element_id,
+                metadata={"role": "mindmap", "placement": "supporting", "downgrade": "text"},
+            )
+        )
 
     return SlideSpecPage(
         id=slide_id,
@@ -285,9 +299,90 @@ def build_slide_unit_spec_fallback(
         order=unit.order,
         title=unit.title,
         core_message=unit.core_message,
-        layout=unit.visual_strategy or "title-content-visual",
+        layout=layout,
+        design_intent=_design_intent_for_layout(layout),
+        theme_variant="teaching-clean",
+        layout_hints=layout_hints,
         required_elements=required_elements,
         speaker_notes=f"Explain this slide around the goal: {unit.goal}.",
         source_chunk_ids=chunk_ids,
         elements=elements,
     )
+
+
+def _image_spec_for_unit(
+    unit: OutlineUnit,
+    unit_spec_id: str,
+    request_id: str,
+    chunk_ids: list[str],
+    aspect_ratio: str,
+    style: str,
+    purpose: str,
+    instruction: str,
+) -> RequiredElementSpec:
+    return RequiredElementSpec(
+        element_id=f"image_{request_id}_{unit.id}",
+        type="image",
+        title=f"{unit.title} visual explanation",
+        purpose=purpose,
+        instruction=instruction,
+        style=style,
+        aspect_ratio=aspect_ratio,
+        source_unit_id=unit_spec_id,
+        source_outline_unit_id=unit.id,
+        source_chunk_ids=chunk_ids,
+        priority="high",
+    )
+
+
+def _mindmap_spec_for_unit(
+    unit: OutlineUnit,
+    unit_spec_id: str,
+    request_id: str,
+    chunk_ids: list[str],
+    purpose: str,
+    instruction: str,
+) -> RequiredElementSpec:
+    return RequiredElementSpec(
+        element_id=f"mindmap_{request_id}_{unit.id}",
+        type="mindmap",
+        title=f"{unit.title} knowledge map",
+        purpose=purpose,
+        instruction=instruction,
+        source_unit_id=unit_spec_id,
+        source_outline_unit_id=unit.id,
+        source_chunk_ids=chunk_ids,
+        priority="medium",
+    )
+
+
+def _choose_slide_layout(unit: OutlineUnit) -> str:
+    supported = {
+        "cover",
+        "section-divider",
+        "title-content",
+        "title-content-visual",
+        "visual-left-content-right",
+        "summary-cards",
+    }
+    if unit.visual_strategy in supported:
+        return unit.visual_strategy
+    if unit.order == 1:
+        return "cover"
+    if len(unit.key_points) >= 4:
+        return "summary-cards"
+    if unit.order % 2 == 0:
+        return "visual-left-content-right"
+    return "title-content-visual"
+
+
+def _design_intent_for_layout(layout: str) -> str:
+    intents = {
+        "cover": "Open the deck with a clear topic signal and one concise message.",
+        "section-divider": "Separate the deck into a new conceptual section.",
+        "title-content": "Explain one idea with a strong title and readable message block.",
+        "title-content-visual": "Pair the core explanation with a supporting teaching visual.",
+        "visual-left-content-right": "Lead with a visual and explain it in a compact text panel.",
+        "summary-cards": "Summarize several key points as scan-friendly visual cards.",
+    }
+    return intents.get(layout, intents["title-content-visual"])

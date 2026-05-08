@@ -21,7 +21,13 @@ class APIMartImageGenerationError(ImageGenerationError):
 
 
 class ImageGenerationService(Protocol):
-    def generate_image(self, title: str, description: str, aspect_ratio: str = "16:9") -> ImageElement:
+    def generate_image(
+        self,
+        title: str,
+        description: str,
+        aspect_ratio: str = "16:9",
+        asset_id: str | None = None,
+    ) -> ImageElement:
         """Generate and persist an image asset."""
         ...
 
@@ -30,12 +36,19 @@ class StubImageGenerationService:
     def __init__(self, storage_service: StorageService | None = None) -> None:
         self.storage_service = storage_service or LocalStorageService()
 
-    def generate_image(self, title: str, description: str, aspect_ratio: str = "16:9") -> ImageElement:
+    def generate_image(
+        self,
+        title: str,
+        description: str,
+        aspect_ratio: str = "16:9",
+        asset_id: str | None = None,
+    ) -> ImageElement:
         prompt = f"Clean educational illustration, {description}, aspect ratio {aspect_ratio}"
         svg = self._placeholder_svg(title=title, description=description)
+        stored_asset_id = asset_id or f"img_{uuid4().hex[:12]}"
         record = self.storage_service.save_bytes(
-            asset_id="img_stub",
-            filename="img_stub.svg",
+            asset_id=stored_asset_id,
+            filename=f"{stored_asset_id}.svg",
             content=svg.encode("utf-8"),
             content_type="image/svg+xml",
             kind="image",
@@ -102,7 +115,13 @@ class APIMartImageGenerationService:
         self.poll_interval_seconds = poll_interval_seconds
         self.poll_timeout_seconds = poll_timeout_seconds
 
-    def generate_image(self, title: str, description: str, aspect_ratio: str = "16:9") -> ImageElement:
+    def generate_image(
+        self,
+        title: str,
+        description: str,
+        aspect_ratio: str = "16:9",
+        asset_id: str | None = None,
+    ) -> ImageElement:
         if not description.strip():
             raise APIMartImageGenerationError(f"Image prompt is empty for title: {title}")
         prompt = self._build_prompt(description=description, aspect_ratio=aspect_ratio)
@@ -124,7 +143,7 @@ class APIMartImageGenerationService:
             remote_url = self._wait_for_image_url(task_id)
             content, content_type = self._download_image(remote_url)
         file_format = self._format_from_content_type(content_type, remote_url)
-        asset_id = f"img_{uuid4().hex[:12]}"
+        asset_id = asset_id or f"img_{uuid4().hex[:12]}"
         record = self.storage_service.save_bytes(
             asset_id=asset_id,
             filename=f"{asset_id}.{file_format}",
@@ -307,7 +326,13 @@ class BailianImageGenerationService:
         self.client = client or httpx.Client(timeout=timeout_seconds)
         self.timeout_seconds = timeout_seconds
 
-    def generate_image(self, title: str, description: str, aspect_ratio: str = "16:9") -> ImageElement:
+    def generate_image(
+        self,
+        title: str,
+        description: str,
+        aspect_ratio: str = "16:9",
+        asset_id: str | None = None,
+    ) -> ImageElement:
         prompt = f"Clean educational illustration, {description}, aspect ratio {aspect_ratio}"
         response = self.client.post(
             f"{self.base_url}/images/generations",
@@ -322,7 +347,7 @@ class BailianImageGenerationService:
         image_response.raise_for_status()
         content_type = image_response.headers.get("content-type", "image/png").split(";")[0]
         file_format = APIMartImageGenerationService._format_from_content_type(content_type, image_url)
-        asset_id = f"img_{uuid4().hex[:12]}"
+        asset_id = asset_id or f"img_{uuid4().hex[:12]}"
         record = self.storage_service.save_bytes(
             asset_id=asset_id,
             filename=f"{asset_id}.{file_format}",

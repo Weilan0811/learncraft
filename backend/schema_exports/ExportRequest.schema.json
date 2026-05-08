@@ -1,0 +1,27 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "export_type": {
+      "enum": [
+        "pdf",
+        "slide_json",
+        "image_assets",
+        "pptx",
+        "markdown",
+        "html"
+      ],
+      "title": "Export Type",
+      "type": "string"
+    },
+    "export_options": {
+      "additionalProperties": true,
+      "title": "Export Options",
+      "type": "object"
+    }
+  },
+  "required": [
+    "export_type"
+  ],
+  "title": "ExportRequest",
+  "type": "object"
+}

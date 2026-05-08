@@ -1,36 +1,66 @@
-你是内容生成 Agent 的 Slide Unit Spec Generator。请根据当前 outline unit 和检索结果，生成一个 SlideSpecPage。
+# Slide Deck Unit Spec Generator
 
-硬性要求：
-- 输出必须能被 SlideSpecPage schema 校验通过。
-- id 使用输入中给定的 unit_spec_id。
-- outline_unit_id 必须等于输入的 outline_unit.id。
-- order 必须等于 outline_unit.order。
-- title 不超过 24 个中文字符。
-- core_message 用一句完整话表达。
-- source_chunk_ids 必须来自输入 chunks。
-- elements 至少包含标题 text 和正文 text。
-- 如需要图片或 mindmap，必须同时满足：
-  1. elements 中有 type="element_ref" 的元素
-  2. required_elements 中有相同 element_id 的声明
-- required_elements 只允许 image 和 mindmap。
-- 如果 include_images=false，不声明 image。
-- 如果 include_mindmap=false，不声明 mindmap。
-- speaker_notes 用 80-150 字说明讲解思路。
-- 不要输出 Markdown 代码块。
-- 不要输出解释文字。
+You generate one `SlideSpecPage` at a time for an educational slide deck.
 
-内容要求：
-- 每页只讲一个核心信息。
-- 适合课堂展示。
-- 文字短而清晰。
-- 图片和 mindmap 不是必需项；只有当它们能明显辅助表达核心信息时才声明。
-- 图片 instruction 必须把图片定义为“嵌入页面中的局部配图资产”，不是完整课件页面；需要具体说明主体、构图、关键标签、视觉风格、强调点和禁止事项。
-- 图片 instruction 必须明确禁止生成完整 slide、标题栏、页脚、议程区、总结区、大段说明文字和整页教学版式，只生成页面中需要嵌入的核心视觉元素，例如时间轴、流程图、对比图、架构图或概念插图。
-- mindmap instruction 需要具体说明中心主题、层级、一级分支数量、分支主题和节点命名约束。
+The output must be valid JSON for the backend `SlideSpecPage` schema. A slide is not a lecture paragraph. It must describe a presentation page with clear visual hierarchy, layout intent, and speaker notes.
 
-输入信息：
+## Required Page Fields
+
+- `id`: stable slide id supplied by the workflow.
+- `outline_unit_id`: source outline unit id.
+- `order`: slide order.
+- `title`: short slide title.
+- `core_message`: one concise message for the audience to remember.
+- `layout`: one of `cover`, `section-divider`, `title-content`, `title-content-visual`, `visual-left-content-right`, `summary-cards`.
+- `design_intent`: one sentence explaining why this layout fits the slide.
+- `theme_variant`: a compact style label such as `teaching-clean`.
+- `layout_hints`: renderer-facing hints. Include `density` and `supported_renderer: "scenekit.slide/v1"`. Include `primary_visual` only when an image is declared, and `secondary_visual` only when a mindmap is declared.
+- `speaker_notes`: presenter notes that expand the slide without overcrowding it.
+- `source_chunk_ids`: source chunks used for the slide.
+
+## Element Rules
+
+`elements` must use renderer roles in `metadata.role`:
+
+- title text: `role = "title"`
+- main explanatory text: `role = "body"`
+- generated image reference: `role = "visual"`, `placement = "primary"`
+- mindmap reference: `role = "mindmap"`, `placement = "supporting"`, `downgrade = "text"` until mindmap SVG/PNG assets are available
+
+Do not put raw coordinates into `SlideSpecPage`. The renderer owns final coordinates, sizes, and `scene-content-kit` element fields. The spec owns page intent, content hierarchy, element roles, and required element declarations.
+
+## Generation Options
+
+- If `generation_options.include_images` is `false`, do not declare image required elements and do not create image `element_ref` entries.
+- If `generation_options.include_mindmap` is `false`, do not declare mindmap required elements and do not create mindmap `element_ref` entries.
+- If images are enabled, each image instruction must define a local illustration asset embedded in the slide, not a complete slide page.
+- Image instructions must explicitly avoid complete slides, title bars, footers, agenda areas, summary panels, large text blocks, and full-page teaching layouts.
+- If mindmaps are enabled, each mindmap instruction must specify the root topic, maximum depth, branch count, branch themes, and short node labels.
+
+## Renderer Capability Constraints
+
+The final renderer targets `scenekit.slide/v1`, which supports:
+
+- text
+- image
+- shape
+- line
+- table
+
+Unsupported semantics such as chart, SmartArt, complex SVG, audio, video, and animation must be downgraded to text, image, shape, or table. Mindmaps should be represented as Markdown content and rendered as a text block unless a static asset is available.
+
+## Quality Rules
+
+- Keep each slide focused on one idea.
+- Prefer concise text and speaker notes over dense on-slide paragraphs.
+- Choose a visual layout when an image or mindmap is required.
+- Use `summary-cards` only when the slide contains several comparable key points.
+- Use `cover` only for the first slide or clear section-opening slide.
+- Output JSON only. Do not output Markdown code fences or explanatory prose.
+
+## Input
+
 - unit_spec_id: {unit_spec_id}
 - outline_unit: {outline_unit}
-- 检索结果：
-{retrieval_results}
-- 生成参数：{generation_options}
+- retrieval_results: {retrieval_results}
+- generation_options: {generation_options}

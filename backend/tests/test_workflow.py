@@ -60,7 +60,17 @@ def test_langgraph_workflow_populates_slide_unit_state(monkeypatch: pytest.Monke
     assert state.elements
     assert state.render_model is not None
     assert state.render_model.render_type == "slide_deck"
-    assert all(error.stage and error.code for error in state.workflow_errors)
+    first_page = state.render_model.pages[0].page
+    assert first_page.width == 960
+    assert first_page.height == 540
+    assert first_page.theme.fontName
+    assert first_page.elements
+    assert all(element.left >= 0 and element.top >= 0 for element in first_page.elements)
+    image_elements = [element for element in first_page.elements if element.type == "image"]
+    assert image_elements
+    assert image_elements[0].src.startswith("/api/assets/")
+    assert not hasattr(image_elements[0], "url")
+    assert first_page.speakerNotes
     get_settings.cache_clear()
 
 

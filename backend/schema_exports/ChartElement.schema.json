@@ -1,0 +1,118 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "chart",
+      "default": "chart",
+      "title": "Type",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "status": {
+      "default": "completed",
+      "enum": [
+        "pending",
+        "generating",
+        "completed",
+        "failed",
+        "skipped"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "source_unit_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Unit Id"
+    },
+    "source_outline_unit_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Outline Unit Id"
+    },
+    "source_chunk_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Chunk Ids",
+      "type": "array"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "generation_info": {
+      "additionalProperties": true,
+      "title": "Generation Info",
+      "type": "object"
+    },
+    "chart_type": {
+      "default": "bar",
+      "enum": [
+        "bar",
+        "line",
+        "pie"
+      ],
+      "title": "Chart Type",
+      "type": "string"
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "x_axis": {
+      "additionalProperties": true,
+      "title": "X Axis",
+      "type": "object"
+    },
+    "y_axis": {
+      "additionalProperties": true,
+      "title": "Y Axis",
+      "type": "object"
+    },
+    "series": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Series",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "title"
+  ],
+  "title": "ChartElement",
+  "type": "object"
+}

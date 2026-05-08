@@ -1,6 +1,6 @@
 from app.schemas.state import ContentGenerationState
 from app.services.rag_service import get_rag_service
-from app.workflows.nodes.helpers import current_outline_unit, request_from_state
+from app.workflows.nodes.helpers import build_progress, current_outline_unit, request_from_state, unit_progress
 
 
 def retrieve_for_planning(state: ContentGenerationState) -> dict[str, object]:
@@ -10,7 +10,7 @@ def retrieve_for_planning(state: ContentGenerationState) -> dict[str, object]:
         "retrieved_chunks": chunks,
         "planning_chunks": chunks,
         "current_node": "retrieve_for_planning",
-        "progress": {"current_stage": "retrieving", "percent": 15},
+        "progress": build_progress(stage="retrieving", current_node="retrieve_for_planning"),
     }
 
 
@@ -28,13 +28,7 @@ def retrieve_for_unit(state: ContentGenerationState) -> dict[str, object]:
         "current_unit_context": chunks,
         "unit_context_map": unit_context_map,
         "current_node": "retrieve_for_unit",
-        "progress": {
-            "current_stage": "retrieving_unit",
-            "current_unit_id": state.current_unit_id,
-            "completed_units": len(state.completed_unit_ids),
-            "total_units": len(state.pending_unit_ids),
-            "percent": 45,
-        },
+        "progress": unit_progress(state, "retrieving_unit", current_node="retrieve_for_unit"),
     }
 
 

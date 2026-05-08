@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.request import ContentGenerationRequest
@@ -11,10 +11,12 @@ task_service = InMemoryTaskService()
 
 
 @router.post("/tasks", response_model=TaskResult, status_code=status.HTTP_201_CREATED)
-def create_content_generation_task(request: ContentGenerationRequest) -> TaskResult:
+def create_content_generation_task(request: ContentGenerationRequest, background_tasks: BackgroundTasks) -> TaskResult:
     # TODO(MVP-task): Replace the synchronous in-memory task execution with an
     # async task runner so queued/running/completed states reflect real progress.
-    return task_service.create_task(request)
+    task = task_service.create_task(request)
+    background_tasks.add_task(task_service.run_task, task.task_id)
+    return task
 
 
 @router.get("/tasks/{task_id}", response_model=TaskResult)
