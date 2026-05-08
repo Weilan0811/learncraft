@@ -253,47 +253,6 @@ GET /api/assets/{asset_id}/download
 
 资源由 `LocalStorageService` 保存到本地，并在 `storage/manifest.json` 中记录元数据。
 
-## 配置说明
-
-配置集中在 `app/core/config.py`，通过环境变量前缀 `CONTENT_GENERATOR_` 注入。
-
-| 配置项 | 默认值 | 说明 |
-|---|---|---|
-| `CONTENT_GENERATOR_APP_NAME` | `Content Generator Agent` | FastAPI 应用名称 |
-| `CONTENT_GENERATOR_APP_VERSION` | `0.1.0` | 应用版本 |
-| `CONTENT_GENERATOR_CORS_ORIGINS` | `http://localhost:5173`, `http://127.0.0.1:5173` | 前端跨域来源 |
-| `CONTENT_GENERATOR_STORAGE_BACKEND` | `local` | 存储后端，当前实现 local |
-| `CONTENT_GENERATOR_STORAGE_ROOT` | `storage` | 本地存储根目录 |
-| `CONTENT_GENERATOR_ASSET_PUBLIC_BASE_URL` | `/api/assets` | 资源公开访问基础路径 |
-| `CONTENT_GENERATOR_PROVIDER_MODE` | `stub` | `stub` 使用占位服务；`real` 使用真实 provider |
-| `CONTENT_GENERATOR_TEXT_PROVIDER` | `bailian` | 文本模型 provider |
-| `CONTENT_GENERATOR_TEXT_MODEL` | `qwen3.5-flash` | 文本模型名称 |
-| `CONTENT_GENERATOR_IMAGE_PROVIDER` | `apimart` | 图片模型 provider |
-| `CONTENT_GENERATOR_IMAGE_MODEL` | `gpt-image-2` | 图片模型名称 |
-| `CONTENT_GENERATOR_EMBEDDING_PROVIDER` | `bailian` | embedding provider |
-| `CONTENT_GENERATOR_EMBEDDING_MODEL` | `text-embedding-v3` | embedding 模型 |
-| `CONTENT_GENERATOR_APIMART_API_KEY` | `None` | APIMart API Key |
-| `CONTENT_GENERATOR_BAILIAN_API_KEY` | `None` | 百炼 API Key |
-| `CONTENT_GENERATOR_QDRANT_PATH` | `storage/qdrant_data` | Qdrant 本地数据路径 |
-| `CONTENT_GENERATOR_QDRANT_COLLECTION` | `default` | 默认知识库 collection |
-| `CONTENT_GENERATOR_RETRIEVAL_TOP_K` | `5` | 检索 top-k |
-| `CONTENT_GENERATOR_MAX_RETRIEVAL_CHARS` | `6000` | 单次检索上下文字符上限 |
-
-本地开发可先使用 `CONTENT_GENERATOR_PROVIDER_MODE=stub`，以便绕过真实 LLM、Embedding、图片 provider。
-
-## Schema 导出
-
-`schema_exports/` 中保存了已导出的 JSON Schema，可用于前端类型同步、接口契约校验和文档生成。
-
-重新导出：
-
-```bash
-cd backend
-python scripts/export_json_schema.py
-```
-
-建议后续将 schema 导出接入 CI，在后端 schema 修改后自动更新前端类型，减少手写类型漂移。
-
 ## 模块功能说明
 
 ### 1. API 层：`app/api/`

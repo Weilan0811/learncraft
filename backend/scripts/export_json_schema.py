@@ -10,6 +10,7 @@ from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.outline import Outline
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.assets import AssetResponse
+from app.schemas.render import SlideRenderModel
 from app.schemas.specs import LectureSpec, SlideDeckSpec
 from app.schemas.task import PreviewResponse, TaskResult
 
@@ -19,6 +20,7 @@ SCHEMA_MODELS = [
     Outline,
     LectureSpec,
     SlideDeckSpec,
+    SlideRenderModel,
     TextElement,
     ImageElement,
     ChartElement,

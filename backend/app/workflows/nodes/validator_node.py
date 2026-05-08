@@ -1,11 +1,13 @@
 from app.schemas.elements import ImageElement, MindmapElement
-from app.schemas.specs import ElementReferenceBlock
+from app.schemas.specs import ElementReferenceBlock, SlideDeckSpec, SlideSpecPage
 from app.schemas.state import ContentGenerationState
 from app.workflows.nodes.helpers import (
     SUPPORTED_WORKFLOW_ELEMENTS,
+    build_progress,
     content_element_ref_ids,
     current_outline_unit,
     element_ref_ids,
+    ensure_monotonic_progress,
     unit_progress,
 )
 
@@ -32,7 +34,7 @@ def validate_outline(state: ContentGenerationState) -> dict[str, object]:
         "outline_validation_report": {"passed": not errors, "errors": errors},
         "errors": state.errors + errors,
         "current_node": "validate_outline",
-        "progress": {"current_stage": "validating_outline", "percent": 30},
+        "progress": ensure_monotonic_progress(state.progress, build_progress(stage="validating_outline", current_node="validate_outline")),
     }
 
 
@@ -59,11 +61,19 @@ def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
         for element_id in element_ref_ids(unit_spec):
             if element_id not in required_ids:
                 errors.append(f"element_ref {element_id} is missing from required_elements")
+        if isinstance(unit_spec, SlideSpecPage):
+            if not unit_spec.layout_hints.get("supported_renderer"):
+                errors.append("slide unit_spec.layout_hints.supported_renderer is missing")
+            roles = [element.metadata.get("role") for element in unit_spec.elements]
+            if "title" not in roles:
+                errors.append("slide unit spec is missing a title role element")
+            if "body" not in roles:
+                errors.append("slide unit spec is missing a body role element")
     return {
         "spec_validation_report": {"passed": not errors, "errors": errors},
         "errors": state.errors + errors,
         "current_node": "validate_unit_spec",
-        "progress": unit_progress(state, "validating_unit_spec", 60),
+        "progress": unit_progress(state, "validating_unit_spec", current_node="validate_unit_spec"),
     }
 
 
@@ -91,7 +101,7 @@ def validate_unit(state: ContentGenerationState) -> dict[str, object]:
         "validation_report": {"passed": not errors, "errors": errors},
         "errors": state.errors + errors,
         "current_node": "validate_unit",
-        "progress": unit_progress(state, "validating_unit", 80),
+        "progress": unit_progress(state, "validating_unit", current_node="validate_unit"),
     }
 
 
@@ -111,11 +121,27 @@ def validate_content(state: ContentGenerationState) -> dict[str, object]:
         for element_id in content_element_ref_ids(state.content_spec):
             if element_id not in element_lookup:
                 errors.append(f"content element_ref {element_id} is missing")
+        if isinstance(state.content_spec, SlideDeckSpec):
+            for slide in state.content_spec.slides:
+                if not slide.design_intent:
+                    errors.append(f"slide {slide.id} is missing design_intent")
+                if not slide.speaker_notes:
+                    errors.append(f"slide {slide.id} is missing speaker_notes")
+                if not slide.layout_hints.get("supported_renderer"):
+                    errors.append(f"slide {slide.id} is missing scenekit renderer hint")
     return {
         "validation_report": {"passed": not errors, "errors": errors},
         "errors": state.errors + errors,
         "current_node": "validate_content",
-        "progress": {"current_stage": "validating_content", "percent": 94},
+        "progress": ensure_monotonic_progress(
+            state.progress,
+            build_progress(
+                stage="validating_content",
+                current_node="validate_content",
+                completed_units=len(state.completed_unit_ids),
+                total_units=len(state.pending_unit_ids),
+            ),
+        ),
     }
 
 

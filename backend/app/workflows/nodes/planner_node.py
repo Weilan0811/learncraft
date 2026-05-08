@@ -1,5 +1,6 @@
 from app.schemas.outline import Outline, OutlineSection, OutlineUnit, RecommendedElement
 from app.schemas.state import ContentGenerationState
+from app.workflows.nodes.helpers import build_progress
 
 
 def plan_outline(state: ContentGenerationState) -> dict[str, object]:
@@ -44,7 +45,7 @@ def plan_outline(state: ContentGenerationState) -> dict[str, object]:
     return {
         "outline": outline,
         "current_node": "plan_outline",
-        "progress": {"current_stage": "planning", "percent": 25},
+        "progress": build_progress(stage="planning", current_node="plan_outline"),
     }
 
 

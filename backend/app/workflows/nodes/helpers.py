@@ -1,8 +1,11 @@
+from html import escape
+
 from app.schemas.elements import ImageElement
 from app.schemas.outline import OutlineUnit
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.specs import ElementReferenceBlock, ElementRequest, LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage
 from app.schemas.state import ContentGenerationState
+from app.services.storage_service import LocalStorageService
 
 
 SUPPORTED_WORKFLOW_ELEMENTS = {"image", "mindmap"}
@@ -42,11 +45,24 @@ def content_element_ref_ids(content_spec: LectureSpec | SlideDeckSpec) -> list[s
 
 
 def fallback_image_element(request: ElementRequest, reason: str) -> ImageElement:
+    try:
+        svg = _fallback_svg(request.title, reason)
+        record = LocalStorageService().save_bytes(
+            asset_id=request.element_id,
+            filename=f"{request.element_id}.svg",
+            content=svg.encode("utf-8"),
+            content_type="image/svg+xml",
+            kind="image",
+            metadata={"fallback": True, "reason": reason, "provider": "fallback", "format": "svg"},
+        )
+        asset_url = record.url
+    except Exception:
+        asset_url = "/api/assets/placeholder_image/download"
     return ImageElement(
         id=request.element_id,
         title=request.title,
         prompt=request.instruction,
-        asset_url="/api/assets/placeholder_image/download",
+        asset_url=asset_url,
         alt_text=f"{request.title} 占位图",
         source_unit_id=request.source_unit_id,
         source_outline_unit_id=request.source_outline_unit_id,
@@ -56,11 +72,118 @@ def fallback_image_element(request: ElementRequest, reason: str) -> ImageElement
     )
 
 
-def unit_progress(state: ContentGenerationState, current_stage: str, percent: int) -> dict[str, object]:
+def build_progress(
+    stage: str,
+    current_node: str | None,
+    current_unit_id: str | None = None,
+    completed_units: int = 0,
+    total_units: int = 0,
+) -> dict[str, object]:
+    percent = _percent_for_stage(stage, completed_units=completed_units, total_units=total_units)
     return {
-        "current_stage": current_stage,
-        "current_unit_id": state.current_unit_id,
-        "completed_units": len(state.completed_unit_ids),
-        "total_units": len(state.pending_unit_ids),
+        "stage": stage,
+        "display_stage": _display_stage(stage),
+        "current_stage": stage,
+        "current_node": current_node,
+        "current_unit_id": current_unit_id,
+        "completed_units": completed_units,
+        "total_units": total_units,
         "percent": percent,
     }
+
+
+def ensure_monotonic_progress(previous: dict[str, object] | None, current: dict[str, object]) -> dict[str, object]:
+    previous_percent = int((previous or {}).get("percent", 0) or 0)
+    current_percent = int(current.get("percent", 0) or 0)
+    return {**current, "percent": max(previous_percent, current_percent)}
+
+
+def unit_progress(
+    state: ContentGenerationState,
+    current_stage: str,
+    percent: int | None = None,
+    current_node: str | None = None,
+) -> dict[str, object]:
+    progress = build_progress(
+        stage=current_stage,
+        current_node=current_node or state.current_node,
+        current_unit_id=state.current_unit_id,
+        completed_units=len(state.completed_unit_ids),
+        total_units=len(state.pending_unit_ids),
+    )
+
+
+def _fallback_svg(title: str, reason: str) -> str:
+    safe_title = escape(title)
+    safe_reason = escape(reason)
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">'
+        '<rect width="1280" height="720" fill="#f8fafc"/>'
+        '<rect x="80" y="80" width="1120" height="560" rx="24" fill="#e0f2fe" stroke="#0284c7" stroke-width="6"/>'
+        f'<text x="120" y="230" font-family="Arial, sans-serif" font-size="54" font-weight="700" fill="#0f172a">{safe_title}</text>'
+        f'<text x="120" y="320" font-family="Arial, sans-serif" font-size="28" fill="#334155">Fallback image: {safe_reason}</text>'
+        '<circle cx="1040" cy="480" r="72" fill="#0f766e" opacity="0.9"/>'
+        '<circle cx="950" cy="490" r="44" fill="#2563eb" opacity="0.9"/>'
+        "</svg>"
+    )
+    return ensure_monotonic_progress(state.progress, progress)
+
+
+def _percent_for_stage(stage: str, completed_units: int = 0, total_units: int = 0) -> int:
+    if stage in {"queued"}:
+        return 0
+    if stage in {"running", "normalizing"}:
+        return 5
+    if stage == "retrieving":
+        return 15
+    if stage in {"planning", "validating_outline"}:
+        return 25
+    if stage == "initializing_units":
+        return 30
+    if stage in {
+        "retrieving_unit",
+        "generating_unit",
+        "validating_unit_spec",
+        "collecting_elements",
+        "generating_elements",
+        "merging_elements",
+        "validating_unit",
+        "unit_completed",
+    }:
+        if total_units <= 0:
+            return 30
+        unit_share = min(completed_units, total_units) / total_units
+        return 30 + int(unit_share * 50)
+    if stage in {"assembling_content", "validating_content"}:
+        return 88
+    if stage == "rendering":
+        return 95
+    if stage in {"completed", "failed"}:
+        return 100
+    return 5
+
+
+def _display_stage(stage: str) -> str:
+    labels = {
+        "queued": "queued",
+        "running": "running",
+        "normalizing": "normalizing request",
+        "retrieving": "retrieving knowledge",
+        "planning": "planning outline",
+        "validating_outline": "validating outline",
+        "initializing_units": "initializing units",
+        "retrieving_unit": "retrieving unit context",
+        "generating_unit": "generating unit spec",
+        "validating_unit_spec": "validating unit spec",
+        "collecting_elements": "collecting elements",
+        "generating_elements": "generating elements",
+        "merging_elements": "merging elements",
+        "validating_unit": "validating unit",
+        "unit_completed": "unit completed",
+        "assembling_content": "assembling content",
+        "validating_content": "validating content",
+        "rendering": "rendering preview",
+        "completed": "completed",
+        "failed": "failed",
+    }
+    return labels.get(stage, stage)

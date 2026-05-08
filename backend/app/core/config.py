@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import AliasChoices, Field, MySQLDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +12,13 @@ class Settings(BaseSettings):
     storage_backend: str = "local"
     storage_root: str = "storage"
     asset_public_base_url: str = "/api/assets"
+    database_url: str | None = Field(default=None, validation_alias=AliasChoices("CONTENT_GENERATOR_DATABASE_URL", "DATABASE_URL"))
+    db_host: str = Field(default="localhost", validation_alias=AliasChoices("DB_HOST", "CONTENT_GENERATOR_DB_HOST"))
+    db_port: int = Field(default=3306, validation_alias=AliasChoices("DB_PORT", "CONTENT_GENERATOR_DB_PORT"))
+    db_username: str = Field(default="root", validation_alias=AliasChoices("DB_USERNAME", "CONTENT_GENERATOR_DB_USERNAME"))
+    db_password: str = Field(default="", validation_alias=AliasChoices("DB_PASSWORD", "CONTENT_GENERATOR_DB_PASSWORD"))
+    db_database: str = Field(default="future_learning", validation_alias=AliasChoices("DB_DATABASE", "CONTENT_GENERATOR_DB_DATABASE"))
+    db_log_echo: bool = Field(default=True, validation_alias=AliasChoices("DB_LOG_ECHO", "CONTENT_GENERATOR_DB_LOG_ECHO"))
 
     provider_mode: Literal["stub", "real"] = "stub"
 
@@ -39,6 +47,21 @@ class Settings(BaseSettings):
     max_retrieval_chars: int = 6000
 
     model_config = SettingsConfigDict(env_prefix="CONTENT_GENERATOR_", env_file=".env")
+
+    @property
+    def DATABASE_URL(self) -> str:
+        if self.database_url:
+            return self.database_url
+        return str(
+            MySQLDsn.build(
+                scheme="mysql+pymysql",
+                username=self.db_username,
+                password=self.db_password,
+                host=self.db_host,
+                port=self.db_port,
+                path=self.db_database,
+            )
+        )
 
 
 @lru_cache

@@ -1,5 +1,6 @@
 from app.schemas.specs import LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage
 from app.schemas.state import ContentGenerationState
+from app.workflows.nodes.helpers import build_progress, ensure_monotonic_progress
 
 
 def assemble_content_spec(state: ContentGenerationState) -> dict[str, object]:
@@ -26,12 +27,15 @@ def assemble_content_spec(state: ContentGenerationState) -> dict[str, object]:
     return {
         "content_spec": content_spec,
         "current_node": "assemble_content_spec",
-        "progress": {
-            "current_stage": "assembling_content",
-            "completed_units": len(ordered_results),
-            "total_units": len(state.pending_unit_ids),
-            "percent": 90,
-        },
+        "progress": ensure_monotonic_progress(
+            state.progress,
+            build_progress(
+                stage="assembling_content",
+                current_node="assemble_content_spec",
+                completed_units=len(ordered_results),
+                total_units=len(state.pending_unit_ids),
+            ),
+        ),
     }
 
 

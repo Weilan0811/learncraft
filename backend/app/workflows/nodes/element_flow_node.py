@@ -43,12 +43,15 @@ def collect_unit_required_elements(state: ContentGenerationState) -> dict[str, o
         "current_unit_element_requests": requests,
         "element_status": element_status,
         "current_node": "collect_unit_required_elements",
-        "progress": unit_progress(state, "collecting_elements", 65),
+        "progress": unit_progress(state, "collecting_elements", current_node="collect_unit_required_elements"),
     }
 
 
 def dispatch_element_generation_node(state: ContentGenerationState) -> dict[str, object]:
-    return {"current_node": "dispatch_element_generation"}
+    return {
+        "current_node": "dispatch_element_generation",
+        "progress": unit_progress(state, "generating_elements", current_node="dispatch_element_generation"),
+    }
 
 
 def dispatch_element_generation(state: ContentGenerationState):
@@ -75,7 +78,7 @@ def merge_unit_elements(state: ContentGenerationState) -> dict[str, object]:
         "elements": list(merged.values()),
         "element_status": element_status,
         "current_node": "merge_unit_elements",
-        "progress": unit_progress(state, "merging_elements", 75),
+        "progress": unit_progress(state, "merging_elements", current_node="merge_unit_elements"),
     }
 
 

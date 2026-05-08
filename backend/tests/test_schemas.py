@@ -1,7 +1,8 @@
 from app.schemas.elements import ChartElement, ImageElement, MindmapElement, TextElement
 from app.schemas.outline import Outline, OutlineSection, OutlineUnit, RecommendedElement
+from app.schemas.render import SlidePageModel
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.specs import LectureSection, LectureSpec, RequiredElementSpec, SlideSpecPage, TextBlock
+from app.schemas.specs import LectureSection, LectureSpec, RequiredElementSpec, SlideSpecElement, SlideSpecPage, TextBlock
 from pydantic import ValidationError
 
 
@@ -152,3 +153,94 @@ def test_element_schemas_have_shared_required_fields() -> None:
     assert [element.type for element in elements] == ["text", "image", "chart", "mindmap"]
     assert elements[1].source_outline_unit_id == "unit_stub"
     assert elements[3].render_hints["renderer"] == "markmap"
+
+
+def test_slide_page_model_validates_scenekit_slide_v1_contract() -> None:
+    page = SlidePageModel(
+        page={
+            "id": "slide_stub",
+            "title": "什么是人工智能",
+            "width": 960,
+            "height": 540,
+            "background": {"type": "solid", "color": "#FFFFFF"},
+            "theme": {
+                "fontName": "Arial",
+                "fontColor": "#111827",
+                "backgroundColor": "#FFFFFF",
+                "themeColors": ["#2563eb", "#0f766e"],
+            },
+            "elements": [
+                {
+                    "id": "title",
+                    "type": "text",
+                    "left": 48,
+                    "top": 40,
+                    "width": 720,
+                    "height": 72,
+                    "rotate": 0,
+                    "content": "<p>什么是人工智能</p>",
+                }
+            ],
+            "speakerNotes": "用于建立基本概念。",
+        }
+    )
+
+    assert page.page.width == 960
+    assert page.page.elements[0].type == "text"
+    assert page.page.speakerNotes == "用于建立基本概念。"
+
+
+def test_slide_page_model_rejects_elements_without_position() -> None:
+    try:
+        SlidePageModel(
+            page={
+                "id": "slide_stub",
+                "title": "什么是人工智能",
+                "width": 960,
+                "height": 540,
+                "theme": {
+                    "fontName": "Arial",
+                    "fontColor": "#111827",
+                    "backgroundColor": "#FFFFFF",
+                    "themeColors": ["#2563eb"],
+                },
+                "elements": [{"id": "title", "type": "text", "content": "<p>缺少坐标</p>"}],
+            }
+        )
+    except ValidationError as exc:
+        assert "left" in str(exc)
+        assert "height" in str(exc)
+    else:
+        raise AssertionError("SlidePageModel should reject scenekit elements without geometry")
+
+
+def test_slide_spec_page_rejects_unknown_layouts_and_keeps_element_roles() -> None:
+    slide = SlideSpecPage(
+        id="slide_stub",
+        title="什么是人工智能",
+        core_message="人工智能研究机器智能行为。",
+        layout="title-content-visual",
+        elements=[
+            SlideSpecElement(
+                id="slide_stub_body",
+                type="text",
+                content="人工智能研究机器智能行为。",
+                metadata={"role": "body", "emphasis": "primary"},
+            )
+        ],
+    )
+
+    assert slide.layout == "title-content-visual"
+    assert slide.elements[0].metadata["role"] == "body"
+
+    try:
+        SlideSpecPage(
+            id="slide_bad",
+            title="未知布局",
+            core_message="这应该被拒绝。",
+            layout="freeform-poster",
+        )
+    except ValidationError as exc:
+        assert "layout" in str(exc)
+    else:
+        raise AssertionError("SlideSpecPage should reject unsupported slide layouts")

@@ -1,0 +1,316 @@
+{
+  "version": "scenekit.deck/v1",
+  "deckId": "deck-static-slide-demo",
+  "title": "Scene Content Kit Static Slide Demo",
+  "pages": [
+    {
+      "version": "scenekit.slide/v1",
+      "page": {
+        "id": "slide-001",
+        "title": "Typography And Rich Text",
+        "width": 960,
+        "height": 540,
+        "background": {
+          "type": "gradient",
+          "gradient": {
+            "type": "linear",
+            "rotate": 135,
+            "colors": [
+              { "pos": 0, "color": "#F8FAFC" },
+              { "pos": 1, "color": "#DBEAFE" }
+            ]
+          }
+        },
+        "theme": {
+          "fontName": "Arial",
+          "fontColor": "#111827",
+          "backgroundColor": "#F8FAFC",
+          "themeColors": ["#2563EB", "#0F766E", "#F59E0B"]
+        },
+        "elements": [
+          {
+            "id": "title",
+            "type": "text",
+            "left": 68,
+            "top": 88,
+            "width": 640,
+            "height": 88,
+            "rotate": 0,
+            "content": "<p>Static PPT Slide Renderer</p>",
+            "defaultFontName": "Georgia",
+            "defaultColor": "#0F172A",
+            "fontSize": 42,
+            "bold": true,
+            "lineHeight": 1.1
+          },
+          {
+            "id": "subtitle",
+            "type": "text",
+            "left": 72,
+            "top": 184,
+            "width": 520,
+            "height": 88,
+            "rotate": 0,
+            "content": "<p>Supports font size, bold, italic, underline, alignment, filled text boxes, and rounded containers.</p>",
+            "defaultFontName": "Arial",
+            "defaultColor": "#334155",
+            "fontSize": 22,
+            "italic": true,
+            "lineHeight": 1.35
+          },
+          {
+            "id": "pill",
+            "type": "text",
+            "left": 72,
+            "top": 318,
+            "width": 376,
+            "height": 70,
+            "rotate": 0,
+            "content": "<p>Centered highlighted text</p>",
+            "defaultFontName": "Arial",
+            "defaultColor": "#1E3A8A",
+            "fontSize": 24,
+            "bold": true,
+            "underline": true,
+            "align": "center",
+            "verticalAlign": "middle",
+            "fill": "#DBEAFE",
+            "radius": 24,
+            "outline": {
+              "width": 2,
+              "color": "#60A5FA",
+              "style": "solid"
+            },
+            "shadow": {
+              "x": 0,
+              "y": 12,
+              "blur": 24,
+              "color": "rgba(37, 99, 235, 0.18)"
+            }
+          },
+          {
+            "id": "accent-line",
+            "type": "line",
+            "left": 72,
+            "top": 420,
+            "width": 520,
+            "height": 3,
+            "rotate": 0,
+            "start": [0, 0],
+            "end": [520, 0],
+            "color": "#2563EB",
+            "style": "dashed",
+            "strokeWidth": 3
+          }
+        ]
+      }
+    },
+    {
+      "version": "scenekit.slide/v1",
+      "page": {
+        "id": "slide-002",
+        "title": "Shapes And Layout",
+        "width": 960,
+        "height": 540,
+        "background": {
+          "type": "solid",
+          "color": "#FFFFFF"
+        },
+        "theme": {
+          "fontName": "Arial",
+          "fontColor": "#111827",
+          "backgroundColor": "#FFFFFF",
+          "themeColors": ["#0F766E", "#F59E0B", "#EF4444"]
+        },
+        "elements": [
+          {
+            "id": "headline",
+            "type": "text",
+            "left": 64,
+            "top": 60,
+            "width": 560,
+            "height": 64,
+            "rotate": 0,
+            "content": "<p>Shape primitives for static restoration</p>",
+            "defaultFontName": "Arial",
+            "defaultColor": "#111827",
+            "fontSize": 32,
+            "bold": true
+          },
+          {
+            "id": "card-1",
+            "type": "shape",
+            "shape": "roundRect",
+            "left": 72,
+            "top": 164,
+            "width": 232,
+            "height": 180,
+            "rotate": 0,
+            "radius": 28,
+            "fill": "#CCFBF1",
+            "outline": {
+              "width": 2,
+              "color": "#0F766E",
+              "style": "solid"
+            },
+            "shadow": {
+              "x": 0,
+              "y": 16,
+              "blur": 28,
+              "color": "rgba(15, 118, 110, 0.18)"
+            }
+          },
+          {
+            "id": "card-1-copy",
+            "type": "text",
+            "left": 98,
+            "top": 212,
+            "width": 180,
+            "height": 80,
+            "rotate": 0,
+            "content": "<p>Rounded rectangle</p>",
+            "defaultColor": "#134E4A",
+            "fontSize": 24,
+            "bold": true,
+            "align": "center",
+            "verticalAlign": "middle"
+          },
+          {
+            "id": "ellipse",
+            "type": "shape",
+            "shape": "ellipse",
+            "left": 382,
+            "top": 166,
+            "width": 188,
+            "height": 188,
+            "rotate": 0,
+            "fill": "#FEF3C7",
+            "outline": {
+              "width": 3,
+              "color": "#F59E0B",
+              "style": "dotted"
+            }
+          },
+          {
+            "id": "ellipse-copy",
+            "type": "text",
+            "left": 420,
+            "top": 224,
+            "width": 112,
+            "height": 64,
+            "rotate": 0,
+            "content": "<p>Ellipse</p>",
+            "defaultColor": "#92400E",
+            "fontSize": 24,
+            "bold": true,
+            "align": "center",
+            "verticalAlign": "middle"
+          },
+          {
+            "id": "image-placeholder",
+            "type": "shape",
+            "shape": "rect",
+            "left": 648,
+            "top": 166,
+            "width": 220,
+            "height": 188,
+            "rotate": 0,
+            "fill": "#FEE2E2",
+            "outline": {
+              "width": 2,
+              "color": "#EF4444",
+              "style": "dashed"
+            }
+          },
+          {
+            "id": "image-copy",
+            "type": "text",
+            "left": 676,
+            "top": 226,
+            "width": 164,
+            "height": 68,
+            "rotate": 0,
+            "content": "<p>Unsupported complex graphics can become images</p>",
+            "defaultColor": "#991B1B",
+            "fontSize": 20,
+            "bold": true,
+            "align": "center",
+            "verticalAlign": "middle"
+          }
+        ]
+      }
+    },
+    {
+      "version": "scenekit.slide/v1",
+      "page": {
+        "id": "slide-003",
+        "title": "Tables",
+        "width": 960,
+        "height": 540,
+        "background": {
+          "type": "solid",
+          "color": "#F8FAFC"
+        },
+        "theme": {
+          "fontName": "Arial",
+          "fontColor": "#111827",
+          "backgroundColor": "#F8FAFC",
+          "themeColors": ["#2563EB", "#64748B"]
+        },
+        "elements": [
+          {
+            "id": "table-title",
+            "type": "text",
+            "left": 68,
+            "top": 62,
+            "width": 560,
+            "height": 60,
+            "rotate": 0,
+            "content": "<p>Table restoration with basic cell styling</p>",
+            "defaultColor": "#0F172A",
+            "fontSize": 32,
+            "bold": true
+          },
+          {
+            "id": "table-1",
+            "type": "table",
+            "left": 76,
+            "top": 154,
+            "width": 760,
+            "height": 244,
+            "rotate": 0,
+            "fontSize": 20,
+            "textColor": "#0F172A",
+            "outline": {
+              "width": 2,
+              "color": "#CBD5E1",
+              "style": "solid"
+            },
+            "data": [
+              [
+                { "id": "c1", "text": "Feature", "style": { "bold": true, "align": "center", "backcolor": "#DBEAFE" } },
+                { "id": "c2", "text": "Status", "style": { "bold": true, "align": "center", "backcolor": "#DBEAFE" } },
+                { "id": "c3", "text": "Notes", "style": { "bold": true, "align": "center", "backcolor": "#DBEAFE" } }
+              ],
+              [
+                { "id": "c4", "text": "Text style" },
+                { "id": "c5", "text": "Ready", "style": { "bold": true, "color": "#0F766E" } },
+                { "id": "c6", "text": "font, weight, alignment" }
+              ],
+              [
+                { "id": "c7", "text": "Shapes" },
+                { "id": "c8", "text": "Ready", "style": { "bold": true, "color": "#0F766E" } },
+                { "id": "c9", "text": "rect, roundRect, ellipse" }
+              ],
+              [
+                { "id": "c10", "text": "Dynamic media" },
+                { "id": "c11", "text": "Deferred", "style": { "italic": true, "color": "#B45309" } },
+                { "id": "c12", "text": "rasterize poster image first" }
+              ]
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

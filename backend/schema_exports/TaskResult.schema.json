@@ -80,6 +80,49 @@
       },
       "title": "Errors",
       "type": "array"
+    },
+    "current_node": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Current Node"
+    },
+    "progress": {
+      "additionalProperties": true,
+      "title": "Progress",
+      "type": "object"
+    },
+    "created_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Created At"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated At"
     }
   },
   "required": [

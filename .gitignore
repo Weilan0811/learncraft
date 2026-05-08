@@ -15,3 +15,5 @@ dist/
 storage/
 .worktrees/
 worktrees/
+
+.idea/
