@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 
 import { useContentGenerationStore } from "../../stores/contentGenerationStore";
-import type { ContentGenerationRequest, ExportType, MvpContentType } from "../../types/content";
+import type { ContentGenerationRequest, MvpContentType } from "../../types/content";
 
 const defaultPrompt = "生成一份适合本科一年级学生学习的多模态讲义。";
 
@@ -15,26 +15,27 @@ export function ContentGenerationForm() {
   const [userPrompt, setUserPrompt] = useState(defaultPrompt);
   const [knowledgeBaseId, setKnowledgeBaseId] = useState("kb_ai_basic");
   const [includeImages, setIncludeImages] = useState(true);
-  const [includeCharts, setIncludeCharts] = useState(true);
+  const [includeCharts, setIncludeCharts] = useState(false);
   const [includeMindmap, setIncludeMindmap] = useState(true);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const outputFormats: ExportType[] = contentType === "slide_deck" ? ["preview", "slide_json"] : ["preview", "pdf"];
     const request: ContentGenerationRequest = {
       content_type: contentType,
       topic,
       user_prompt: userPrompt,
       system_prompt: "内容准确、结构清晰、适合教学。",
       knowledge_base_ids: knowledgeBaseId.trim() ? [knowledgeBaseId.trim()] : [],
-      output_formats: outputFormats,
       generation_options: {
         language: "zh-CN",
         difficulty: "introductory",
         style: "educational",
         include_images: includeImages,
         include_charts: includeCharts,
-        include_mindmap: includeMindmap
+        include_mindmap: includeMindmap,
+        output_depth: "standard",
+        citation_policy: "light",
+        speaker_notes: contentType === "slide_deck"
       }
     };
     await submitTask(request);

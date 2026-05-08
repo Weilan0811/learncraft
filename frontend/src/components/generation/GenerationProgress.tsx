@@ -9,7 +9,7 @@ export function GenerationProgress() {
     <section className="status-strip">
       <div>
         <span>状态</span>
-        <strong>{loading ? "running" : task?.status ?? "idle"}</strong>
+        <strong>{task?.status ?? (loading ? "running" : "idle")}</strong>
       </div>
       <div>
         <span>任务</span>

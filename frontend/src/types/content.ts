@@ -21,17 +21,34 @@ export type ElementType =
   | "quiz"
   | "citation";
 
-export type ExportType = "preview" | "pdf" | "slide_json" | "image_assets" | "pptx" | "markdown" | "html";
+export type ExportType = "pdf" | "slide_json" | "image_assets" | "pptx" | "markdown" | "html";
+
+export type Difficulty = "introductory" | "intermediate" | "advanced";
+export type OutputDepth = "brief" | "standard" | "detailed";
+export type CitationPolicy = "none" | "light" | "strict";
 
 export interface GenerationOptions {
-  language: string;
-  difficulty: string;
-  style: string;
-  include_images: boolean;
-  include_charts: boolean;
-  include_mindmap: boolean;
-  // TODO(MVP-options): Sync with backend additions for audience, duration,
-  // slide count, image style, citation policy, PDF options, and slide theme.
+  language?: string;
+  audience?: string | null;
+  difficulty?: Difficulty;
+  style?: string;
+
+  duration_minutes?: number | null;
+  section_count?: number | null;
+  slide_count?: number | null;
+  max_section_count?: number;
+  max_slide_count?: number;
+  output_depth?: OutputDepth;
+
+  include_images?: boolean;
+  include_charts?: boolean;
+  include_mindmap?: boolean;
+  image_style?: string | null;
+  citation_policy?: CitationPolicy;
+
+  slide_theme?: string | null;
+  speaker_notes?: boolean;
+  pdf_options?: Record<string, unknown>;
 }
 
 export interface ContentGenerationRequest {
@@ -39,7 +56,6 @@ export interface ContentGenerationRequest {
   topic: string;
   user_prompt: string;
   system_prompt?: string | null;
-  knowledge_base_ids: string[];
-  output_formats: ExportType[];
-  generation_options: GenerationOptions;
+  knowledge_base_ids?: string[];
+  generation_options?: GenerationOptions;
 }
