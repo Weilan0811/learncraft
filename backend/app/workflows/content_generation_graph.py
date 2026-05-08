@@ -65,6 +65,36 @@ def run_content_generation(
     return ContentGenerationState.model_validate(result)
 
 
+def stream_content_generation(
+    request: ContentGenerationRequest,
+    request_id: str | None = None,
+):
+    """Stream the content-generation graph execution, yielding updates after each node."""
+    state = ContentGenerationState(
+        request_id=request_id or f"task_{uuid4().hex[:12]}",
+        content_type=request.content_type,
+        topic=request.topic,
+        user_prompt=request.user_prompt,
+        system_prompt=request.system_prompt,
+        knowledge_base_ids=request.knowledge_base_ids,
+        raw_request=request.model_dump(mode="json"),
+        status=TaskStatus.running,
+        progress=build_progress(stage="running", current_node="run_content_generation"),
+    )
+    graph = build_content_generation_graph()
+
+    current = state.model_dump(mode="python")
+
+    for event in graph.stream(state, stream_mode="values"):
+        current.update(event)
+        if current.get("progress") is None:
+            current["progress"] = build_progress(
+                stage=str(current.get("status", TaskStatus.running)),
+                current_node=current.get("current_node"),
+            )
+        yield current
+
+
 @lru_cache(maxsize=1)
 def build_content_generation_graph():
     workflow = StateGraph(ContentGenerationState)
@@ -157,5 +187,6 @@ def build_content_generation_graph():
 
 __all__ = [
     "run_content_generation",
+    "stream_content_generation",
     "build_content_generation_graph",
 ]
