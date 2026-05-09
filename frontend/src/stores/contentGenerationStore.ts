@@ -20,9 +20,6 @@ interface ContentGenerationState {
 }
 
 const POLL_INTERVAL_MS = 1200;
-const DEFAULT_TASK_POLL_TIMEOUT_MS = 45 * 60 * 1000;
-const TASK_POLL_TIMEOUT_MS = Number(import.meta.env.VITE_TASK_POLL_TIMEOUT_MS ?? DEFAULT_TASK_POLL_TIMEOUT_MS);
-const MAX_POLL_TIMES = Math.ceil(TASK_POLL_TIMEOUT_MS / POLL_INTERVAL_MS);
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -35,7 +32,7 @@ async function waitForCompletedTask(
   let task = await getContentGenerationTask(taskId);
   onProgress?.(task);
 
-  for (let i = 0; i < MAX_POLL_TIMES; i += 1) {
+  while (true) {
     if (task.status === "completed" || task.status === "failed") {
       return task;
     }
@@ -43,8 +40,6 @@ async function waitForCompletedTask(
     task = await getContentGenerationTask(taskId);
     onProgress?.(task);
   }
-
-  throw new Error("任务执行超时，请稍后在任务历史中重新查看。送达后端的请求已创建成功。");
 }
 
 export const useContentGenerationStore = create<ContentGenerationState>((set, get) => ({

@@ -136,6 +136,9 @@ def _build_fallback_outline(state: ContentGenerationState, reason: str | None = 
 
 
 def _planner_success(state: ContentGenerationState, outline: Outline, source: str) -> dict[str, object]:
+    for unit in outline.units:
+        if not unit.retrieval_queries:
+            unit.retrieval_queries = [state.topic, unit.title]
     return {
         "outline": outline,
         "current_node": "plan_outline",
