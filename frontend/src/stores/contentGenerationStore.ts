@@ -3,15 +3,21 @@ import { create } from "zustand";
 import {
   createContentGenerationTask,
   exportContentGenerationTask,
+  getContentGenerationEvents,
+  getContentGenerationPartialPreview,
   getContentGenerationPreview,
-  getContentGenerationTask
+  getContentGenerationTask,
+  getContentGenerationUnits
 } from "../api/contentGenerationApi";
 import type { ContentGenerationRequest } from "../types/content";
-import type { ExportResult, PreviewResponse, TaskResult } from "../types/export";
+import type { ExportResult, PartialPreviewResponse, PreviewResponse, RenderUnitSnapshot, TaskResult, TaskStreamEvent } from "../types/export";
 
 interface ContentGenerationState {
   task?: TaskResult;
   preview?: PreviewResponse;
+  partialPreview?: PartialPreviewResponse;
+  streamEvents: TaskStreamEvent[];
+  renderUnits: RenderUnitSnapshot[];
   exportResult?: ExportResult;
   loading: boolean;
   error?: string;
@@ -27,10 +33,10 @@ function sleep(ms: number) {
 
 async function waitForCompletedTask(
   taskId: string,
-  onProgress?: (task: TaskResult) => void
+  onProgress?: (task: TaskResult) => Promise<void> | void
 ): Promise<TaskResult> {
   let task = await getContentGenerationTask(taskId);
-  onProgress?.(task);
+  await onProgress?.(task);
 
   while (true) {
     if (task.status === "completed" || task.status === "failed") {
@@ -38,20 +44,40 @@ async function waitForCompletedTask(
     }
     await sleep(POLL_INTERVAL_MS);
     task = await getContentGenerationTask(taskId);
-    onProgress?.(task);
+    await onProgress?.(task);
   }
 }
 
 export const useContentGenerationStore = create<ContentGenerationState>((set, get) => ({
+  streamEvents: [],
+  renderUnits: [],
   loading: false,
   async submitTask(request) {
-    set({ loading: true, error: undefined, preview: undefined, exportResult: undefined });
+    set({ loading: true, error: undefined, preview: undefined, partialPreview: undefined, streamEvents: [], renderUnits: [], exportResult: undefined });
     try {
       const createdTask = await createContentGenerationTask(request);
       set({ task: createdTask });
 
-      const completedTask = await waitForCompletedTask(createdTask.task_id, (task) => {
+      const refreshStreamingState = async (taskId: string) => {
+        const [eventsResult, unitsResult, partialPreview] = await Promise.allSettled([
+          getContentGenerationEvents(taskId),
+          getContentGenerationUnits(taskId),
+          getContentGenerationPartialPreview(taskId)
+        ]);
+        if (eventsResult.status === "fulfilled") {
+          set({ streamEvents: eventsResult.value.events });
+        }
+        if (unitsResult.status === "fulfilled") {
+          set({ renderUnits: unitsResult.value.units });
+        }
+        if (partialPreview.status === "fulfilled") {
+          set({ partialPreview: partialPreview.value });
+        }
+      };
+
+      const completedTask = await waitForCompletedTask(createdTask.task_id, async (task) => {
         set({ task });
+        await refreshStreamingState(task.task_id);
       });
       set({ task: completedTask });
 
@@ -60,6 +86,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       }
 
       const preview = await getContentGenerationPreview(completedTask.task_id);
+      await refreshStreamingState(completedTask.task_id);
       set({ preview, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unknown request error", loading: false });

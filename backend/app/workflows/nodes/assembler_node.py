@@ -1,3 +1,4 @@
+from app.content_types.registry import get_content_type_profile
 from app.schemas.specs import LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage
 from app.schemas.state import ContentGenerationState
 from app.workflows.nodes.helpers import build_progress, ensure_monotonic_progress
@@ -7,7 +8,8 @@ def assemble_content_spec(state: ContentGenerationState) -> dict[str, object]:
     if state.outline is None:
         return {"errors": state.errors + ["outline is missing"], "current_node": "assemble_content_spec"}
     ordered_results = [state.unit_results[unit_id] for unit_id in state.pending_unit_ids if unit_id in state.unit_results]
-    if state.content_type == "slide_deck":
+    profile = get_content_type_profile(state.content_type)
+    if profile.content_type == "slide_deck":
         slides = [result.unit_spec for result in ordered_results if isinstance(result.unit_spec, SlideSpecPage)]
         content_spec = SlideDeckSpec(
             id=f"deck_{state.request_id}",

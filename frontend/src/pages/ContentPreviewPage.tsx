@@ -6,8 +6,10 @@ export function ContentPreviewPage() {
   // TODO(MVP-preview): Add editable preview modes and section-level
   // regeneration hooks once backend stores content_spec/render_model snapshots.
   const preview = useContentGenerationStore((state) => state.preview);
+  const partialPreview = useContentGenerationStore((state) => state.partialPreview);
+  const activePreview = preview ?? partialPreview;
 
-  if (!preview) {
+  if (!activePreview) {
     return (
       <section className="empty-preview">
         <h2>预览</h2>
@@ -16,9 +18,9 @@ export function ContentPreviewPage() {
     );
   }
 
-  if (preview.render_model.render_type === "slide_deck") {
-    return <SlideDeckPreview model={preview.render_model} />;
+  if (activePreview.render_model.render_type === "slide_deck") {
+    return <SlideDeckPreview model={activePreview.render_model} />;
   }
 
-  return <LectureRenderer model={preview.render_model} />;
+  return <LectureRenderer model={activePreview.render_model} />;
 }

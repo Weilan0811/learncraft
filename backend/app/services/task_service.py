@@ -4,7 +4,7 @@ from app.core.task import TaskStatus
 from app.schemas.export import ExportFile, ExportRequest, ExportResult
 from app.schemas.render import RenderModel
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import PreviewResponse, TaskResult
+from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, PreviewResponse
 from app.services.task_repository import SQLModelTaskRepository
 from app.schemas.state import ContentGenerationState
 from app.workflows.content_generation_graph import run_content_generation, stream_content_generation
@@ -63,6 +63,35 @@ class PersistentTaskService:
             return None
         render_model = render_model_adapter.validate_python(task.render_model)
         return PreviewResponse(content_type=task.content_type, render_model=render_model)
+
+    def get_partial_preview(self, task_id: str) -> PartialPreviewResponse | None:
+        task = self.repository.get_task(task_id)
+        if task is None or task.partial_render_model is None:
+            return None
+        render_model = render_model_adapter.validate_python(task.partial_render_model)
+        return PartialPreviewResponse(content_type=task.content_type, render_model=render_model)
+
+    def get_events(self, task_id: str) -> TaskEventsResponse | None:
+        task = self.repository.get_task(task_id)
+        if task is None:
+            return None
+        return TaskEventsResponse(task_id=task_id, events=task.stream_events)
+
+    def get_units(self, task_id: str) -> TaskUnitsResponse | None:
+        task = self.repository.get_task(task_id)
+        if task is None:
+            return None
+        units = sorted(task.render_units.values(), key=lambda item: int(item.get("order", 0)))
+        return TaskUnitsResponse(task_id=task_id, units=units)
+
+    def get_unit_preview(self, task_id: str, unit_id: str) -> UnitPreviewResponse | None:
+        task = self.repository.get_task(task_id)
+        if task is None:
+            return None
+        snapshot = task.render_units.get(unit_id)
+        if snapshot is None:
+            return None
+        return UnitPreviewResponse.model_validate(snapshot)
 
     def export_task(self, task_id: str, request: ExportRequest) -> ExportResult | None:
         task = self.repository.get_task(task_id)

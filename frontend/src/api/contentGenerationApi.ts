@@ -1,7 +1,15 @@
 import axios, { AxiosError } from "axios";
 
 import type { ContentGenerationRequest } from "../types/content";
-import type { ExportRequest, ExportResult, PreviewResponse, TaskResult } from "../types/export";
+import type {
+  ExportRequest,
+  ExportResult,
+  PartialPreviewResponse,
+  PreviewResponse,
+  TaskEventsResponse,
+  TaskResult,
+  TaskUnitsResponse
+} from "../types/export";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? ""
@@ -44,6 +52,18 @@ export async function getContentGenerationTask(taskId: string): Promise<TaskResu
 
 export async function getContentGenerationPreview(taskId: string): Promise<PreviewResponse> {
   return unwrapApiCall(api.get<PreviewResponse>(`/api/content-generation/tasks/${taskId}/preview`));
+}
+
+export async function getContentGenerationPartialPreview(taskId: string): Promise<PartialPreviewResponse> {
+  return unwrapApiCall(api.get<PartialPreviewResponse>(`/api/content-generation/tasks/${taskId}/preview/partial`));
+}
+
+export async function getContentGenerationEvents(taskId: string): Promise<TaskEventsResponse> {
+  return unwrapApiCall(api.get<TaskEventsResponse>(`/api/content-generation/tasks/${taskId}/events`));
+}
+
+export async function getContentGenerationUnits(taskId: string): Promise<TaskUnitsResponse> {
+  return unwrapApiCall(api.get<TaskUnitsResponse>(`/api/content-generation/tasks/${taskId}/units`));
 }
 
 export async function exportContentGenerationTask(taskId: string, request: ExportRequest): Promise<ExportResult> {

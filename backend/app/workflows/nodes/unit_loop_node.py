@@ -1,3 +1,4 @@
+from app.content_types.registry import get_content_type_profile
 from app.schemas.state import ContentGenerationState, UnitGenerationResult
 from app.workflows.nodes.helpers import build_progress, current_outline_unit, ensure_monotonic_progress
 
@@ -7,7 +8,7 @@ def route_content_type(state: ContentGenerationState) -> dict[str, object]:
 
 
 def route_content_type_choice(state: ContentGenerationState) -> str:
-    return state.content_type
+    return get_content_type_profile(state.content_type).content_type
 
 
 def initialize_section_units(state: ContentGenerationState) -> dict[str, object]:

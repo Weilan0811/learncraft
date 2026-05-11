@@ -1,10 +1,13 @@
 import json
 import os
+from datetime import UTC, datetime
 from typing import cast
+from uuid import uuid4
 
+from app.content_types.registry import get_content_type_profile
 from app.core.config import get_settings
 from app.schemas.outline import Outline, OutlineSection, OutlineUnit
-from app.schemas.state import ContentGenerationState
+from app.schemas.state import ContentGenerationState, TaskStreamEvent
 from app.services.llm_service import get_llm_service
 from app.workflows.nodes.helpers import build_progress
 
@@ -52,9 +55,8 @@ def _build_planner_prompt(state: ContentGenerationState) -> str:
 
 def _get_prompt_template_path(content_type: str) -> str:
     prompts_dir = os.path.join(os.path.dirname(__file__), "..", "..", "prompts", "planner")
-    if content_type == "slide_deck":
-        return os.path.join(prompts_dir, "slide_outline.md")
-    return os.path.join(prompts_dir, "lecture_outline.md")
+    profile = get_content_type_profile(content_type)
+    return os.path.join(prompts_dir, profile.planner_prompt_name)
 
 
 def _format_retrieval_results(chunks: list) -> str:
@@ -79,7 +81,8 @@ def _format_retrieval_results(chunks: list) -> str:
 
 def _build_fallback_outline(state: ContentGenerationState, reason: str | None = None) -> Outline:
     chunk_ids = [chunk.id for chunk in state.planning_chunks]
-    unit_type = "slide" if state.content_type == "slide_deck" else "section"
+    profile = get_content_type_profile(state.content_type)
+    unit_type = profile.unit_type
 
     options = state.normalized_request or {}
     fallback_default = 6 if state.content_type == "slide_deck" else 4
@@ -141,6 +144,16 @@ def _planner_success(state: ContentGenerationState, outline: Outline, source: st
             unit.retrieval_queries = [state.topic, unit.title]
     return {
         "outline": outline,
+        "stream_events": [
+            *state.stream_events,
+            TaskStreamEvent(
+                event_id=f"event_{uuid4().hex[:12]}",
+                task_id=state.request_id,
+                type="outline_ready",
+                payload={"outline_id": outline.id, "unit_count": len(outline.units), "source": source},
+                created_at=datetime.now(UTC).isoformat(),
+            ),
+        ],
         "current_node": "plan_outline",
         "progress": build_progress(stage="planning", current_node="plan_outline"),
     }

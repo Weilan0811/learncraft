@@ -1,3 +1,4 @@
+from app.content_types.registry import get_content_type_profile
 from app.schemas.specs import LectureSpec, SlideDeckSpec
 from app.schemas.state import ContentGenerationState
 from app.workflows.routers import get_renderer
@@ -9,7 +10,7 @@ def route_renderer(state: ContentGenerationState) -> dict[str, object]:
 
 
 def route_renderer_choice(state: ContentGenerationState) -> str:
-    return state.content_type
+    return get_content_type_profile(state.content_type).content_type
 
 
 def lecture_renderer(state: ContentGenerationState) -> dict[str, object]:

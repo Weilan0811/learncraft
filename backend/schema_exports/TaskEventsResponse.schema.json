@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "TaskStreamEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "task_id": {
+          "title": "Task Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "task_started",
+            "outline_ready",
+            "unit_started",
+            "unit_spec_ready",
+            "element_ready",
+            "unit_render_ready",
+            "task_completed",
+            "task_failed"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "unit_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit Id"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "event_id",
+        "task_id",
+        "type",
+        "created_at"
+      ],
+      "title": "TaskStreamEvent",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {
+      "title": "Task Id",
+      "type": "string"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/TaskStreamEvent"
+      },
+      "title": "Events",
+      "type": "array"
+    }
+  },
+  "required": [
+    "task_id"
+  ],
+  "title": "TaskEventsResponse",
+  "type": "object"
+}

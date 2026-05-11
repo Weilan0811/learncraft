@@ -39,6 +39,47 @@ export interface PreviewResponse {
   render_model: RenderModel;
 }
 
+export interface PartialPreviewResponse extends PreviewResponse {
+  is_partial: boolean;
+}
+
+export interface TaskStreamEvent {
+  event_id: string;
+  task_id: string;
+  type:
+    | "task_started"
+    | "outline_ready"
+    | "unit_started"
+    | "unit_spec_ready"
+    | "element_ready"
+    | "unit_render_ready"
+    | "task_completed"
+    | "task_failed";
+  unit_id?: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface RenderUnitSnapshot {
+  unit_id: string;
+  order: number;
+  content_type: MvpContentType;
+  status: "pending" | "rendered" | "failed";
+  render_fragment: Record<string, unknown>;
+  updated_at?: string | null;
+  errors: string[];
+}
+
+export interface TaskEventsResponse {
+  task_id: string;
+  events: TaskStreamEvent[];
+}
+
+export interface TaskUnitsResponse {
+  task_id: string;
+  units: RenderUnitSnapshot[];
+}
+
 export interface ExportRequest {
   export_type: ExportType;
   export_options?: Record<string, unknown>;
