@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     db_password: str = Field(default="", validation_alias=AliasChoices("DB_PASSWORD", "CONTENT_GENERATOR_DB_PASSWORD"))
     db_database: str = Field(default="future_learning", validation_alias=AliasChoices("DB_DATABASE", "CONTENT_GENERATOR_DB_DATABASE"))
     db_log_echo: bool = Field(default=False, validation_alias=AliasChoices("DB_LOG_ECHO", "CONTENT_GENERATOR_DB_LOG_ECHO"))
+    log_root: str = Field(default="storage/logs", validation_alias=AliasChoices("LOG_ROOT", "CONTENT_GENERATOR_LOG_ROOT"))
 
     provider_mode: Literal["stub", "real"] = "stub"
 

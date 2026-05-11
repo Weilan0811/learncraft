@@ -12,7 +12,7 @@ from app.schemas.outline import Outline, OutlineSection, OutlineUnit
 from app.schemas.render import LectureRenderModel, RenderBlock, SlidePageModel, SlideRenderModel
 from app.schemas.request import ContentGenerationRequest, GenerationOptions
 from app.schemas.specs import ElementReferenceBlock, LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage, TextBlock
-from app.schemas.task import PreviewResponse, TaskResult
+from app.schemas.task import PartialPreviewResponse, PreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse
 
 
 SCHEMA_MODELS = [
@@ -39,6 +39,10 @@ SCHEMA_MODELS = [
     ExportRequest,
     ExportResult,
     PreviewResponse,
+    PartialPreviewResponse,
+    TaskEventsResponse,
+    TaskUnitsResponse,
+    UnitPreviewResponse,
     TaskResult,
 ]
 

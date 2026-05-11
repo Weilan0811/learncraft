@@ -5,31 +5,33 @@ from app.schemas.specs import ElementReferenceBlock, LectureSpec, TextBlock
 
 class LectureRenderer:
     def render(self, spec: LectureSpec, elements: list[ContentElement]) -> LectureRenderModel:
+        sections = [self.render_unit(section, elements) for section in spec.sections]
+        return self.assemble(spec, sections)
+
+    def render_unit(self, section, elements: list[ContentElement]) -> LectureRenderSection:
         element_lookup = {element.id: element for element in elements}
-        sections: list[LectureRenderSection] = []
-        
-        for section in spec.sections:
-            blocks: list[RenderBlock] = []
-            
-            for block in section.blocks:
-                if isinstance(block, TextBlock):
-                    blocks.append(
-                        RenderBlock(
-                            id=block.id,
-                            type="text",
-                            title=block.title,
-                            content=block.content,
-                            metadata={"citations": block.citations},
-                        )
+        blocks: list[RenderBlock] = []
+
+        for block in section.blocks:
+            if isinstance(block, TextBlock):
+                blocks.append(
+                    RenderBlock(
+                        id=block.id,
+                        type="text",
+                        title=block.title,
+                        content=block.content,
+                        metadata={"citations": block.citations},
                     )
-                
-                elif isinstance(block, ElementReferenceBlock):
-                    element = element_lookup.get(block.element_id)
-                    if element:
-                        blocks.append(self._element_to_render_block(element))
-            
-            sections.append(LectureRenderSection(id=section.id, title=section.title, render_blocks=blocks))
-        
+                )
+
+            elif isinstance(block, ElementReferenceBlock):
+                element = element_lookup.get(block.element_id)
+                if element:
+                    blocks.append(self._element_to_render_block(element))
+
+        return LectureRenderSection(id=section.id, title=section.title, render_blocks=blocks)
+
+    def assemble(self, spec: LectureSpec, sections: list[LectureRenderSection]) -> LectureRenderModel:
         return LectureRenderModel(
             title=spec.title,
             objectives=spec.objectives,

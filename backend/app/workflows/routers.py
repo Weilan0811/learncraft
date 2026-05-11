@@ -2,19 +2,18 @@ from app.exporters.asset_exporter import AssetExporter
 from app.exporters.base_exporter import Exporter
 from app.exporters.pdf_exporter import PDFExporter
 from app.exporters.slide_exporter import SlideExporter
+from app.content_types.registry import get_content_type_profile
 from app.renderers.lecture_renderer import LectureRenderer
 from app.renderers.slide_renderer import SlideRenderer
-from app.schemas.base import ExportType, MvpContentType
+from app.schemas.base import ContentType, ExportType
 from app.services.storage_service import StorageService
 
 
-def get_renderer(content_type: MvpContentType) -> LectureRenderer | SlideRenderer:
-    if content_type == "slide_deck":
-        return SlideRenderer()
-    return LectureRenderer()
+def get_renderer(content_type: ContentType) -> LectureRenderer | SlideRenderer:
+    return get_content_type_profile(content_type).renderer_factory()
 
 
-def get_default_exporter(content_type: MvpContentType) -> PDFExporter | SlideExporter:
+def get_default_exporter(content_type: ContentType) -> PDFExporter | SlideExporter:
     if content_type == "slide_deck":
         return SlideExporter()
     return PDFExporter()

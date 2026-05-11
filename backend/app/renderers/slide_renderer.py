@@ -27,25 +27,27 @@ SLIDE_HEIGHT = 540
 
 class SlideRenderer:
     def render(self, spec: SlideDeckSpec, elements: list[ContentElement]) -> SlideRenderModel:
+        pages = [self.render_unit(slide, elements, spec) for slide in spec.slides]
+        return self.assemble(spec, pages)
+
+    def render_unit(self, slide: SlideSpecPage, elements: list[ContentElement], spec: SlideDeckSpec) -> SlidePageModel:
         element_lookup = {element.id: element for element in elements}
-        pages: list[SlidePageModel] = []
-        for slide in spec.slides:
-            theme = _theme_for_slide(spec, slide.order or len(pages) + 1)
-            page_elements = _render_slide_page(slide, element_lookup, theme, spec)
-            pages.append(
-                SlidePageModel(
-                    page=KitSlidePage(
-                        id=slide.id,
-                        title=slide.title,
-                        width=SLIDE_WIDTH,
-                        height=SLIDE_HEIGHT,
-                        background=_background_for_layout(slide.layout, theme),
-                        theme=theme,
-                        elements=page_elements,
-                        speakerNotes=slide.speaker_notes,
-                    )
-                )
+        theme = _theme_for_slide(spec, slide.order)
+        page_elements = _render_slide_page(slide, element_lookup, theme, spec)
+        return SlidePageModel(
+            page=KitSlidePage(
+                id=slide.id,
+                title=slide.title,
+                width=SLIDE_WIDTH,
+                height=SLIDE_HEIGHT,
+                background=_background_for_layout(slide.layout, theme),
+                theme=theme,
+                elements=page_elements,
+                speakerNotes=slide.speaker_notes,
             )
+        )
+
+    def assemble(self, spec: SlideDeckSpec, pages: list[SlidePageModel]) -> SlideRenderModel:
         return SlideRenderModel(title=spec.title, pages=pages)
 
 

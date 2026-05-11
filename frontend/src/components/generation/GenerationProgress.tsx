@@ -8,7 +8,7 @@ function formatPercent(percent?: number) {
 }
 
 export function GenerationProgress() {
-  const { task, loading, error } = useContentGenerationStore();
+  const { task, loading, error, renderUnits, streamEvents } = useContentGenerationStore();
   const progress = task?.progress;
   const stage = progress?.display_stage || progress?.stage || task?.status || (loading ? "running" : "idle");
   const percent = formatPercent(progress?.percent);
@@ -16,32 +16,42 @@ export function GenerationProgress() {
     typeof progress?.completed_units === "number" && typeof progress?.total_units === "number" && progress.total_units > 0
       ? `${progress.completed_units} / ${progress.total_units}`
       : "-";
+  const renderedUnits = renderUnits.filter((unit) => unit.status === "rendered").length;
+  const latestEvent = streamEvents.at(-1);
 
   return (
     <section className="status-strip">
       <div>
-        <span>状态</span>
+        <span>Status</span>
         <strong>{task?.status ?? (loading ? "running" : "idle")}</strong>
       </div>
       <div>
-        <span>阶段</span>
+        <span>Stage</span>
         <strong>{stage}</strong>
       </div>
       <div>
-        <span>进度</span>
+        <span>Progress</span>
         <strong>{percent}</strong>
       </div>
       <div>
-        <span>单元</span>
+        <span>Units</span>
         <strong>{unitText}</strong>
       </div>
       <div>
-        <span>节点</span>
+        <span>Rendered</span>
+        <strong>{renderedUnits}</strong>
+      </div>
+      <div>
+        <span>Node</span>
         <strong>{task?.current_node || progress?.current_node || "-"}</strong>
       </div>
       <div>
-        <span>任务</span>
-        <strong>{task?.task_id ?? "尚未创建"}</strong>
+        <span>Latest event</span>
+        <strong>{latestEvent?.type ?? "-"}</strong>
+      </div>
+      <div>
+        <span>Task</span>
+        <strong>{task?.task_id ?? "not created"}</strong>
       </div>
       {error ? <p className="error-text">{error}</p> : null}
     </section>

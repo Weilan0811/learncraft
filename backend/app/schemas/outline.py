@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from app.schemas.base import MvpContentType, SchemaModel
+from app.schemas.base import ContentType, SchemaModel
 
 
 class OutlineUnit(SchemaModel):
@@ -30,7 +30,7 @@ class OutlineSection(SchemaModel):
 
 class Outline(SchemaModel):
     id: str
-    content_type: MvpContentType
+    content_type: ContentType
     title: str
     audience: str | None = None
     learning_objectives: list[str] = Field(default_factory=list)

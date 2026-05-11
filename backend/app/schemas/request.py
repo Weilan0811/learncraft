@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
-from app.schemas.base import MvpContentType, SchemaModel
+from app.schemas.base import ContentType, SchemaModel
 
 
 class GenerationOptions(SchemaModel):
@@ -30,7 +30,7 @@ class GenerationOptions(SchemaModel):
 
 
 class ContentGenerationRequest(SchemaModel):
-    content_type: MvpContentType
+    content_type: ContentType
     topic: str = Field(min_length=1)
     user_prompt: str = Field(min_length=1)
     system_prompt: str | None = None

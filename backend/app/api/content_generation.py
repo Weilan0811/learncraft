@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import PreviewResponse, TaskResult
+from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, PreviewResponse
 from app.services.task_service import InMemoryTaskService
 
 
@@ -36,6 +36,38 @@ def get_content_generation_preview(task_id: str) -> PreviewResponse:
     preview = task_service.get_preview(task_id)
     if preview is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task preview not found")
+    return preview
+
+
+@router.get("/tasks/{task_id}/events", response_model=TaskEventsResponse)
+def get_content_generation_events(task_id: str) -> TaskEventsResponse:
+    events = task_service.get_events(task_id)
+    if events is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return events
+
+
+@router.get("/tasks/{task_id}/preview/partial", response_model=PartialPreviewResponse)
+def get_content_generation_partial_preview(task_id: str) -> PartialPreviewResponse:
+    preview = task_service.get_partial_preview(task_id)
+    if preview is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task partial preview not found")
+    return preview
+
+
+@router.get("/tasks/{task_id}/units", response_model=TaskUnitsResponse)
+def get_content_generation_units(task_id: str) -> TaskUnitsResponse:
+    units = task_service.get_units(task_id)
+    if units is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return units
+
+
+@router.get("/tasks/{task_id}/units/{unit_id}/preview", response_model=UnitPreviewResponse)
+def get_content_generation_unit_preview(task_id: str, unit_id: str) -> UnitPreviewResponse:
+    preview = task_service.get_unit_preview(task_id, unit_id)
+    if preview is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task unit preview not found")
     return preview
 
 

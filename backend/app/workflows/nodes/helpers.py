@@ -151,6 +151,8 @@ def _percent_for_stage(stage: str, completed_units: int = 0, total_units: int = 
         "generating_elements",
         "merging_elements",
         "validating_unit",
+        "rendering_unit",
+        "unit_render_ready",
         "unit_completed",
     }:
         if total_units <= 0:
@@ -182,6 +184,8 @@ def _display_stage(stage: str) -> str:
         "generating_elements": "generating elements",
         "merging_elements": "merging elements",
         "validating_unit": "validating unit",
+        "rendering_unit": "rendering unit",
+        "unit_render_ready": "unit render ready",
         "unit_completed": "unit completed",
         "assembling_content": "assembling content",
         "validating_content": "validating content",

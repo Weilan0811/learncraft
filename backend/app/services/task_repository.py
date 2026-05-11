@@ -2,6 +2,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from sqlalchemy import inspect, text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import get_settings
@@ -31,6 +32,7 @@ class SQLModelTaskRepository:
             create_tables = resolved_url.startswith("sqlite")
         if create_tables:
             SQLModel.metadata.create_all(self.engine)
+            self._ensure_sqlite_schema()
 
     def create_task(self, request: ContentGenerationRequest, task_id: str | None = None) -> ContentGenerationTask:
         task = ContentGenerationTask(
@@ -74,9 +76,15 @@ class SQLModelTaskRepository:
             status=state.status,
             current_node=state.current_node,
             progress=progress,
+            outline=state.outline.model_dump(mode="json") if state.outline else None,
             render_model=state.render_model.model_dump(mode="json") if state.render_model else None,
+            partial_render_model=state.partial_render_model.model_dump(mode="json") if state.partial_render_model else None,
             content_spec=state.content_spec.model_dump(mode="json") if state.content_spec else None,
+            unit_results={unit_id: result.model_dump(mode="json") for unit_id, result in state.unit_results.items()},
+            render_units={unit_id: snapshot.model_dump(mode="json") for unit_id, snapshot in state.render_units.items()},
+            stream_events=[event.model_dump(mode="json") for event in state.stream_events],
             elements=[element.model_dump(mode="json") for element in state.elements],
+            logs=[entry.model_dump(mode="json") for entry in state.logs],
             asset_ids=asset_ids,
             errors=state.errors,
             completed_at=now_utc() if state.status in {TaskStatus.completed, TaskStatus.failed} else None,
@@ -98,6 +106,30 @@ class SQLModelTaskRepository:
             session.commit()
             session.refresh(task)
             return self._detach(session, task)
+
+    def _ensure_sqlite_schema(self) -> None:
+        if self.engine.dialect.name != "sqlite":
+            return
+        inspector = inspect(self.engine)
+        if not inspector.has_table("content_generation_task"):
+            return
+        columns = {column["name"] for column in inspector.get_columns("content_generation_task")}
+        missing_defaults = {
+            "unit_results": "{}",
+            "render_units": "{}",
+            "stream_events": "[]",
+            "logs": "[]",
+        }
+        with self.engine.begin() as connection:
+            if "outline" not in columns:
+                connection.execute(text("ALTER TABLE content_generation_task ADD COLUMN outline JSON"))
+            if "partial_render_model" not in columns:
+                connection.execute(text("ALTER TABLE content_generation_task ADD COLUMN partial_render_model JSON"))
+            for column_name, default_value in missing_defaults.items():
+                if column_name not in columns:
+                    connection.execute(
+                        text(f"ALTER TABLE content_generation_task ADD COLUMN {column_name} JSON NOT NULL DEFAULT '{default_value}'")
+                    )
 
     @staticmethod
     def to_task_result(task: ContentGenerationTask) -> TaskResult:

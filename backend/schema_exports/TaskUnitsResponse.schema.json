@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "RenderUnitSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "unit_id": {
+          "title": "Unit Id",
+          "type": "string"
+        },
+        "order": {
+          "title": "Order",
+          "type": "integer"
+        },
+        "content_type": {
+          "title": "Content Type",
+          "type": "string"
+        },
+        "status": {
+          "default": "pending",
+          "enum": [
+            "pending",
+            "rendered",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "render_fragment": {
+          "additionalProperties": true,
+          "title": "Render Fragment",
+          "type": "object"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        },
+        "errors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Errors",
+          "type": "array"
+        }
+      },
+      "required": [
+        "unit_id",
+        "order",
+        "content_type"
+      ],
+      "title": "RenderUnitSnapshot",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {
+      "title": "Task Id",
+      "type": "string"
+    },
+    "units": {
+      "items": {
+        "$ref": "#/$defs/RenderUnitSnapshot"
+      },
+      "title": "Units",
+      "type": "array"
+    }
+  },
+  "required": [
+    "task_id"
+  ],
+  "title": "TaskUnitsResponse",
+  "type": "object"
+}

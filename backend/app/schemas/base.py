@@ -13,10 +13,9 @@ ContentType = Literal[
     "quiz_pack",
     "learning_path",
 ]
-# TODO(schema-extension): When enabling non-MVP content types, add their Spec,
-# Renderer, Exporter, frontend type, and workflow route at the same time.
-
-MvpContentType = Literal["lecture", "slide_deck"]
+# Runtime generation support is controlled by app.content_types.registry.
+# Schema boundaries intentionally accept future content types so they can be
+# introduced without changing every request/state DTO again.
 
 ElementType = Literal[
     "text",

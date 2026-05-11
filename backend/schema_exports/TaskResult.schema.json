@@ -50,7 +50,13 @@
     "content_type": {
       "enum": [
         "lecture",
-        "slide_deck"
+        "slide_deck",
+        "social_post",
+        "podcast_script",
+        "video_script",
+        "project_task",
+        "quiz_pack",
+        "learning_path"
       ],
       "title": "Content Type",
       "type": "string"

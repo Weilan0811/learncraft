@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from app.core.task import TaskStatus
-from app.schemas.base import MvpContentType, SchemaModel
+from app.schemas.base import ContentType, SchemaModel
 from app.schemas.elements import ContentElement
 from app.schemas.outline import Outline
 from app.schemas.render import RenderModel
@@ -28,6 +28,46 @@ class WorkflowError(SchemaModel):
     recoverable: bool = True
 
 
+class WorkflowLogEntry(SchemaModel):
+    timestamp: str
+    level: Literal["debug", "info", "warning", "error"]
+    event: str
+    message: str
+    task_id: str
+    content_type: str
+    node: str | None = None
+    unit_id: str | None = None
+    detail: dict[str, object] = Field(default_factory=dict)
+
+
+class RenderUnitSnapshot(SchemaModel):
+    unit_id: str
+    order: int
+    content_type: str
+    status: Literal["pending", "rendered", "failed"] = "pending"
+    render_fragment: dict[str, object] = Field(default_factory=dict)
+    updated_at: str | None = None
+    errors: list[str] = Field(default_factory=list)
+
+
+class TaskStreamEvent(SchemaModel):
+    event_id: str
+    task_id: str
+    type: Literal[
+        "task_started",
+        "outline_ready",
+        "unit_started",
+        "unit_spec_ready",
+        "element_ready",
+        "unit_render_ready",
+        "task_completed",
+        "task_failed",
+    ]
+    unit_id: str | None = None
+    payload: dict[str, object] = Field(default_factory=dict)
+    created_at: str
+
+
 class ElementStatus(SchemaModel):
     element_id: str
     type: Literal["image", "mindmap"]
@@ -48,7 +88,7 @@ class UnitGenerationResult(SchemaModel):
 
 class ContentGenerationState(SchemaModel):
     request_id: str
-    content_type: MvpContentType
+    content_type: ContentType
     topic: str
     user_prompt: str
     system_prompt: str | None = None
@@ -74,6 +114,9 @@ class ContentGenerationState(SchemaModel):
     content_spec: ContentSpec | None = None
     elements: list[ContentElement] = Field(default_factory=list)
     element_status: dict[str, ElementStatus] = Field(default_factory=dict)
+    render_units: dict[str, RenderUnitSnapshot] = Field(default_factory=dict)
+    partial_render_model: RenderModel | None = None
+    stream_events: list[TaskStreamEvent] = Field(default_factory=list)
     render_model: RenderModel | None = None
     spec_validation_report: dict[str, object] | None = None
     validation_report: dict[str, object] | None = None
@@ -83,7 +126,7 @@ class ContentGenerationState(SchemaModel):
     errors: list[str] = Field(default_factory=list)
     workflow_errors: list[WorkflowError] = Field(default_factory=list)
     token_usage: dict[str, object] = Field(default_factory=dict)
-    logs: list[dict[str, object]] = Field(default_factory=list)
+    logs: list[WorkflowLogEntry] = Field(default_factory=list)
     current_node: str | None = None
     progress: dict[str, object] | None = Field(default_factory=dict)
     status: TaskStatus = TaskStatus.queued
