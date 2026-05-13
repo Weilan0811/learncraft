@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from app.schemas.base import ContentType, ExportType, SchemaModel
 
@@ -15,6 +15,7 @@ class ElementPolicy:
 @dataclass(frozen=True)
 class ContentTypeProfile:
     content_type: ContentType
+    generation_mode: Literal["unit_loop", "direct"]
     unit_type: str
     requires_outline: bool
     supports_unit_streaming: bool

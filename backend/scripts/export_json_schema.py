@@ -9,9 +9,9 @@ from app.schemas.assets import AssetResponse
 from app.schemas.elements import ChartElement, ImageElement, MindmapElement, TextElement
 from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.outline import Outline, OutlineSection, OutlineUnit
-from app.schemas.render import LectureRenderModel, RenderBlock, SlidePageModel, SlideRenderModel
+from app.schemas.render import LectureRenderModel, RenderBlock, SlidePageModel, SlideRenderModel, SocialPostRenderModel
 from app.schemas.request import ContentGenerationRequest, GenerationOptions
-from app.schemas.specs import ElementReferenceBlock, LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage, TextBlock
+from app.schemas.specs import ElementReferenceBlock, LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage, SocialPostSpec, TextBlock
 from app.schemas.task import PartialPreviewResponse, PreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse
 
 
@@ -25,6 +25,7 @@ SCHEMA_MODELS = [
     LectureSection,
     SlideDeckSpec,
     SlideSpecPage,
+    SocialPostSpec,
     TextBlock,
     ElementReferenceBlock,
     ImageElement,
@@ -35,6 +36,7 @@ SCHEMA_MODELS = [
     RenderBlock,
     SlidePageModel,
     SlideRenderModel,
+    SocialPostRenderModel,
     AssetResponse,
     ExportRequest,
     ExportResult,

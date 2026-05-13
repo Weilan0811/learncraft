@@ -141,6 +141,10 @@ def _percent_for_stage(stage: str, completed_units: int = 0, total_units: int = 
         return 15
     if stage in {"planning", "validating_outline"}:
         return 25
+    if stage == "generating_direct_content":
+        return 65
+    if stage == "validating_direct_content":
+        return 82
     if stage == "initializing_units":
         return 30
     if stage in {
@@ -175,6 +179,8 @@ def _display_stage(stage: str) -> str:
         "normalizing": "normalizing request",
         "retrieving": "retrieving knowledge",
         "planning": "planning outline",
+        "generating_direct_content": "generating direct content",
+        "validating_direct_content": "validating direct content",
         "validating_outline": "validating outline",
         "initializing_units": "initializing units",
         "retrieving_unit": "retrieving unit context",

@@ -10,7 +10,8 @@
         "image",
         "pdf",
         "slide_json",
-        "image_assets"
+        "image_assets",
+        "html"
       ],
       "title": "Kind",
       "type": "string"

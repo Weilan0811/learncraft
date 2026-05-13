@@ -1,0 +1,187 @@
+{
+  "$defs": {
+    "SocialPostExportFile": {
+      "additionalProperties": false,
+      "properties": {
+        "file_type": {
+          "enum": [
+            "html",
+            "json",
+            "markdown",
+            "image",
+            "zip"
+          ],
+          "title": "File Type",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "required": [
+        "file_type",
+        "path"
+      ],
+      "title": "SocialPostExportFile",
+      "type": "object"
+    },
+    "SocialPostPreviewAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "slot_id": {
+          "title": "Slot Id",
+          "type": "string"
+        },
+        "caption": {
+          "title": "Caption",
+          "type": "string"
+        },
+        "local_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Local Path"
+        },
+        "public_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Public Url"
+        },
+        "wechat_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wechat Url"
+        }
+      },
+      "required": [
+        "slot_id",
+        "caption"
+      ],
+      "title": "SocialPostPreviewAsset",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "render_type": {
+      "const": "social_post",
+      "default": "social_post",
+      "title": "Render Type",
+      "type": "string"
+    },
+    "content_type": {
+      "const": "social_post",
+      "default": "social_post",
+      "title": "Content Type",
+      "type": "string"
+    },
+    "platform": {
+      "const": "wechat",
+      "default": "wechat",
+      "title": "Platform",
+      "type": "string"
+    },
+    "subtype": {
+      "const": "wechat_article",
+      "default": "wechat_article",
+      "title": "Subtype",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "digest": {
+      "title": "Digest",
+      "type": "string"
+    },
+    "template": {
+      "title": "Template",
+      "type": "string"
+    },
+    "html": {
+      "title": "Html",
+      "type": "string"
+    },
+    "article_json": {
+      "additionalProperties": true,
+      "title": "Article Json",
+      "type": "object"
+    },
+    "preview_assets": {
+      "items": {
+        "$ref": "#/$defs/SocialPostPreviewAsset"
+      },
+      "title": "Preview Assets",
+      "type": "array"
+    },
+    "export_files": {
+      "items": {
+        "$ref": "#/$defs/SocialPostExportFile"
+      },
+      "title": "Export Files",
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "title",
+    "digest",
+    "template",
+    "html",
+    "article_json"
+  ],
+  "title": "SocialPostRenderModel",
+  "type": "object"
+}

@@ -7,6 +7,7 @@ from app.schemas.specs import SlideDeckSpec, SlideSpecPage
 def build_slide_deck_profile() -> ContentTypeProfile:
     return ContentTypeProfile(
         content_type="slide_deck",
+        generation_mode="unit_loop",
         unit_type="slide",
         requires_outline=True,
         supports_unit_streaming=False,

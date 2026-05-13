@@ -1,8 +1,9 @@
 import type { ExportType, MvpContentType } from "./content";
 import type { LectureRenderModel } from "./lecture";
 import type { SlideRenderModel } from "./slide";
+import type { SocialPostRenderModel } from "./socialPost";
 
-export type RenderModel = LectureRenderModel | SlideRenderModel;
+export type RenderModel = LectureRenderModel | SlideRenderModel | SocialPostRenderModel;
 
 export interface ExportFile {
   type: ExportType;
@@ -53,6 +54,8 @@ export interface TaskStreamEvent {
     | "unit_spec_ready"
     | "element_ready"
     | "unit_render_ready"
+    | "direct_spec_ready"
+    | "direct_render_ready"
     | "task_completed"
     | "task_failed";
   unit_id?: string | null;

@@ -7,6 +7,7 @@ from app.schemas.specs import LectureSection, LectureSpec
 def build_lecture_profile() -> ContentTypeProfile:
     return ContentTypeProfile(
         content_type="lecture",
+        generation_mode="unit_loop",
         unit_type="section",
         requires_outline=True,
         supports_unit_streaming=False,
@@ -22,5 +23,5 @@ def build_lecture_profile() -> ContentTypeProfile:
             default_required_elements=("image",),
             optional_elements=("mindmap",),
         ),
-        exporter_types=("pdf", "markdown", "html"),
+        exporter_types=("pdf", "markdown", "html", "image_assets"),
     )

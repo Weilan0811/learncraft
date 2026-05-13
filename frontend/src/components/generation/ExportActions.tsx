@@ -1,4 +1,39 @@
 import { useContentGenerationStore } from "../../stores/contentGenerationStore";
+import type { ExportResult } from "../../types/export";
+import type { ExportType, MvpContentType } from "../../types/content";
+
+function defaultExportType(contentType?: MvpContentType): ExportType {
+  if (contentType === "slide_deck") {
+    return "slide_json";
+  }
+
+  if (contentType === "social_post") {
+    return "html";
+  }
+
+  return "pdf";
+}
+
+function exportLabel(exportType: ExportType) {
+  if (exportType === "slide_json") {
+    return "Slide JSON";
+  }
+
+  if (exportType === "html") {
+    return "HTML";
+  }
+
+  if (exportType === "image_assets") {
+    return "Image Assets";
+  }
+
+  return "PDF";
+}
+
+function articleJsonUrl(result?: ExportResult | null) {
+  const assetId = result?.metadata?.article_json_asset_id;
+  return typeof assetId === "string" ? `/api/assets/${assetId}/download` : undefined;
+}
 
 export function ExportActions() {
   const task = useContentGenerationStore((state) => state.task);
@@ -6,15 +41,23 @@ export function ExportActions() {
   const exportTask = useContentGenerationStore((state) => state.exportTask);
   const loading = useContentGenerationStore((state) => state.loading);
 
-  const exportType = task?.content_type === "slide_deck" ? "slide_json" : "pdf";
+  const exportType = defaultExportType(task?.content_type);
+  const exportName = exportLabel(exportType);
   const canExport = Boolean(task && task.status === "completed" && !loading);
+  const jsonUrl = articleJsonUrl(exportResult);
 
   return (
     <section className="export-actions">
       <button type="button" disabled={!canExport} onClick={() => exportTask(exportType)}>
-        Export {exportType === "pdf" ? "PDF" : "Slide JSON"}
+        Export {exportName}
       </button>
-      {exportResult ? <a href={exportResult.file_url}>{exportResult.file_url}</a> : null}
+      {exportResult?.status === "failed" ? (
+        <p className="error-text">Export failed: {String(exportResult.metadata?.error ?? "unsupported")}</p>
+      ) : null}
+      {exportResult?.status === "success" && exportResult.file_url ? (
+        <a href={exportResult.file_url}>Download {exportLabel(exportResult.export_type)}</a>
+      ) : null}
+      {jsonUrl ? <a href={jsonUrl}>Download Article JSON</a> : null}
     </section>
   );
 }
