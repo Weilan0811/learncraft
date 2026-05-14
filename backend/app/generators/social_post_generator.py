@@ -24,30 +24,59 @@ from app.services.image_generation_service import get_image_generation_service
 from app.services.llm_service import get_llm_service
 
 
+class SocialPostGenerationError(RuntimeError):
+    def __init__(self, stage: str, original: Exception) -> None:
+        super().__init__(f"{stage} failed: {original}")
+        self.stage = stage
+        self.original = original
+
+
 class SocialPostGenerator:
     def generate(self, state: ContentGenerationState) -> SocialPostSpec:
         settings = get_settings()
         if settings.provider_mode != "stub":
             try:
                 spec = self._generate_with_llm(state)
-            except Exception:
+            except Exception as exc:
+                if not bool((state.normalized_request or {}).get("allow_fallback", False)):
+                    raise
                 spec = self._generate_fallback(state)
+                spec = spec.model_copy(
+                    update={
+                        "metadata": {
+                            **spec.metadata,
+                            "generation_mode": "fallback",
+                            "fallback_reason": str(exc),
+                        }
+                    }
+                )
         else:
             spec = self._generate_fallback(state)
+            spec = spec.model_copy(update={"metadata": {**spec.metadata, "generation_mode": "stub_fallback"}})
+        spec = self._normalize_citation_refs(state, spec)
         return self._generate_image_assets(state, spec)
 
     def _generate_with_llm(self, state: ContentGenerationState) -> SocialPostSpec:
         llm_service = get_llm_service()
         outline_prompt = self._prompt("planner", "social_post_outline.md", state)
-        outline = cast(WechatBriefOutline, llm_service.generate_structured(outline_prompt, WechatBriefOutline))
+        try:
+            outline = cast(WechatBriefOutline, llm_service.generate_structured(outline_prompt, WechatBriefOutline))
+        except Exception as exc:
+            raise SocialPostGenerationError("social_post_outline_generation", exc) from exc
         draft_prompt = self._prompt("generator", "social_post_draft.md", state, outline=outline.model_dump(mode="json"))
-        draft = cast(WechatArticleDraft, llm_service.generate_structured(draft_prompt, WechatArticleDraft))
+        try:
+            draft = cast(WechatArticleDraft, llm_service.generate_structured(draft_prompt, WechatArticleDraft))
+        except Exception as exc:
+            raise SocialPostGenerationError("social_post_draft_generation", exc) from exc
         image_prompt = self._prompt("generator", "social_post_image.md", state, draft=draft.model_dump(mode="json"))
-        slot_plan = cast(ImageSlotPlan, llm_service.generate_structured(image_prompt, ImageSlotPlan))
+        try:
+            slot_plan = cast(ImageSlotPlan, llm_service.generate_structured(image_prompt, ImageSlotPlan))
+        except Exception as exc:
+            raise SocialPostGenerationError("social_post_image_plan_generation", exc) from exc
         return SocialPostSpec(
             id=f"social_{state.request_id}",
             title=draft.meta.title,
-            metadata={"language": (state.normalized_request or {}).get("language", "zh-CN")},
+            metadata={"language": (state.normalized_request or {}).get("language", "zh-CN"), "generation_mode": "llm"},
             outline=outline,
             draft=draft,
             image_slots=slot_plan.image_slots,
@@ -196,7 +225,7 @@ class SocialPostGenerator:
                 image = service.generate_image(
                     title=slot.caption,
                     description=slot.prompt_en,
-                    aspect_ratio=slot.aspect_ratio,
+                    aspect_ratio=self._provider_aspect_ratio(slot.aspect_ratio),
                     asset_id=f"social_{state.request_id}_{slot.slot_id}",
                 )
                 assets.append(_asset_from_image(slot.slot_id, image))
@@ -205,6 +234,29 @@ class SocialPostGenerator:
                 if slot.required:
                     break
         return spec.model_copy(update={"image_assets": assets})
+
+    def _normalize_citation_refs(self, state: ContentGenerationState, spec: SocialPostSpec) -> SocialPostSpec:
+        refs = self._citation_refs(state.planning_chunks or state.retrieved_chunks)
+        draft = spec.draft.model_copy(deep=True)
+        if not draft.headline.citation_refs:
+            draft.headline.citation_refs = refs
+        for section in draft.sections:
+            if not section.citation_refs:
+                section.citation_refs = refs
+            for block in section.blocks:
+                if hasattr(block, "citation_refs") and not block.citation_refs:
+                    block.citation_refs = refs
+        outline = spec.outline.model_copy(deep=True)
+        for section in outline.sections:
+            if not section.evidence_refs:
+                section.evidence_refs = refs
+        return spec.model_copy(update={"draft": draft, "outline": outline})
+
+    @staticmethod
+    def _provider_aspect_ratio(aspect_ratio: str) -> str:
+        if aspect_ratio == "2.35:1":
+            return "21:9"
+        return aspect_ratio
 
     @staticmethod
     def _citation_refs(chunks: list[RetrievedChunk]) -> list[CitationRef]:

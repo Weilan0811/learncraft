@@ -6,7 +6,7 @@
 content_request -> outline -> content_spec -> elements -> renderer -> exporter
 ```
 
-当前阶段已提供框架、统一 schema、接口、抽象服务、stub workflow、Local 资源存储、基础导出链路，以及可配置的外部 provider service。默认运行仍使用 stub，避免开发和测试时误调用付费 API；切换到真实 provider 后，文本生成使用百炼兼容 OpenAI 接口，图片生成默认使用 APIMart GPT-Image-2，检索使用 `langchain_qdrant` 连接本地 Qdrant 数据目录。
+当前阶段已提供框架、统一 schema、接口、抽象服务、stub workflow、Local 资源存储、基础导出链路，以及可配置的外部 provider service。默认运行仍使用 stub，避免开发和测试时误调用付费 API；切换到真实 provider 后，文本生成使用百炼兼容 OpenAI 接口，图片生成默认使用 APIMart GPT-Image-2，检索调用外部知识库 HTTP API。
 
 ---
 ### Backend
@@ -27,32 +27,22 @@ CONTENT_GENERATOR_TEXT_MODEL=qwen3.5-flash
 CONTENT_GENERATOR_IMAGE_PROVIDER=apimart
 CONTENT_GENERATOR_IMAGE_MODEL=gpt-image-2
 CONTENT_GENERATOR_IMAGE_RESOLUTION=1k
-CONTENT_GENERATOR_EMBEDDING_PROVIDER=bailian
-CONTENT_GENERATOR_EMBEDDING_MODEL=text-embedding-v3
-CONTENT_GENERATOR_QDRANT_PATH=storage/qdrant_data
-CONTENT_GENERATOR_QDRANT_COLLECTION=default
+CONTENT_GENERATOR_KB_API_BASE_URL=
+CONTENT_GENERATOR_KB_API_KEY=
+CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K=5
 ```
 
 ---
-### 初始化本地 RAG 知识库
+### 检索服务配置
 
-真实检索依赖本地 Qdrant 数据目录，默认位置是 `storage/qdrant_data`。由于 `storage/` 不上传到仓库，首次切换到真实 provider 前，需要先用仓库中的原始 Markdown 资料临时建库：
-
-```powershell
-uv run python knowledge_base/build_default_qdrant.py --force
-```
-
-脚本默认读取 `knowledge_base/default/raw/*.md`，写入 `storage/qdrant_data` 下的 `default` collection。建库会调用百炼 embedding，所以 `.env` 至少需要包含：
+真实检索依赖外部知识库 HTTP API，需要配置以下环境变量：
 
 ```env
-CONTENT_GENERATOR_BAILIAN_API_KEY=your-bailian-api-key
-CONTENT_GENERATOR_EMBEDDING_PROVIDER=bailian
-CONTENT_GENERATOR_EMBEDDING_MODEL=text-embedding-v3
-CONTENT_GENERATOR_QDRANT_PATH=storage/qdrant_data
-CONTENT_GENERATOR_QDRANT_COLLECTION=default
+CONTENT_GENERATOR_KB_API_BASE_URL=https://your-kb-api.example.com
+CONTENT_GENERATOR_KB_API_KEY=your-api-key
+CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K=5
+CONTENT_GENERATOR_KB_MAX_CHARS_PER_ITEM=8000
 ```
-
-建库完成后，请求中可以传 `knowledge_base_ids: ["default"]`；如果不传，`QdrantRAGService` 会使用 `CONTENT_GENERATOR_QDRANT_COLLECTION` 指向的默认 collection。
 
 将 `CONTENT_GENERATOR_PROVIDER_MODE` 设置为 `real` 后，后端 service factory 会按 provider 配置创建真实服务。默认图片 provider 为 APIMart `gpt-image-2`，会轮询任务结果并把图片转存到 Local storage；百炼图片 provider 仍可通过 `CONTENT_GENERATOR_IMAGE_PROVIDER=bailian` 切换。当前 workflow 仍显式使用 stub 节点，真实 service 已就绪但尚未贯穿完整生成流程。
 
@@ -106,7 +96,7 @@ uv run pytest backend/tests
 `backend/tests/test_workflow_debug.py` 是手动真实生成调试测试，不属于默认稳定测试入口。运行前请确认：
 
 - `.env` 已配置真实 provider 所需 API key，并设置 `CONTENT_GENERATOR_PROVIDER_MODE=real`。
-- 已完成本地知识库构建，`storage/qdrant_data` 中存在 `default` collection。
+- 已配置外部知识库 API（`CONTENT_GENERATOR_KB_API_BASE_URL`）。
 - 真实图片生成可能产生外部 API 调用和费用。
 
 运行 lecture 全流程 debug：

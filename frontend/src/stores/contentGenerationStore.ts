@@ -27,8 +27,10 @@ interface ContentGenerationState {
   renderUnits: RenderUnitSnapshot[];
   exportResult?: ExportResult;
   loading: boolean;
+  previewLookupLoading: boolean;
   error?: string;
   submitTask: (request: ContentGenerationRequest) => Promise<void>;
+  loadPreviewByTaskId: (taskId: string) => Promise<void>;
   exportTask: (exportType: ExportType) => Promise<void>;
 }
 
@@ -59,6 +61,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
   streamEvents: [],
   renderUnits: [],
   loading: false,
+  previewLookupLoading: false,
   async submitTask(request) {
     set({
       loading: true,
@@ -105,6 +108,53 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       set({ preview, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unknown request error", loading: false });
+    }
+  },
+
+  async loadPreviewByTaskId(taskId) {
+    const normalizedTaskId = taskId.trim();
+    if (!normalizedTaskId) {
+      set({ error: "请输入 task_id 后再查询预览。" });
+      return;
+    }
+
+    set({
+      previewLookupLoading: true,
+      error: undefined,
+      task: undefined,
+      preview: undefined,
+      partialPreview: undefined,
+      streamEvents: [],
+      renderUnits: [],
+      exportResult: undefined
+    });
+
+    try {
+      const task = await getContentGenerationTask(normalizedTaskId);
+      const [eventsResult, unitsResult, previewResult] = await Promise.allSettled([
+        getContentGenerationEvents(normalizedTaskId),
+        getContentGenerationUnits(normalizedTaskId),
+        getContentGenerationPreview(normalizedTaskId)
+      ]);
+
+      if (previewResult.status === "fulfilled") {
+        set({ preview: previewResult.value, partialPreview: undefined });
+      } else {
+        const partialPreview = await getContentGenerationPartialPreview(normalizedTaskId);
+        set({ preview: undefined, partialPreview });
+      }
+
+      set({
+        task,
+        streamEvents: eventsResult.status === "fulfilled" ? eventsResult.value.events : [],
+        renderUnits: unitsResult.status === "fulfilled" ? unitsResult.value.units : [],
+        previewLookupLoading: false
+      });
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : "Unknown preview lookup error",
+        previewLookupLoading: false
+      });
     }
   },
   async exportTask(exportType) {

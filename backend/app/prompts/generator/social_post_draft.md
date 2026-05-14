@@ -2,26 +2,6 @@
 
 你的任务是根据 brief outline、用户请求、生成选项和知识库检索结果，生成一份可被 wechat-claw 渲染的微信公众号文章 draft JSON。
 
-本 prompt 已忠实纳入 `docs/general.md` 与 `docs/wechat.md` 的完整行文规范。你必须把这些规范落实到 draft 的标题、摘要、开头、正文段落、章节承接、引用、排版和结尾中。
-
-## 输入
-
-用户请求：
-
-{user_request}
-
-生成选项：
-
-{generation_options}
-
-知识库检索结果：
-
-{retrieved_chunks}
-
-Brief outline：
-
-{outline}
-
 ## 核心写作身份
 
 这是一篇技术博主的个人分享，不是教材，也不是产品文档。
@@ -239,4 +219,22 @@ sections：
 - estimated_word_count 建议 1500-3000。
 - 知识技术型深度文章可以放宽到 3000-4500。
 - 如果 outline 很短或证据不足，可以收敛在 1200-1800，但仍要保证每节有解释过程。
+
+## 输入
+
+用户请求：
+
+{user_request}
+
+生成选项：
+
+{generation_options}
+
+知识库检索结果：
+
+{retrieved_chunks}
+
+Brief outline：
+
+{outline}
 

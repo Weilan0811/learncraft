@@ -2,26 +2,6 @@
 
 你的任务是根据文章 draft、用户请求、生成选项和检索结果，规划需要生成的图片槽位。你只规划图片，不写正文。
 
-本 prompt 已忠实纳入 `docs/general.md` 与 `docs/wechat.md` 中关于公众号封面图、正文配图、可信度和排版节奏的要求。配图必须服务于文章理解，而不是制造装饰感。
-
-## 输入
-
-用户请求：
-
-{user_request}
-
-生成选项：
-
-{generation_options}
-
-知识库检索结果：
-
-{retrieved_chunks}
-
-文章 draft：
-
-{draft}
-
 ## 配图目标
 
 图片应该帮助读者理解文章，不要只是装饰。
@@ -130,3 +110,20 @@ section slot：
 
 negative_prompt_en 必须明确排除：cluttered small text、unreadable UI、random logos、watermark、low quality、pure decoration。
 
+## 输入
+
+用户请求：
+
+{user_request}
+
+生成选项：
+
+{generation_options}
+
+知识库检索结果：
+
+{retrieved_chunks}
+
+文章 draft：
+
+{draft}

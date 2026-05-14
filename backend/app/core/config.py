@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     db_database: str = Field(default="future_learning", validation_alias=AliasChoices("DB_DATABASE", "CONTENT_GENERATOR_DB_DATABASE"))
     db_log_echo: bool = Field(default=False, validation_alias=AliasChoices("DB_LOG_ECHO", "CONTENT_GENERATOR_DB_LOG_ECHO"))
     log_root: str = Field(default="storage/logs", validation_alias=AliasChoices("LOG_ROOT", "CONTENT_GENERATOR_LOG_ROOT"))
+    debug_root: str = Field(default="storage/debug_workflow", validation_alias=AliasChoices("DEBUG_ROOT", "CONTENT_GENERATOR_DEBUG_ROOT"))
 
     provider_mode: Literal["stub", "real"] = "stub"
 
@@ -28,8 +29,6 @@ class Settings(BaseSettings):
     image_provider: str = "apimart"
     image_model: str = "gpt-image-2"
     image_resolution: Literal["1k", "2k", "4k"] = "1k"
-    embedding_provider: str = "bailian"
-    embedding_model: str = "text-embedding-v3"
 
     apimart_api_key: str | None = None
     apimart_base_url: str = "https://api.apimart.ai/v1"
@@ -42,10 +41,11 @@ class Settings(BaseSettings):
     apimart_image_poll_interval_seconds: float = 2.0
     apimart_image_poll_timeout_seconds: float = 180.0
 
-    qdrant_path: str = "storage/qdrant_data"
-    qdrant_collection: str = "default"
-    retrieval_top_k: int = 5
-    max_retrieval_chars: int = 6000
+    kb_api_base_url: str = ""
+    kb_api_key: str | None = None
+    kb_retrieval_top_k: int = 5
+    kb_max_chars_per_item: int = 8000
+    kb_request_timeout_seconds: float = 120.0
 
     model_config = SettingsConfigDict(env_prefix="CONTENT_GENERATOR_", env_file=".env")
 

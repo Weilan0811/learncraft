@@ -75,7 +75,7 @@ class BailianLLMService:
         try:
             return self._parse_content(repaired, schema)
         except (json.JSONDecodeError, ValidationError, TypeError) as exc:
-            raise LLMGenerationError("LLM response failed schema validation after repair.") from exc
+            raise LLMGenerationError(f"LLM response failed schema validation after repair for {schema.__name__}: {_format_parse_error(exc)}") from exc
 
     def _chat_with_schema(self, prompt: str, schema: type[BaseModel]) -> str:
         payload = {
@@ -113,7 +113,8 @@ class BailianLLMService:
                 if attempt >= self.max_retries:
                     break
                 time.sleep(min(2**attempt, 5))
-        raise LLMGenerationError("LLM request failed after retries.") from last_error
+        detail = f"{type(last_error).__name__}: {last_error}" if last_error else "unknown error"
+        raise LLMGenerationError(f"LLM request failed after retries: {detail}") from last_error
 
     def _headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
@@ -138,6 +139,12 @@ class BailianLLMService:
             if cleaned.startswith("json"):
                 cleaned = cleaned[4:].strip()
         return schema.model_validate(json.loads(cleaned))
+
+
+def _format_parse_error(exc: Exception) -> str:
+    if isinstance(exc, ValidationError):
+        return json.dumps(exc.errors(), ensure_ascii=False)
+    return f"{type(exc).__name__}: {exc}"
 
 
 def get_llm_service(settings: Settings | None = None) -> LLMService:
