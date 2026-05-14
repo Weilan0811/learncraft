@@ -29,11 +29,19 @@ class Settings(BaseSettings):
     image_provider: str = "apimart"
     image_model: str = "gpt-image-2"
     image_resolution: Literal["1k", "2k", "4k"] = "1k"
+    tts_provider: str = "bailian"
+    tts_model: str = "qwen3-tts-instruct-flash"
+    tts_person1_voice: str = "Ethan"
+    tts_person2_voice: str = "Cherry"
+    tts_output_format: str = "mp3"
+    podcast_segment_max_retries: int = 1
+    podcast_segment_retry_delay_seconds: float = 10.0
 
     apimart_api_key: str | None = None
     apimart_base_url: str = "https://api.apimart.ai/v1"
     bailian_api_key: str | None = None
     bailian_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    bailian_tts_base_url: str = "https://dashscope.aliyuncs.com"
 
     request_timeout_seconds: float = 60.0
     max_retries: int = 2

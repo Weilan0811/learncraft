@@ -21,8 +21,9 @@ from app.schemas.render.slide import (
     SlideRenderModel,
 )
 from app.schemas.render.social_post import SocialPostExportFile, SocialPostPreviewAsset, SocialPostRenderModel
+from app.schemas.render.podcast import PodcastAudioSegment, PodcastExportFile, PodcastRenderModel
 
-RenderModel = LectureRenderModel | SlideRenderModel | SocialPostRenderModel
+RenderModel = LectureRenderModel | SlideRenderModel | SocialPostRenderModel | PodcastRenderModel
 
 __all__ = [
     "RenderBlock",
@@ -50,5 +51,8 @@ __all__ = [
     "SocialPostExportFile",
     "SocialPostPreviewAsset",
     "SocialPostRenderModel",
+    "PodcastAudioSegment",
+    "PodcastExportFile",
+    "PodcastRenderModel",
     "RenderModel",
 ]

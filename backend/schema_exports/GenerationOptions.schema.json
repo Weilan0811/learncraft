@@ -126,6 +126,11 @@
       "title": "Citation Policy",
       "type": "string"
     },
+    "allow_fallback": {
+      "default": false,
+      "title": "Allow Fallback",
+      "type": "boolean"
+    },
     "slide_theme": {
       "anyOf": [
         {

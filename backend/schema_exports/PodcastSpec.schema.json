@@ -1,0 +1,258 @@
+{
+  "$defs": {
+    "PodcastSegmentSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "segment_id": {
+          "title": "Segment Id",
+          "type": "string"
+        },
+        "order": {
+          "title": "Order",
+          "type": "integer"
+        },
+        "speaker": {
+          "enum": [
+            "Person1",
+            "Person2"
+          ],
+          "title": "Speaker",
+          "type": "string"
+        },
+        "voice": {
+          "enum": [
+            "Ethan",
+            "Cherry"
+          ],
+          "title": "Voice",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "ssml_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ssml Text"
+        },
+        "citation_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Citation Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "segment_id",
+        "order",
+        "speaker",
+        "voice",
+        "text"
+      ],
+      "title": "PodcastSegmentSpec",
+      "type": "object"
+    },
+    "PodcastValidationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        }
+      },
+      "required": [
+        "severity",
+        "path",
+        "message"
+      ],
+      "title": "PodcastValidationIssue",
+      "type": "object"
+    },
+    "PodcastValidationReport": {
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/PodcastValidationIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "title": "PodcastValidationReport",
+      "type": "object"
+    },
+    "PodcastVoiceConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "person1_voice": {
+          "const": "Ethan",
+          "default": "Ethan",
+          "title": "Person1 Voice",
+          "type": "string"
+        },
+        "person2_voice": {
+          "const": "Cherry",
+          "default": "Cherry",
+          "title": "Person2 Voice",
+          "type": "string"
+        },
+        "model": {
+          "default": "qwen3-tts-instruct-flash",
+          "title": "Model",
+          "type": "string"
+        }
+      },
+      "title": "PodcastVoiceConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "version": {
+      "default": "content.spec/v1",
+      "title": "Version",
+      "type": "string"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "type": {
+      "const": "podcast_script",
+      "default": "podcast_script",
+      "title": "Type",
+      "type": "string"
+    },
+    "content_type": {
+      "const": "podcast_script",
+      "default": "podcast_script",
+      "title": "Content Type",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "podcast_name": {
+      "title": "Podcast Name",
+      "type": "string"
+    },
+    "podcast_tagline": {
+      "title": "Podcast Tagline",
+      "type": "string"
+    },
+    "output_language": {
+      "default": "zh-CN",
+      "title": "Output Language",
+      "type": "string"
+    },
+    "roles_person1": {
+      "default": "引导型主持人，负责推进结构、总结节点、照顾听众",
+      "title": "Roles Person1",
+      "type": "string"
+    },
+    "roles_person2": {
+      "default": "分析型搭档，负责提出洞察、追问、补充或温和挑战",
+      "title": "Roles Person2",
+      "type": "string"
+    },
+    "conversation_style": {
+      "default": "自然、专业、有节奏感的中文双人播客",
+      "title": "Conversation Style",
+      "type": "string"
+    },
+    "dialogue_structure": {
+      "default": "开场、主题展开、观点追问、关键 takeaway、自然结尾",
+      "title": "Dialogue Structure",
+      "type": "string"
+    },
+    "engagement_techniques": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Engagement Techniques",
+      "type": "array"
+    },
+    "voice_config": {
+      "$ref": "#/$defs/PodcastVoiceConfig"
+    },
+    "raw_dialogue": {
+      "title": "Raw Dialogue",
+      "type": "string"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/PodcastSegmentSpec"
+      },
+      "title": "Segments",
+      "type": "array"
+    },
+    "validation_report": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PodcastValidationReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "podcast_name",
+    "podcast_tagline",
+    "raw_dialogue"
+  ],
+  "title": "PodcastSpec",
+  "type": "object"
+}

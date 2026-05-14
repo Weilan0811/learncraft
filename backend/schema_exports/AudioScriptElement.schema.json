@@ -1,0 +1,118 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "audio_script",
+      "default": "audio_script",
+      "title": "Type",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "status": {
+      "default": "completed",
+      "enum": [
+        "pending",
+        "generating",
+        "completed",
+        "failed",
+        "skipped"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "source_unit_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Unit Id"
+    },
+    "source_outline_unit_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Outline Unit Id"
+    },
+    "source_chunk_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Chunk Ids",
+      "type": "array"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "generation_info": {
+      "additionalProperties": true,
+      "title": "Generation Info",
+      "type": "object"
+    },
+    "speaker": {
+      "enum": [
+        "Person1",
+        "Person2"
+      ],
+      "title": "Speaker",
+      "type": "string"
+    },
+    "voice": {
+      "enum": [
+        "Ethan",
+        "Cherry"
+      ],
+      "title": "Voice",
+      "type": "string"
+    },
+    "text": {
+      "title": "Text",
+      "type": "string"
+    },
+    "ssml_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ssml Text"
+    },
+    "order": {
+      "title": "Order",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "speaker",
+    "voice",
+    "text",
+    "order"
+  ],
+  "title": "AudioScriptElement",
+  "type": "object"
+}

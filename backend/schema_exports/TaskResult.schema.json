@@ -10,7 +10,8 @@
             "image_assets",
             "pptx",
             "markdown",
-            "html"
+            "html",
+            "audio"
           ],
           "title": "Type",
           "type": "string"

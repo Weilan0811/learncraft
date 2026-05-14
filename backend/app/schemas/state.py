@@ -60,6 +60,7 @@ class TaskStreamEvent(SchemaModel):
         "unit_spec_ready",
         "element_ready",
         "unit_render_ready",
+        "audio_segment_ready",
         "direct_spec_ready",
         "direct_render_ready",
         "task_completed",

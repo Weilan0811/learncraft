@@ -18,6 +18,11 @@ const defaultsByType: Record<MvpContentType, { topic: string; prompt: string; sy
     topic: "AI Agent 工作流的设计与实践",
     prompt: "围绕给定主题生成一篇适合微信公众号发布的知识技术型推文，要求结构清晰、有问题链、有判断，并适合手机端阅读。",
     systemPrompt: "内容准确、表达自然、结构清晰，适合微信公众号读者阅读。"
+  },
+  podcast_script: {
+    topic: "AI Agent 工作流的设计与实践",
+    prompt: "根据给定内容生成一段适合中文 TTS 播放的双人播客对话，要求 Person1/Person2 自然来回交流，并保留清晰观点推进。",
+    systemPrompt: "内容准确、表达自然、节奏适合收听。"
   }
 };
 
@@ -43,10 +48,10 @@ export function ContentGenerationForm() {
       generation_options: {
         language: "zh-CN",
         difficulty: "introductory",
-        style: contentType === "social_post" ? "wechat_technical_article" : "educational",
-        include_images: includeImages,
-        include_charts: contentType === "social_post" ? false : includeCharts,
-        include_mindmap: contentType === "social_post" ? false : includeMindmap,
+        style: contentType === "social_post" ? "wechat_technical_article" : contentType === "podcast_script" ? "chinese_podcast_dialogue" : "educational",
+        include_images: contentType === "podcast_script" ? false : includeImages,
+        include_charts: contentType === "social_post" || contentType === "podcast_script" ? false : includeCharts,
+        include_mindmap: contentType === "social_post" || contentType === "podcast_script" ? false : includeMindmap,
         output_depth: "standard",
         citation_policy: "light",
         speaker_notes: contentType === "slide_deck"
@@ -59,13 +64,16 @@ export function ContentGenerationForm() {
     setContentType(nextType);
     setTopic(defaultsByType[nextType].topic);
     setUserPrompt(defaultsByType[nextType].prompt);
-    if (nextType === "social_post") {
+    if (nextType === "social_post" || nextType === "podcast_script") {
+      if (nextType === "podcast_script") {
+        setIncludeImages(false);
+      }
       setIncludeCharts(false);
       setIncludeMindmap(false);
     }
   }
 
-  const visualOptionsDisabled = contentType === "social_post";
+  const visualOptionsDisabled = contentType === "social_post" || contentType === "podcast_script";
 
   return (
     <form className="generation-form" onSubmit={handleSubmit}>
@@ -75,6 +83,7 @@ export function ContentGenerationForm() {
           <option value="lecture">讲义</option>
           <option value="slide_deck">Slide Deck</option>
           <option value="social_post">Social Post</option>
+          <option value="podcast_script">Podcast</option>
         </select>
       </label>
 

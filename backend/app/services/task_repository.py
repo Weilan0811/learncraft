@@ -156,8 +156,10 @@ class SQLModelTaskRepository:
 def collect_asset_ids_from_state(state: ContentGenerationState) -> list[str]:
     ids: list[str] = []
     for element in state.elements:
-        if element.type == "image":
+        if element.type in {"image", "audio_file"}:
             ids.append(element.id)
+    if state.render_model and getattr(state.render_model, "audio_assets", None):
+        ids.extend([element.id for element in state.render_model.audio_assets])
     return sorted(set(ids))
 
 

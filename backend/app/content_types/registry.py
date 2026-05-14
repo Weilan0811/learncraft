@@ -1,5 +1,6 @@
 from app.content_types.base import ContentTypeProfile
 from app.content_types.lecture import build_lecture_profile
+from app.content_types.podcast import build_podcast_profile
 from app.content_types.slide_deck import build_slide_deck_profile
 from app.content_types.social_post import build_social_post_profile
 from app.schemas.base import ContentType
@@ -9,6 +10,7 @@ CONTENT_TYPE_PROFILES: dict[str, ContentTypeProfile] = {
     "lecture": build_lecture_profile(),
     "slide_deck": build_slide_deck_profile(),
     "social_post": build_social_post_profile(),
+    "podcast_script": build_podcast_profile(),
 }
 
 

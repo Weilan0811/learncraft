@@ -170,6 +170,7 @@ h1 {
 .lecture-renderer,
 .slide-renderer,
 .social-post-renderer,
+.podcast-renderer,
 .export-actions {
   border: 1px solid #dbe2ef;
   border-radius: 8px;
@@ -495,6 +496,94 @@ figcaption {
   color: #1d4ed8;
 }
 
+.podcast-renderer {
+  display: grid;
+  gap: 18px;
+}
+
+.podcast-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.podcast-header h2 {
+  margin-bottom: 8px;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.podcast-header p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.voice-map {
+  display: grid;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.voice-map span,
+.segment-meta span {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #1e3a8a;
+  background: #eff6ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.podcast-player,
+.podcast-segments {
+  display: grid;
+  gap: 12px;
+}
+
+.podcast-player h3,
+.podcast-segments h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.podcast-player audio,
+.podcast-segment audio {
+  width: 100%;
+}
+
+.podcast-segment {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.segment-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.segment-meta strong {
+  color: #172033;
+}
+
+.podcast-segment p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.7;
+}
+
+.manifest-link {
+  color: #1d4ed8;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     padding: 16px;
@@ -505,6 +594,10 @@ figcaption {
   }
 
   .social-post-header {
+    display: grid;
+  }
+
+  .podcast-header {
     display: grid;
   }
 }

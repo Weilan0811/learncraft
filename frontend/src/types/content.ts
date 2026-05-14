@@ -10,7 +10,7 @@ export type ContentType =
 // TODO(schema-sync): Generate these types from backend JSON Schema/OpenAPI once
 // schema automation is added, instead of maintaining frontend mirrors by hand.
 
-export type MvpContentType = "lecture" | "slide_deck" | "social_post";
+export type MvpContentType = "lecture" | "slide_deck" | "social_post" | "podcast_script";
 
 export type ElementType =
   | "text"
@@ -19,9 +19,11 @@ export type ElementType =
   | "mindmap"
   | "table"
   | "quiz"
-  | "citation";
+  | "citation"
+  | "audio_script"
+  | "audio_file";
 
-export type ExportType = "pdf" | "slide_json" | "image_assets" | "pptx" | "markdown" | "html";
+export type ExportType = "pdf" | "slide_json" | "image_assets" | "pptx" | "markdown" | "html" | "audio";
 
 export type Difficulty = "introductory" | "intermediate" | "advanced";
 export type OutputDepth = "brief" | "standard" | "detailed";

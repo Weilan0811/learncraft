@@ -1,4 +1,5 @@
 import { LectureRenderer } from "../components/renderers/LectureRenderer";
+import { PodcastRenderer } from "../components/renderers/PodcastRenderer";
 import { SlideDeckPreview } from "../components/renderers/SlideRenderer/SlideDeckPreview";
 import { SocialPostPreviewRenderer } from "../components/renderers/SocialPostRenderer";
 import { useContentGenerationStore } from "../stores/contentGenerationStore";
@@ -23,6 +24,10 @@ export function ContentPreviewPage() {
 
   if (activePreview.render_model.render_type === "social_post") {
     return <SocialPostPreviewRenderer model={activePreview.render_model} />;
+  }
+
+  if (activePreview.render_model.render_type === "podcast_script") {
+    return <PodcastRenderer model={activePreview.render_model} />;
   }
 
   return <LectureRenderer model={activePreview.render_model} />;

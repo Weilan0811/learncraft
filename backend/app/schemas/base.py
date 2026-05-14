@@ -32,7 +32,7 @@ ElementType = Literal[
     "project_task",
 ]
 
-ExportType = Literal["pdf", "slide_json", "image_assets", "pptx", "markdown", "html"]
+ExportType = Literal["pdf", "slide_json", "image_assets", "pptx", "markdown", "html", "audio"]
 # TODO(export-extension): Enable only formats with concrete exporter
 # implementations in production request validation.
 

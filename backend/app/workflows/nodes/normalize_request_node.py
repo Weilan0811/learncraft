@@ -25,6 +25,7 @@ def normalize_request(state: ContentGenerationState) -> dict[str, object]:
         "include_mindmap": bool(options.get("include_mindmap", False)) if isinstance(options, dict) else False,
         "image_style": options.get("image_style") if isinstance(options, dict) else None,
         "citation_policy": str(options.get("citation_policy", "light")) if isinstance(options, dict) else "light",
+        "allow_fallback": bool(options.get("allow_fallback", False)) if isinstance(options, dict) else False,
         "slide_theme": options.get("slide_theme") if isinstance(options, dict) else None,
         "speaker_notes": bool(options.get("speaker_notes", True)) if isinstance(options, dict) else True,
     }
