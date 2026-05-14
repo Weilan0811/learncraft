@@ -145,8 +145,9 @@ GET /api/content-generation/tasks/{task_id}/events
 | `unit_spec_ready` | 单元 spec 生成完成。 |
 | `element_ready` | 图片或 mindmap 元素生成完成。 |
 | `unit_render_ready` | 单元渲染片段生成完成。 |
-| `direct_spec_ready` | direct 内容 spec 生成完成，当前用于 `social_post`。 |
-| `direct_render_ready` | direct 内容渲染完成，当前用于 `social_post`。 |
+| `direct_spec_ready` | direct 内容 spec 生成完成，当前用于 `social_post` 和 `podcast_script`。 |
+| `audio_segment_ready` | 播客分段音频生成完成，payload 包含 segment id、speaker、voice、audio URL、状态和 retry count。 |
+| `direct_render_ready` | direct 内容渲染完成，当前用于 `social_post` 和 `podcast_script`。 |
 | `task_completed` | 任务完成。 |
 | `task_failed` | 任务失败。 |
 
@@ -176,6 +177,7 @@ GET /api/content-generation/tasks/{task_id}/preview
 | `lecture` | `LectureRenderModel` |
 | `slide_deck` | `SlideRenderModel`，页面结构为 `scenekit.slide/v1` |
 | `social_post` | `SocialPostRenderModel`，包含 HTML、article JSON、preview assets |
+| `podcast_script` | `PodcastRenderModel`，包含脚本、分段音频、audio manifest 和完整音频 |
 
 ### 2.5 获取局部预览
 
@@ -258,8 +260,10 @@ POST /api/content-generation/tasks/{task_id}/export
 | `slide_deck` | `image_assets` | 打包任务中生成的图片资源。 |
 | `social_post` | `html` | 导出微信公众号文章 HTML，同时生成 article JSON asset。 |
 | `social_post` | `image_assets` | 打包推文图片资源。 |
+| `podcast_script` | `markdown` | 导出播客脚本文本。 |
+| `podcast_script` | `audio` | 导出完整音频；如果完整音频不存在则回退 audio manifest。 |
 
-注意：`pptx`、`markdown` 等类型在 schema 或 profile 中已有预留，当前 exporter router 尚未形成完整生产契约。前端联调时优先使用上表中的组合。
+注意：`pptx` 等类型在 schema 或 profile 中已有预留，当前 exporter router 尚未形成完整生产契约。前端联调时优先使用上表中的组合。
 
 ## 3. 资源接口
 
@@ -285,7 +289,7 @@ GET /api/assets/{asset_id}/download
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `content_type` | string | 内容类型。当前运行支持 `lecture`、`slide_deck`、`social_post`。 |
+| `content_type` | string | 内容类型。当前运行支持 `lecture`、`slide_deck`、`social_post`、`podcast_script`。 |
 | `topic` | string | 生成主题。 |
 | `user_prompt` | string | 用户原始生成要求。 |
 | `system_prompt` | string / null | 可选系统约束。 |

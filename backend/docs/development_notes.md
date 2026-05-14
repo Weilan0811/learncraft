@@ -27,6 +27,7 @@ stub 模式下：
 CONTENT_GENERATOR_PROVIDER_MODE=real
 CONTENT_GENERATOR_BAILIAN_API_KEY=...
 CONTENT_GENERATOR_BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+CONTENT_GENERATOR_BAILIAN_TTS_BASE_URL=https://dashscope.aliyuncs.com
 CONTENT_GENERATOR_APIMART_API_KEY=...
 CONTENT_GENERATOR_APIMART_BASE_URL=https://api.apimart.ai/v1
 CONTENT_GENERATOR_KB_API_BASE_URL=...
@@ -43,6 +44,14 @@ CONTENT_GENERATOR_KB_API_KEY=...
 | `CONTENT_GENERATOR_IMAGE_PROVIDER` | 图片 provider，当前默认 `apimart`。 |
 | `CONTENT_GENERATOR_IMAGE_MODEL` | 图片模型名称。 |
 | `CONTENT_GENERATOR_IMAGE_RESOLUTION` | 图片分辨率，`1k` / `2k` / `4k`。 |
+| `CONTENT_GENERATOR_TTS_PROVIDER` | TTS provider，当前默认 `bailian`。 |
+| `CONTENT_GENERATOR_TTS_MODEL` | TTS 模型名称，当前默认 `qwen3-tts-instruct-flash`。 |
+| `CONTENT_GENERATOR_TTS_PERSON1_VOICE` | 播客 `Person1` 音色，当前固定为 `Ethan`。 |
+| `CONTENT_GENERATOR_TTS_PERSON2_VOICE` | 播客 `Person2` 音色，当前固定为 `Cherry`。 |
+| `CONTENT_GENERATOR_TTS_OUTPUT_FORMAT` | TTS 输出格式，默认 `mp3`。 |
+| `CONTENT_GENERATOR_BAILIAN_TTS_BASE_URL` | 百炼 TTS DashScope base URL。 |
+| `CONTENT_GENERATOR_PODCAST_SEGMENT_MAX_RETRIES` | 播客单段 TTS 失败后的重试次数。 |
+| `CONTENT_GENERATOR_PODCAST_SEGMENT_RETRY_DELAY_SECONDS` | 播客单段 TTS retry 前等待秒数。 |
 | `CONTENT_GENERATOR_REQUEST_TIMEOUT_SECONDS` | provider 请求超时。 |
 | `CONTENT_GENERATOR_MAX_RETRIES` | provider 重试次数。 |
 | `CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K` | 知识库检索 top_k。 |
@@ -144,6 +153,9 @@ pytest tests/test_unit_streaming.py -q
 # social_post schema / prompt / renderer / validator
 pytest tests/test_social_post_schema.py tests/test_social_post_prompts.py tests/test_social_post_renderer.py tests/test_social_post_validator.py -q
 
+# podcast schema / prompt / renderer / validator / TTS
+pytest tests/test_tts_service.py tests/test_podcast_renderer.py tests/test_podcast_schema.py tests/test_podcast_validator.py tests/test_podcast_prompts.py tests/test_podcast_parser.py -q
+
 # 调试 slide workflow，打印节点日志
 pytest tests/test_workflow_debug.py::test_slides -q -s -p no:cacheprovider
 ```
@@ -215,6 +227,7 @@ ContentSpec -> RenderModel
 4. renderer 输出必须符合 `app/schemas/render/` 中的 typed schema。
 5. slide renderer 输出必须符合前端 `scenekit.slide/v1` 契约。
 6. social_post renderer 输出必须包含 HTML、article JSON 和 preview assets。
+7. podcast renderer 输出必须包含分段音频、audio manifest 和完整音频 URL。
 
 ## 10. Exporter 开发约定
 
@@ -239,6 +252,7 @@ RenderModel -> downloadable asset
 | `lecture` | `pdf`、`image_assets` |
 | `slide_deck` | `slide_json`、`image_assets` |
 | `social_post` | `html`、`image_assets` |
+| `podcast_script` | `markdown`、`audio` |
 
 ## 11. 前后端联调注意事项
 
@@ -356,4 +370,5 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 4. 将 social_post reviewer / repair 流程接入 direct workflow。
 5. 增加真实 KB 检索的端到端测试。
 6. 将 provider 错误、retry、token usage 进一步结构化。
-7. 完善前端类型自动生成和 schema drift 检测。
+7. 增加 podcast 真实 TTS 任务的慢任务回归测试。
+8. 完善前端类型自动生成和 schema drift 检测。

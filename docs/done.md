@@ -213,6 +213,64 @@ retrieve_for_planning
 - 这些提示属于发布前 warning，不影响本地 HTML preview。
 - 暂不处理微信素材上传、`thumb_media_id` 回填和正文图片 CDN URL 回填。
 
+### 第五阶段：接入 podcast
+
+已完成 `podcast_script` 内容类型接入，复用 direct workflow 生成中文双人播客脚本和音频。
+
+- 内容类型命名沿用 `podcast_script`。
+- 新增 podcast 规格 schema：
+  - `PodcastVoiceConfig`
+  - `PodcastSegmentSpec`
+  - `PodcastDialogueDraft`
+  - `PodcastSpec`
+  - `PodcastValidationReport`
+- 新增 podcast render schema：
+  - `PodcastAudioSegment`
+  - `PodcastExportFile`
+  - `PodcastRenderModel`
+- 新增 audio element schema：
+  - `AudioScriptElement`
+  - `AudioFileElement`
+- 新增 `PodcastProfile`，并注册到 content type registry。
+- 扩展 `ContentType`、`ElementType`、`ExportType`、`ContentSpec` union、`RenderModel` union 和 schema export。
+- 新增 `backend/app/prompts/generator/podcast_script.md`，按 `docs/output.txt` 约束生成结构化播客脚本。
+- 新增 `PodcastGenerator`：
+  - real provider 模式下调用结构化 LLM 生成 `PodcastDialogueDraft`。
+  - stub 模式下生成可用于本地开发和测试的 fallback 对话。
+  - 支持解析 `<Person1>...</Person1>` / `<Person2>...</Person2>` 轮次。
+  - 支持解析 HTML escaped speaker tag 和 `Person1:` / `Person2：` 形式。
+  - 生成后规范化首段开场，保证符合“欢迎来到 {podcast_name} —— {podcast_tagline}。”要求。
+  - real provider 失败默认不静默 fallback，只有 `generation_options.allow_fallback=true` 时允许 fallback。
+- 新增 `PodcastValidator`：
+  - 校验 speaker tag 只能使用 `Person1` / `Person2`。
+  - 校验开场、双人覆盖、轮次数、温和质疑或补充、voice mapping。
+  - 拦截 `<emphasis>`、`<say-as>`、Amazon / Alexa 专属标签。
+  - final validation 要求每个 segment audio generated、manifest 存在、完整音频存在。
+- 新增 `TTSService`：
+  - stub 模式保存本地占位音频。
+  - real 模式接入阿里云百炼 `qwen3-tts-instruct-flash`。
+  - 固定映射 `Person1 -> Ethan`、`Person2 -> Cherry`。
+  - 使用 DashScope 多模态生成接口获取音频 URL，再下载音频 bytes 并保存到 storage。
+  - TTS 配置加入 `Settings` 和 `.env.example`。
+- 新增 `PodcastRenderer`：
+  - 顺序调用 TTS 生成分段音频。
+  - 生成 `audio_segment_ready` 事件。
+  - 保存 `audio_manifest.json`。
+  - 生成单个完整音频文件并回填 `final_audio_url`。
+  - 单段 TTS 失败后按配置重试，默认重试 1 次。
+  - 每次 segment retry 前默认等待 10 秒，降低平台限流导致连续失败的概率。
+- 新增 `AudioAssemblerService`：
+  - 支持 WAV 分段按音频参数拼接。
+  - 对其他统一格式音频提供保守字节拼接兜底，并在 metadata 标记 assembly mode。
+- 新增 `AudioExporter`：
+  - 优先导出 `final_audio_url`。
+  - 如果完整音频不存在，则回退到 `audio_manifest_url`。
+- 泛化 direct workflow 节点：
+  - `generate_direct_content`
+  - `validate_direct_content`
+  - `render_direct_content`
+- 前端已支持 `podcast_script` 任务创建、轮询、脚本预览、完整音频播放器、分段音频播放器和导出入口。
+
 ## 已验证内容
 
 已运行以下验证：
@@ -249,27 +307,23 @@ uv run pytest backend/tests/test_social_post_prompts.py -q
 
 失败项为既有 prompt 文案测试：`test_social_post_prompts_embed_wechat_writing_standards` 要求 prompt 文件包含 `docs/general.md` 字样，当前 prompt 文件未包含该文本。
 
+```bash
+uv run pytest backend/tests/test_tts_service.py backend/tests/test_podcast_renderer.py backend/tests/test_podcast_schema.py backend/tests/test_podcast_validator.py backend/tests/test_podcast_api.py backend/tests/test_podcast_prompts.py backend/tests/test_podcast_parser.py backend/tests/test_provider_services.py backend/tests/test_content_type_profiles.py -q
+```
+
+结果：
+
+```text
+37 passed, 1 warning
+```
+
+```bash
+.\node_modules\.bin\tsc.cmd -b
+```
+
+结果：通过。
+
 ## 待办事项
-
-### 第五阶段：接入 podcast
-
-播客仍未接入。
-
-- 建议确认内容类型命名：`podcast` 还是沿用 `podcast_script`。
-- 新增 `PodcastSpec`
-- 新增 `PodcastSegmentSpec`
-- 新增 `PodcastRenderModel`
-- 新增 `AudioScriptElement`
-- 新增 `AudioFileElement`
-- 新增 `TTSService`
-- 新增 `PodcastProfile`
-- 新增 `PodcastGenerator`
-- 新增 `PodcastValidator`
-- 新增 `PodcastRenderer`
-- 新增 workflow 节点：
-  - `tts_node.py`
-  - `audio_assembler_node.py`
-- 支持文本脚本片段流式输出，再支持音频片段输出。
 
 ### 第六阶段：强化教材和 PPT
 
@@ -297,7 +351,7 @@ PPT 增强待办：
 
 - 将 generator / validator / renderer strategy 进一步放入 profile。
 - 将 lecture / slide_deck 的剩余分支继续向 profile 或 strategy 下沉。
-- 为未来 `podcast`、`video_script` 避免继续污染主图。
+- 为未来 `video_script` 等 direct content type 避免继续污染主图。
 
 ### 事件流能力增强
 
