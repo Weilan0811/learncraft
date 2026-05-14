@@ -44,6 +44,8 @@ def test_settings_load_provider_defaults_and_env_overrides(monkeypatch: pytest.M
     monkeypatch.setenv("CONTENT_GENERATOR_APIMART_API_KEY", "apimart-test")
     monkeypatch.setenv("CONTENT_GENERATOR_TEXT_MODEL", "custom-chat")
     monkeypatch.setenv("CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K", "3")
+    monkeypatch.setenv("CONTENT_GENERATOR_KB_API_BASE_URL", "")
+    monkeypatch.delenv("KB_API_BASE_URL", raising=False)
 
     settings = Settings()
 

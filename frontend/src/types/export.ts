@@ -1,9 +1,10 @@
 import type { ExportType, MvpContentType } from "./content";
 import type { LectureRenderModel } from "./lecture";
+import type { PodcastRenderModel } from "./podcast";
 import type { SlideRenderModel } from "./slide";
 import type { SocialPostRenderModel } from "./socialPost";
 
-export type RenderModel = LectureRenderModel | SlideRenderModel | SocialPostRenderModel;
+export type RenderModel = LectureRenderModel | SlideRenderModel | SocialPostRenderModel | PodcastRenderModel;
 
 export interface ExportFile {
   type: ExportType;
@@ -54,6 +55,7 @@ export interface TaskStreamEvent {
     | "unit_spec_ready"
     | "element_ready"
     | "unit_render_ready"
+    | "audio_segment_ready"
     | "direct_spec_ready"
     | "direct_render_ready"
     | "task_completed"

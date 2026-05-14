@@ -24,8 +24,16 @@ from app.schemas.specs.social_post import (
     WechatOutlineSection,
     WechatSection,
 )
+from app.schemas.specs.podcast import (
+    PodcastDialogueDraft,
+    PodcastSegmentSpec,
+    PodcastSpec,
+    PodcastValidationIssue,
+    PodcastValidationReport,
+    PodcastVoiceConfig,
+)
 
-ContentSpec = LectureSpec | SlideDeckSpec | SocialPostSpec
+ContentSpec = LectureSpec | SlideDeckSpec | SocialPostSpec | PodcastSpec
 # TODO(content-types): Extend this union when enabling social_post,
 # podcast_script, video_script, project_task, quiz_pack, or learning_path.
 
@@ -64,5 +72,11 @@ __all__ = [
     "SocialPostValidationIssue",
     "SocialPostValidationReport",
     "SocialPostSpec",
+    "PodcastDialogueDraft",
+    "PodcastSegmentSpec",
+    "PodcastSpec",
+    "PodcastValidationIssue",
+    "PodcastValidationReport",
+    "PodcastVoiceConfig",
     "ContentSpec",
 ]

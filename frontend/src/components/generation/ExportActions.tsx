@@ -11,6 +11,10 @@ function defaultExportType(contentType?: MvpContentType): ExportType {
     return "html";
   }
 
+  if (contentType === "podcast_script") {
+    return "markdown";
+  }
+
   return "pdf";
 }
 
@@ -25,6 +29,14 @@ function exportLabel(exportType: ExportType) {
 
   if (exportType === "image_assets") {
     return "Image Assets";
+  }
+
+  if (exportType === "markdown") {
+    return "Markdown";
+  }
+
+  if (exportType === "audio") {
+    return "Audio";
   }
 
   return "PDF";
@@ -45,12 +57,21 @@ export function ExportActions() {
   const exportName = exportLabel(exportType);
   const canExport = Boolean(task && task.status === "completed" && !loading);
   const jsonUrl = articleJsonUrl(exportResult);
+  const podcastExportTypes: ExportType[] = ["markdown", "audio"];
 
   return (
     <section className="export-actions">
-      <button type="button" disabled={!canExport} onClick={() => exportTask(exportType)}>
-        Export {exportName}
-      </button>
+      {task?.content_type === "podcast_script" ? (
+        podcastExportTypes.map((type) => (
+          <button type="button" disabled={!canExport} onClick={() => exportTask(type)} key={type}>
+            Export {exportLabel(type)}
+          </button>
+        ))
+      ) : (
+        <button type="button" disabled={!canExport} onClick={() => exportTask(exportType)}>
+          Export {exportName}
+        </button>
+      )}
       {exportResult?.status === "failed" ? (
         <p className="error-text">Export failed: {String(exportResult.metadata?.error ?? "unsupported")}</p>
       ) : null}

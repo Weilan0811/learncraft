@@ -6,12 +6,12 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
 from app.schemas.assets import AssetResponse
-from app.schemas.elements import ChartElement, ImageElement, MindmapElement, TextElement
+from app.schemas.elements import AudioFileElement, AudioScriptElement, ChartElement, ImageElement, MindmapElement, TextElement
 from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.outline import Outline, OutlineSection, OutlineUnit
-from app.schemas.render import LectureRenderModel, RenderBlock, SlidePageModel, SlideRenderModel, SocialPostRenderModel
+from app.schemas.render import LectureRenderModel, PodcastRenderModel, RenderBlock, SlidePageModel, SlideRenderModel, SocialPostRenderModel
 from app.schemas.request import ContentGenerationRequest, GenerationOptions
-from app.schemas.specs import ElementReferenceBlock, LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage, SocialPostSpec, TextBlock
+from app.schemas.specs import ElementReferenceBlock, LectureSection, LectureSpec, PodcastSpec, SlideDeckSpec, SlideSpecPage, SocialPostSpec, TextBlock
 from app.schemas.task import PartialPreviewResponse, PreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse
 
 
@@ -26,17 +26,21 @@ SCHEMA_MODELS = [
     SlideDeckSpec,
     SlideSpecPage,
     SocialPostSpec,
+    PodcastSpec,
     TextBlock,
     ElementReferenceBlock,
     ImageElement,
     MindmapElement,
     TextElement,
     ChartElement,
+    AudioScriptElement,
+    AudioFileElement,
     LectureRenderModel,
     RenderBlock,
     SlidePageModel,
     SlideRenderModel,
     SocialPostRenderModel,
+    PodcastRenderModel,
     AssetResponse,
     ExportRequest,
     ExportResult,

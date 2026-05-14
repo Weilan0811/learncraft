@@ -1,5 +1,3 @@
-import pytest
-
 from app.content_types.registry import get_content_type_profile
 from app.schemas.base import ContentType
 from app.schemas.request import ContentGenerationRequest
@@ -25,6 +23,12 @@ def test_content_type_profiles_register_current_generation_types() -> None:
     assert social_post.requires_outline is False
     assert social_post.generation_mode == "direct"
     assert social_post.exporter_types == ("html", "image_assets")
+    podcast = get_content_type_profile("podcast_script")
+    assert podcast.content_type == "podcast_script"
+    assert podcast.unit_type == "podcast"
+    assert podcast.requires_outline is False
+    assert podcast.generation_mode == "direct"
+    assert podcast.exporter_types == ("markdown", "audio")
 
 
 def test_request_schema_accepts_social_post_as_registered_generation_type() -> None:
@@ -38,7 +42,7 @@ def test_request_schema_accepts_social_post_as_registered_generation_type() -> N
     assert get_content_type_profile(request.content_type).content_type == "social_post"
 
 
-def test_request_schema_accepts_future_type_but_registry_rejects_unsupported_generation_type() -> None:
+def test_request_schema_accepts_podcast_as_registered_generation_type() -> None:
     request = ContentGenerationRequest(
         content_type="podcast_script",
         topic="AI basics",
@@ -46,9 +50,7 @@ def test_request_schema_accepts_future_type_but_registry_rejects_unsupported_gen
     )
 
     assert request.content_type == "podcast_script"
-
-    with pytest.raises(ValueError, match="Unsupported content type"):
-        get_content_type_profile(request.content_type)
+    assert get_content_type_profile(request.content_type).content_type == "podcast_script"
 
 
 def test_content_type_literal_exports_future_types_for_schema_boundaries() -> None:
