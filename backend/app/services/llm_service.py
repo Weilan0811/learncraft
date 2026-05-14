@@ -17,17 +17,12 @@ class LLMGenerationError(RuntimeError):
 
 class LLMService(Protocol):
     def generate_structured(self, prompt: str, schema: type[StructuredModel]) -> StructuredModel:
-        """Generate a schema-validated response from an LLM.
-
-        TODO: Connect to the configured model provider with retries and tracing.
-        """
+        """Generate a schema-validated response from an LLM."""
         ...
 
 
 class StubLLMService:
     def generate_structured(self, prompt: str, schema: type[StructuredModel]) -> StructuredModel:
-        # TODO(MVP-llm): Implement structured output calls, retries, timeout
-        # handling, token accounting, and schema repair before returning data.
         raise NotImplementedError("LLM generation is intentionally stubbed in the skeleton.")
 
 
@@ -51,24 +46,38 @@ class BailianLLMService:
         self.client = client or httpx.Client(timeout=timeout_seconds)
         self.last_usage: dict[str, object] = {}
 
+    def chat(self, user_message: str, system_prompt: str = "") -> str:
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt or "You are a helpful assistant."},
+                {"role": "user", "content": user_message},
+            ],
+            "response_format": {"type": "json_object"},
+        }
+        return self._extract_content(self._post_with_retries(f"{self.base_url}/chat/completions", payload, self._headers()))
+
     def generate_structured(self, prompt: str, schema: type[StructuredModel]) -> StructuredModel:
-        content = self._chat(prompt=prompt, schema=schema)
+        content = self._chat_with_schema(prompt=prompt, schema=schema)
         try:
             return self._parse_content(content, schema)
-        except (json.JSONDecodeError, ValidationError, TypeError) as exc:
-            repair_prompt = (
-                "请把下面内容修复为严格 JSON，且必须符合给定 JSON Schema。"
-                "不要输出 Markdown，不要输出解释，只输出 JSON。\n\n"
-                f"JSON Schema:\n{json.dumps(schema.model_json_schema(), ensure_ascii=False)}\n\n"
-                f"原始内容:\n{content}"
-            )
-            repaired = self._chat(prompt=repair_prompt, schema=schema)
-            try:
-                return self._parse_content(repaired, schema)
-            except (json.JSONDecodeError, ValidationError, TypeError) as repair_exc:
-                raise LLMGenerationError("LLM response failed schema validation after repair.") from repair_exc
+        except (json.JSONDecodeError, ValidationError, TypeError):
+            return self._repair_and_parse(content, schema)
 
-    def _chat(self, prompt: str, schema: type[BaseModel]) -> str:
+    def _repair_and_parse(self, content: str, schema: type[StructuredModel]) -> StructuredModel:
+        repair_prompt = (
+            "请把下面内容修复为严格 JSON，且必须符合给定 JSON Schema。"
+            "不要输出 Markdown，不要输出解释，只输出 JSON。\n\n"
+            f"JSON Schema:\n{json.dumps(schema.model_json_schema(), ensure_ascii=False)}\n\n"
+            f"原始内容:\n{content}"
+        )
+        repaired = self._chat_with_schema(prompt=repair_prompt, schema=schema)
+        try:
+            return self._parse_content(repaired, schema)
+        except (json.JSONDecodeError, ValidationError, TypeError) as exc:
+            raise LLMGenerationError("LLM response failed schema validation after repair.") from exc
+
+    def _chat_with_schema(self, prompt: str, schema: type[BaseModel]) -> str:
         payload = {
             "model": self.model,
             "messages": [
@@ -90,8 +99,26 @@ class BailianLLMService:
             ],
             "response_format": {"type": "json_object"},
         }
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
-        response = self._post_with_retries(f"{self.base_url}/chat/completions", payload, headers)
+        return self._extract_content(self._post_with_retries(f"{self.base_url}/chat/completions", payload, self._headers()))
+
+    def _post_with_retries(self, url: str, payload: dict[str, object], headers: dict[str, str]) -> object:
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = self.client.post(url, json=payload, headers=headers, timeout=self.timeout_seconds)
+                response.raise_for_status()
+                return response
+            except Exception as exc:
+                last_error = exc
+                if attempt >= self.max_retries:
+                    break
+                time.sleep(min(2**attempt, 5))
+        raise LLMGenerationError("LLM request failed after retries.") from last_error
+
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+
+    def _extract_content(self, response: object) -> str:
         data = response.json()
         self.last_usage = data.get("usage", {}) if isinstance(data, dict) else {}
         choices = data.get("choices", []) if isinstance(data, dict) else []
@@ -102,20 +129,6 @@ class BailianLLMService:
         if not isinstance(content, str):
             raise LLMGenerationError("LLM response did not include message content.")
         return content
-
-    def _post_with_retries(self, url: str, payload: dict[str, object], headers: dict[str, str]) -> object:
-        last_error: Exception | None = None
-        for attempt in range(self.max_retries + 1):
-            try:
-                response = self.client.post(url, json=payload, headers=headers, timeout=self.timeout_seconds)
-                response.raise_for_status()
-                return response
-            except Exception as exc:  # httpx and fake clients use different exception types.
-                last_error = exc
-                if attempt >= self.max_retries:
-                    break
-                time.sleep(min(2**attempt, 5))
-        raise LLMGenerationError("LLM request failed after retries.") from last_error
 
     @staticmethod
     def _parse_content(content: str, schema: type[StructuredModel]) -> StructuredModel:

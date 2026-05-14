@@ -9,8 +9,15 @@ import {
   getContentGenerationTask,
   getContentGenerationUnits
 } from "../api/contentGenerationApi";
-import type { ContentGenerationRequest } from "../types/content";
-import type { ExportResult, PartialPreviewResponse, PreviewResponse, RenderUnitSnapshot, TaskResult, TaskStreamEvent } from "../types/export";
+import type { ContentGenerationRequest, ExportType } from "../types/content";
+import type {
+  ExportResult,
+  PartialPreviewResponse,
+  PreviewResponse,
+  RenderUnitSnapshot,
+  TaskResult,
+  TaskStreamEvent
+} from "../types/export";
 
 interface ContentGenerationState {
   task?: TaskResult;
@@ -22,7 +29,7 @@ interface ContentGenerationState {
   loading: boolean;
   error?: string;
   submitTask: (request: ContentGenerationRequest) => Promise<void>;
-  exportTask: (exportType: "pdf" | "slide_json") => Promise<void>;
+  exportTask: (exportType: ExportType) => Promise<void>;
 }
 
 const POLL_INTERVAL_MS = 1200;
@@ -53,7 +60,15 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
   renderUnits: [],
   loading: false,
   async submitTask(request) {
-    set({ loading: true, error: undefined, preview: undefined, partialPreview: undefined, streamEvents: [], renderUnits: [], exportResult: undefined });
+    set({
+      loading: true,
+      error: undefined,
+      preview: undefined,
+      partialPreview: undefined,
+      streamEvents: [],
+      renderUnits: [],
+      exportResult: undefined
+    });
     try {
       const createdTask = await createContentGenerationTask(request);
       set({ task: createdTask });
@@ -82,7 +97,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       set({ task: completedTask });
 
       if (completedTask.status === "failed") {
-        throw new Error(completedTask.errors.join("；") || "内容生成任务执行失败。");
+        throw new Error(completedTask.errors.join("; ") || "内容生成任务执行失败。");
       }
 
       const preview = await getContentGenerationPreview(completedTask.task_id);

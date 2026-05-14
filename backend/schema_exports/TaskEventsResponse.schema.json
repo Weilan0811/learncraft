@@ -19,6 +19,8 @@
             "unit_spec_ready",
             "element_ready",
             "unit_render_ready",
+            "direct_spec_ready",
+            "direct_render_ready",
             "task_completed",
             "task_failed"
           ],

@@ -9,6 +9,7 @@ from app.services.task_repository import SQLModelTaskRepository
 from app.schemas.state import ContentGenerationState
 from app.workflows.content_generation_graph import run_content_generation, stream_content_generation
 from app.workflows.routers import get_exporter
+from app.content_types.registry import get_content_type_profile
 
 
 render_model_adapter = TypeAdapter(RenderModel)
@@ -97,6 +98,14 @@ class PersistentTaskService:
         task = self.repository.get_task(task_id)
         if task is None or task.render_model is None:
             return None
+        profile = get_content_type_profile(task.content_type)
+        if request.export_type not in profile.exporter_types:
+            return ExportResult(
+                export_type=request.export_type,
+                file_url="",
+                status="failed",
+                metadata={"error": f"Unsupported export type for {task.content_type}: {request.export_type}", "task_id": task_id},
+            )
         try:
             exporter = get_exporter(request.export_type)
         except ValueError:

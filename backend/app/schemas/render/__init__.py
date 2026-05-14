@@ -20,8 +20,9 @@ from app.schemas.render.slide import (
     SlidePageModel,
     SlideRenderModel,
 )
+from app.schemas.render.social_post import SocialPostExportFile, SocialPostPreviewAsset, SocialPostRenderModel
 
-RenderModel = LectureRenderModel | SlideRenderModel
+RenderModel = LectureRenderModel | SlideRenderModel | SocialPostRenderModel
 
 __all__ = [
     "RenderBlock",
@@ -46,5 +47,8 @@ __all__ = [
     "KitSlidePage",
     "SlidePageModel",
     "SlideRenderModel",
+    "SocialPostExportFile",
+    "SocialPostPreviewAsset",
+    "SocialPostRenderModel",
     "RenderModel",
 ]

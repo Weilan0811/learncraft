@@ -101,3 +101,52 @@ def test_asset_endpoint_returns_local_asset_metadata() -> None:
     assert asset["asset_id"] == asset_id
     assert asset["kind"] == "image"
     assert asset["url"] == f"/api/assets/{asset_id}/download"
+
+
+def test_social_post_task_lifecycle_exposes_html_preview_and_export() -> None:
+    create_response = client.post(
+        "/api/content-generation/tasks",
+        json={
+            "content_type": "social_post",
+            "topic": "Direct workflow for social posts",
+            "user_prompt": "Generate a WeChat article about direct workflow architecture.",
+            "knowledge_base_ids": ["kb_ai_basic"],
+            "generation_options": {
+                "language": "zh-CN",
+                "include_images": True,
+                "citation_policy": "light",
+            },
+        },
+    )
+
+    assert create_response.status_code == 201
+    task_id = create_response.json()["task_id"]
+    task = wait_for_completed_task(task_id)
+    assert task["content_type"] == "social_post"
+    assert task["preview_url"] == f"/api/content-generation/tasks/{task_id}/preview"
+
+    preview_response = client.get(f"/api/content-generation/tasks/{task_id}/preview")
+    assert preview_response.status_code == 200
+    preview = preview_response.json()
+    assert preview["content_type"] == "social_post"
+    assert preview["render_model"]["render_type"] == "social_post"
+    assert preview["render_model"]["html"]
+    assert preview["render_model"]["article_json"]["template"]
+
+    export_response = client.post(
+        f"/api/content-generation/tasks/{task_id}/export",
+        json={"export_type": "html"},
+    )
+    assert export_response.status_code == 200
+    exported = export_response.json()
+    assert exported["export_type"] == "html"
+    assert exported["status"] == "success"
+
+    unsupported_response = client.post(
+        f"/api/content-generation/tasks/{task_id}/export",
+        json={"export_type": "slide_json"},
+    )
+    assert unsupported_response.status_code == 200
+    unsupported = unsupported_response.json()
+    assert unsupported["export_type"] == "slide_json"
+    assert unsupported["status"] == "failed"

@@ -5,7 +5,7 @@ from pydantic import Field
 from app.schemas.base import Metadata, SchemaModel
 
 
-AssetKind = Literal["image", "pdf", "slide_json", "image_assets"]
+AssetKind = Literal["image", "pdf", "slide_json", "image_assets", "html"]
 
 
 class AssetRecord(SchemaModel):

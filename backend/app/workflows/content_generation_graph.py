@@ -12,6 +12,13 @@ from app.workflows.nodes.helpers import build_progress
 from app.workflows.nodes.assembler_node import assemble_content_spec
 from app.workflows.nodes.element_flow_node import collect_unit_required_elements, dispatch_element_generation, dispatch_element_generation_node, merge_unit_elements
 from app.workflows.nodes.finalizer_node import fail_task, finalize_task
+from app.workflows.nodes.direct_content_node import (
+    generate_direct_content,
+    render_direct_content,
+    route_after_direct_validation,
+    validate_direct_content,
+)
+from app.workflows.nodes.generation_mode_node import route_generation_mode, route_generation_mode_choice
 from app.workflows.nodes.image_element_node import generate_image_element
 from app.workflows.nodes.mindmap_element_node import generate_mindmap_element
 from app.workflows.nodes.normalize_request_node import normalize_request
@@ -176,6 +183,10 @@ def build_content_generation_graph():
 
     workflow.add_node("normalize_request", normalize_request)
     workflow.add_node("retrieve_for_planning", retrieve_for_planning)
+    workflow.add_node("route_generation_mode", route_generation_mode)
+    workflow.add_node("generate_direct_content", generate_direct_content)
+    workflow.add_node("validate_direct_content", validate_direct_content)
+    workflow.add_node("render_direct_content", render_direct_content)
     workflow.add_node("plan_outline", plan_outline)
     workflow.add_node("validate_outline", validate_outline)
     workflow.add_node("route_content_type", route_content_type)
@@ -203,7 +214,19 @@ def build_content_generation_graph():
 
     workflow.add_edge(START, "normalize_request")
     workflow.add_edge("normalize_request", "retrieve_for_planning")
-    workflow.add_edge("retrieve_for_planning", "plan_outline")
+    workflow.add_edge("retrieve_for_planning", "route_generation_mode")
+    workflow.add_conditional_edges(
+        "route_generation_mode",
+        route_generation_mode_choice,
+        {"unit_loop": "plan_outline", "direct": "generate_direct_content"},
+    )
+    workflow.add_edge("generate_direct_content", "validate_direct_content")
+    workflow.add_conditional_edges(
+        "validate_direct_content",
+        route_after_direct_validation,
+        {"pass": "render_direct_content", "fail": "fail_task"},
+    )
+    workflow.add_edge("render_direct_content", "finalize_task")
     workflow.add_edge("plan_outline", "validate_outline")
     workflow.add_conditional_edges(
         "validate_outline",

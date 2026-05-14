@@ -1,0 +1,1270 @@
+{
+  "$defs": {
+    "CardBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "card",
+          "default": "card",
+          "title": "Type",
+          "type": "string"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Number"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Body"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "style": {
+          "anyOf": [
+            {
+              "const": "highlight",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Style"
+        },
+        "citation_refs": {
+          "items": {
+            "$ref": "#/$defs/CitationRef"
+          },
+          "title": "Citation Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "body"
+      ],
+      "title": "CardBlock",
+      "type": "object"
+    },
+    "CitationRef": {
+      "additionalProperties": false,
+      "properties": {
+        "chunk_id": {
+          "title": "Chunk Id",
+          "type": "string"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Id"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "chunk_id"
+      ],
+      "title": "CitationRef",
+      "type": "object"
+    },
+    "ImageAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "slot_id": {
+          "title": "Slot Id",
+          "type": "string"
+        },
+        "status": {
+          "default": "planned",
+          "enum": [
+            "planned",
+            "generated",
+            "uploaded",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "local_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Local Path"
+        },
+        "public_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Public Url"
+        },
+        "wechat_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wechat Url"
+        },
+        "media_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Media Id"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Height"
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Message"
+        }
+      },
+      "required": [
+        "slot_id"
+      ],
+      "title": "ImageAsset",
+      "type": "object"
+    },
+    "ImageBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "image",
+          "default": "image",
+          "title": "Type",
+          "type": "string"
+        },
+        "slot_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slot Id"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "local_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Local Path"
+        },
+        "caption": {
+          "title": "Caption",
+          "type": "string"
+        },
+        "prompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt"
+        }
+      },
+      "required": [
+        "caption"
+      ],
+      "title": "ImageBlock",
+      "type": "object"
+    },
+    "ImageSlot": {
+      "additionalProperties": false,
+      "properties": {
+        "slot_id": {
+          "title": "Slot Id",
+          "type": "string"
+        },
+        "target": {
+          "enum": [
+            "meta.cover_image",
+            "headline.image",
+            "section.image",
+            "block.image"
+          ],
+          "title": "Target",
+          "type": "string"
+        },
+        "target_path": {
+          "title": "Target Path",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "aspect_ratio": {
+          "default": "16:9",
+          "enum": [
+            "2.35:1",
+            "16:9",
+            "4:3",
+            "1:1"
+          ],
+          "title": "Aspect Ratio",
+          "type": "string"
+        },
+        "caption": {
+          "title": "Caption",
+          "type": "string"
+        },
+        "visual_type": {
+          "default": "concept_diagram",
+          "enum": [
+            "cover",
+            "concept_diagram",
+            "workflow_diagram",
+            "architecture_diagram",
+            "timeline",
+            "comparison",
+            "editorial_illustration",
+            "screenshot_like"
+          ],
+          "title": "Visual Type",
+          "type": "string"
+        },
+        "purpose": {
+          "title": "Purpose",
+          "type": "string"
+        },
+        "context_summary": {
+          "title": "Context Summary",
+          "type": "string"
+        },
+        "prompt_en": {
+          "title": "Prompt En",
+          "type": "string"
+        },
+        "negative_prompt_en": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "No cluttered small text, no random logos, no watermark.",
+          "title": "Negative Prompt En"
+        }
+      },
+      "required": [
+        "slot_id",
+        "target",
+        "target_path",
+        "caption",
+        "purpose",
+        "context_summary",
+        "prompt_en"
+      ],
+      "title": "ImageSlot",
+      "type": "object"
+    },
+    "OpinionBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "opinion",
+          "default": "opinion",
+          "title": "Type",
+          "type": "string"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Number"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "body": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Body"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "citation_refs": {
+          "items": {
+            "$ref": "#/$defs/CitationRef"
+          },
+          "title": "Citation Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "body"
+      ],
+      "title": "OpinionBlock",
+      "type": "object"
+    },
+    "ParagraphBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "paragraph",
+          "default": "paragraph",
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "title": "Text"
+        },
+        "citation_refs": {
+          "items": {
+            "$ref": "#/$defs/CitationRef"
+          },
+          "title": "Citation Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "ParagraphBlock",
+      "type": "object"
+    },
+    "QuoteBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "quote",
+          "default": "quote",
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "attribution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attribution"
+        },
+        "citation_refs": {
+          "items": {
+            "$ref": "#/$defs/CitationRef"
+          },
+          "title": "Citation Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "QuoteBlock",
+      "type": "object"
+    },
+    "SocialPostValidationIssue": {
+      "additionalProperties": false,
+      "properties": {
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "suggestion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggestion"
+        }
+      },
+      "required": [
+        "severity",
+        "path",
+        "message"
+      ],
+      "title": "SocialPostValidationIssue",
+      "type": "object"
+    },
+    "SocialPostValidationReport": {
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "title": "Ok",
+          "type": "boolean"
+        },
+        "issues": {
+          "items": {
+            "$ref": "#/$defs/SocialPostValidationIssue"
+          },
+          "title": "Issues",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ok"
+      ],
+      "title": "SocialPostValidationReport",
+      "type": "object"
+    },
+    "TakeawaysBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "takeaways",
+          "default": "takeaways",
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "default": "Key takeaways",
+          "title": "Title",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 2,
+          "title": "Items",
+          "type": "array"
+        },
+        "citation_refs": {
+          "items": {
+            "$ref": "#/$defs/CitationRef"
+          },
+          "title": "Citation Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "title": "TakeawaysBlock",
+      "type": "object"
+    },
+    "WechatArticleDraft": {
+      "additionalProperties": false,
+      "properties": {
+        "template": {
+          "default": "deep-analysis",
+          "enum": [
+            "deep-analysis",
+            "industry-radar",
+            "studio-brief"
+          ],
+          "title": "Template",
+          "type": "string"
+        },
+        "meta": {
+          "$ref": "#/$defs/WechatMeta"
+        },
+        "headline": {
+          "$ref": "#/$defs/WechatHeadline"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/WechatSection"
+          },
+          "maxItems": 7,
+          "minItems": 3,
+          "title": "Sections",
+          "type": "array"
+        },
+        "conclusion": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conclusion"
+        },
+        "cta": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cta"
+        },
+        "estimated_word_count": {
+          "default": 1600,
+          "maximum": 5000,
+          "minimum": 800,
+          "title": "Estimated Word Count",
+          "type": "integer"
+        },
+        "writing_notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Writing Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "meta",
+        "headline",
+        "sections"
+      ],
+      "title": "WechatArticleDraft",
+      "type": "object"
+    },
+    "WechatBriefOutline": {
+      "additionalProperties": false,
+      "properties": {
+        "content_type": {
+          "const": "social_post",
+          "default": "social_post",
+          "title": "Content Type",
+          "type": "string"
+        },
+        "platform": {
+          "const": "wechat",
+          "default": "wechat",
+          "title": "Platform",
+          "type": "string"
+        },
+        "subtype": {
+          "const": "wechat_article",
+          "default": "wechat_article",
+          "title": "Subtype",
+          "type": "string"
+        },
+        "topic": {
+          "title": "Topic",
+          "type": "string"
+        },
+        "article_type": {
+          "default": "concept_explanation",
+          "enum": [
+            "concept_explanation",
+            "engineering_practice",
+            "project_story",
+            "paper_or_report_review",
+            "industry_observation",
+            "product_or_tool_analysis",
+            "news_analysis"
+          ],
+          "title": "Article Type",
+          "type": "string"
+        },
+        "target_audience": {
+          "default": "AI and software engineering readers",
+          "title": "Target Audience",
+          "type": "string"
+        },
+        "writing_angle": {
+          "title": "Writing Angle",
+          "type": "string"
+        },
+        "core_question": {
+          "title": "Core Question",
+          "type": "string"
+        },
+        "central_thesis": {
+          "title": "Central Thesis",
+          "type": "string"
+        },
+        "reader_question_chain": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reader Question Chain",
+          "type": "array"
+        },
+        "title_candidates": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Title Candidates",
+          "type": "array"
+        },
+        "recommended_template": {
+          "default": "deep-analysis",
+          "enum": [
+            "deep-analysis",
+            "industry-radar",
+            "studio-brief"
+          ],
+          "title": "Recommended Template",
+          "type": "string"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/WechatOutlineSection"
+          },
+          "maxItems": 7,
+          "minItems": 3,
+          "title": "Sections",
+          "type": "array"
+        },
+        "image_strategy": {
+          "default": "Cover plus one or two explanatory article images.",
+          "title": "Image Strategy",
+          "type": "string"
+        },
+        "risk_notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Risk Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "topic",
+        "writing_angle",
+        "core_question",
+        "central_thesis",
+        "sections"
+      ],
+      "title": "WechatBriefOutline",
+      "type": "object"
+    },
+    "WechatHeadline": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "body": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Body",
+          "type": "array"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WechatImageRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "citation_refs": {
+          "items": {
+            "$ref": "#/$defs/CitationRef"
+          },
+          "title": "Citation Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "body"
+      ],
+      "title": "WechatHeadline",
+      "type": "object"
+    },
+    "WechatImageRef": {
+      "additionalProperties": false,
+      "properties": {
+        "slot_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slot Id"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "local_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Local Path"
+        },
+        "caption": {
+          "default": "Image",
+          "title": "Caption",
+          "type": "string"
+        },
+        "prompt": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prompt"
+        }
+      },
+      "title": "WechatImageRef",
+      "type": "object"
+    },
+    "WechatMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 32,
+          "title": "Title",
+          "type": "string"
+        },
+        "digest": {
+          "maxLength": 128,
+          "title": "Digest",
+          "type": "string"
+        },
+        "subtitle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subtitle"
+        },
+        "author": {
+          "default": "FutureLearning",
+          "title": "Author",
+          "type": "string"
+        },
+        "date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Date"
+        },
+        "cover_image": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cover Image"
+        },
+        "thumb_media_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thumb Media Id"
+        },
+        "open_comment": {
+          "default": 1,
+          "title": "Open Comment",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "title",
+        "digest"
+      ],
+      "title": "WechatMeta",
+      "type": "object"
+    },
+    "WechatOutlineSection": {
+      "additionalProperties": false,
+      "properties": {
+        "section_id": {
+          "title": "Section Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "core_question": {
+          "title": "Core Question",
+          "type": "string"
+        },
+        "key_points": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Key Points",
+          "type": "array"
+        },
+        "evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/CitationRef"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "suggested_visual": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Suggested Visual"
+        }
+      },
+      "required": [
+        "section_id",
+        "title",
+        "core_question"
+      ],
+      "title": "WechatOutlineSection",
+      "type": "object"
+    },
+    "WechatSection": {
+      "additionalProperties": false,
+      "properties": {
+        "section_id": {
+          "title": "Section Id",
+          "type": "string"
+        },
+        "cn": {
+          "title": "Cn",
+          "type": "string"
+        },
+        "en": {
+          "default": "SECTION",
+          "title": "En",
+          "type": "string"
+        },
+        "intro": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Intro"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WechatImageRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "blocks": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ParagraphBlock"
+              },
+              {
+                "$ref": "#/$defs/QuoteBlock"
+              },
+              {
+                "$ref": "#/$defs/TakeawaysBlock"
+              },
+              {
+                "$ref": "#/$defs/CardBlock"
+              },
+              {
+                "$ref": "#/$defs/OpinionBlock"
+              },
+              {
+                "$ref": "#/$defs/ImageBlock"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Blocks",
+          "type": "array"
+        },
+        "citation_refs": {
+          "items": {
+            "$ref": "#/$defs/CitationRef"
+          },
+          "title": "Citation Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "section_id",
+        "cn",
+        "blocks"
+      ],
+      "title": "WechatSection",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "const": "social_post",
+      "default": "social_post",
+      "title": "Type",
+      "type": "string"
+    },
+    "version": {
+      "default": "content.spec/v1",
+      "title": "Version",
+      "type": "string"
+    },
+    "content_type": {
+      "const": "social_post",
+      "default": "social_post",
+      "title": "Content Type",
+      "type": "string"
+    },
+    "platform": {
+      "const": "wechat",
+      "default": "wechat",
+      "title": "Platform",
+      "type": "string"
+    },
+    "subtype": {
+      "const": "wechat_article",
+      "default": "wechat_article",
+      "title": "Subtype",
+      "type": "string"
+    },
+    "title": {
+      "title": "Title",
+      "type": "string"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "outline": {
+      "$ref": "#/$defs/WechatBriefOutline"
+    },
+    "draft": {
+      "$ref": "#/$defs/WechatArticleDraft"
+    },
+    "image_slots": {
+      "items": {
+        "$ref": "#/$defs/ImageSlot"
+      },
+      "title": "Image Slots",
+      "type": "array"
+    },
+    "image_assets": {
+      "items": {
+        "$ref": "#/$defs/ImageAsset"
+      },
+      "title": "Image Assets",
+      "type": "array"
+    },
+    "article_json": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Article Json"
+    },
+    "validation_report": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SocialPostValidationReport"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "outline",
+    "draft"
+  ],
+  "title": "SocialPostSpec",
+  "type": "object"
+}
