@@ -11,6 +11,7 @@
 | `lecture` | `unit_loop` | 生成讲义 / 阅读材料。 |
 | `slide_deck` | `unit_loop` | 生成课程 slides / PPT JSON。 |
 | `social_post` | `direct` | 生成微信公众号文章。 |
+| `podcast_script` | `direct` | 生成中文双人播客脚本和音频。 |
 
 核心目标：
 
@@ -18,8 +19,9 @@
 2. 内容类型通过 `ContentTypeProfile` 注册，不在 workflow 中硬编码扩展逻辑。
 3. `lecture`、`slide_deck` 支持按单元生成和逐单元预览。
 4. `social_post` 支持直接生成完整文章 spec、HTML 预览和 HTML 导出。
-5. 每个关键节点写入进度、事件、日志和可持久化状态。
-6. schema、validator、renderer、exporter 保持职责边界清晰。
+5. `podcast_script` 支持直接生成完整播客 spec、分段音频、完整音频和音频导出。
+6. 每个关键节点写入进度、事件、日志和可持久化状态。
+7. schema、validator、renderer、exporter 保持职责边界清晰。
 
 ## 2. 总体流程
 
@@ -74,6 +76,7 @@ app/content_types/
 lecture      -> unit_loop
 slide_deck   -> unit_loop
 social_post  -> direct
+podcast_script -> direct
 ```
 
 ## 4. unit_loop 生成路径
@@ -169,6 +172,7 @@ finalize_task
 当前适用内容类型：
 
 - `social_post`
+- `podcast_script`
 
 流程：
 
@@ -192,9 +196,11 @@ finalize_task
 
 | 节点 | 职责 |
 |---|---|
-| `generate_direct_content` | 调用 `SocialPostGenerator` 生成 `SocialPostSpec`，包括 outline、draft、image slots 和 image assets。 |
-| `validate_direct_content` | 调用 `SocialPostValidator` 校验文章结构、引用和图片绑定，生成 wechat-claw article JSON。 |
-| `render_direct_content` | 调用 `SocialPostRenderer` 输出 HTML、article JSON 和 preview assets。 |
+| `generate_direct_content` | 根据内容类型调用 direct generator。`social_post` 生成 `SocialPostSpec`，`podcast_script` 生成 `PodcastSpec`。 |
+| `validate_direct_content` | 根据内容类型调用 validator。`social_post` 校验文章结构、引用和图片绑定；`podcast_script` 校验说话人、开场、轮次、TTS 标签和 voice mapping。 |
+| `render_direct_content` | 根据内容类型调用 renderer。`social_post` 输出 HTML、article JSON 和 preview assets；`podcast_script` 输出分段音频、audio manifest 和完整音频。 |
+
+`podcast_script` 渲染时还会写入 `audio_segment_ready` 事件，payload 包含 segment id、speaker、voice、audio URL、状态和 retry count。
 
 ## 6. 状态模型
 
