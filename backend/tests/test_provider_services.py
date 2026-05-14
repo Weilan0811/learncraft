@@ -2,6 +2,7 @@ import base64
 from pathlib import Path
 from uuid import uuid4
 
+import httpx
 import pytest
 from pydantic import BaseModel
 
@@ -42,7 +43,7 @@ def test_settings_load_provider_defaults_and_env_overrides(monkeypatch: pytest.M
     monkeypatch.setenv("CONTENT_GENERATOR_PROVIDER_MODE", "stub")
     monkeypatch.setenv("CONTENT_GENERATOR_APIMART_API_KEY", "apimart-test")
     monkeypatch.setenv("CONTENT_GENERATOR_TEXT_MODEL", "custom-chat")
-    monkeypatch.setenv("CONTENT_GENERATOR_RETRIEVAL_TOP_K", "3")
+    monkeypatch.setenv("CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K", "3")
 
     settings = Settings()
 
@@ -52,13 +53,11 @@ def test_settings_load_provider_defaults_and_env_overrides(monkeypatch: pytest.M
     assert settings.image_provider == "apimart"
     assert settings.image_model == "gpt-image-2"
     assert settings.image_resolution == "1k"
-    assert settings.embedding_provider == "bailian"
-    assert settings.embedding_model == "text-embedding-v3"
     assert settings.apimart_api_key == "apimart-test"
     assert settings.apimart_base_url == "https://api.apimart.ai/v1"
     assert settings.bailian_base_url == "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    assert settings.qdrant_path == "storage/qdrant_data"
-    assert settings.retrieval_top_k == 3
+    assert settings.kb_api_base_url == ""
+    assert settings.kb_retrieval_top_k == 3
 
 
 def test_llm_service_parses_mocked_structured_json() -> None:
@@ -323,29 +322,31 @@ def test_image_service_factory_can_select_bailian_provider() -> None:
     assert isinstance(service, BailianImageGenerationService)
 
 
-def test_qdrant_rag_service_maps_dedupes_sorts_and_limits_chunks() -> None:
-    from app.services.rag_service import QdrantRAGService
+def test_external_kb_service_maps_api_response_to_chunks() -> None:
+    from app.services.rag_service import ExternalKBService
 
-    class FakeDoc:
-        def __init__(self, content: str, metadata: dict[str, object]) -> None:
-            self.page_content = content
-            self.metadata = metadata
+    class FakeClient:
+        def post(self, url: str, **kwargs: object) -> FakeResponse:
+            assert url.endswith("/v1/knowledge/retrieve")
+            body = kwargs["json"]
+            assert body["top_k"] == 3
+            assert "planning" in body["query"]
+            return FakeResponse(
+                {
+                    "ok": True,
+                    "items": [
+                        {"path": "overview.md", "title": "Overview", "text": "AI Agent overview content"},
+                        {"path": "sources/agent.md", "title": "Agent Deep Dive", "text": "Detailed agent content"},
+                    ],
+                }
+            )
 
-    class FakeVectorStore:
-        def similarity_search_with_score(self, query: str, k: int) -> list[tuple[FakeDoc, float]]:
-            assert "planning" in query
-            assert k == 5
-            return [
-                (FakeDoc("A" * 12, {"id": "chunk_a", "source_id": "doc_a", "source_title": "Doc A"}), 0.9),
-                (FakeDoc("B" * 20, {"id": "chunk_b", "source_id": "doc_b", "source_title": "Doc B"}), 0.7),
-                (FakeDoc("A" * 12, {"id": "chunk_a_dup", "source_id": "doc_a", "source_title": "Doc A"}), 0.95),
-            ]
-
-    service = QdrantRAGService(
-        vector_store_factory=lambda collection_name: FakeVectorStore(),
-        top_k=5,
-        max_chars=25,
-        default_collection="default",
+    service = ExternalKBService(
+        base_url="https://kb.example.test",
+        api_key="test-key",
+        top_k=3,
+        max_chars_per_item=8000,
+        client=FakeClient(),
     )
     request = ContentGenerationRequest(
         content_type="lecture",
@@ -356,18 +357,41 @@ def test_qdrant_rag_service_maps_dedupes_sorts_and_limits_chunks() -> None:
 
     chunks = service.retrieve(request, stage="planning")
 
-    assert [chunk.id for chunk in chunks] == ["chunk_a", "chunk_b"]
-    assert chunks[0].metadata["collection"] == "kb_ai"
-    assert chunks[1].metadata["stage"] == "planning"
+    assert len(chunks) == 2
+    assert chunks[0].id == "overview.md"
+    assert chunks[0].source_title == "Overview"
+    assert chunks[0].content == "AI Agent overview content"
+    assert chunks[0].metadata["stage"] == "planning"
+    assert chunks[1].source_id == "sources/agent.md"
 
 
-def test_qdrant_rag_service_returns_empty_when_collection_unavailable() -> None:
-    from app.services.rag_service import QdrantRAGService
+def test_external_kb_service_returns_empty_on_failure() -> None:
+    from app.services.rag_service import ExternalKBService
 
-    def unavailable(collection_name: str) -> object:
-        raise RuntimeError("missing")
+    class FakeClient:
+        def post(self, url: str, **kwargs: object) -> FakeResponse:
+            raise httpx.ConnectError("unreachable")
 
-    service = QdrantRAGService(vector_store_factory=unavailable)
+    service = ExternalKBService(
+        base_url="https://kb.example.test",
+        client=FakeClient(),
+    )
+    request = ContentGenerationRequest(content_type="lecture", topic="人工智能", user_prompt="生成讲义")
+
+    assert service.retrieve(request, stage="planning") == []
+
+
+def test_external_kb_service_returns_empty_when_api_reports_not_ok() -> None:
+    from app.services.rag_service import ExternalKBService
+
+    class FakeClient:
+        def post(self, url: str, **kwargs: object) -> FakeResponse:
+            return FakeResponse({"ok": False, "error": "internal error"})
+
+    service = ExternalKBService(
+        base_url="https://kb.example.test",
+        client=FakeClient(),
+    )
     request = ContentGenerationRequest(content_type="lecture", topic="人工智能", user_prompt="生成讲义")
 
     assert service.retrieve(request, stage="planning") == []

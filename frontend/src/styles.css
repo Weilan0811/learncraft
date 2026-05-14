@@ -508,3 +508,40 @@ figcaption {
     display: grid;
   }
 }
+
+.task-preview-lookup {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 20px;
+}
+
+.task-preview-lookup h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.task-preview-lookup p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.task-preview-lookup label {
+  display: grid;
+  gap: 8px;
+  color: #43516b;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.task-preview-lookup input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #172033;
+  background: #ffffff;
+}

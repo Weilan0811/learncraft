@@ -1,6 +1,7 @@
 import { ContentGenerationForm } from "../components/generation/ContentGenerationForm";
 import { ExportActions } from "../components/generation/ExportActions";
 import { GenerationProgress } from "../components/generation/GenerationProgress";
+import { TaskPreviewLookup } from "../components/generation/TaskPreviewLookup";
 import { ContentPreviewPage } from "./ContentPreviewPage";
 
 export function ContentGenerationPage() {
@@ -13,6 +14,7 @@ export function ContentGenerationPage() {
             <h1>内容生成组件</h1>
           </div>
           <ContentGenerationForm />
+          <TaskPreviewLookup />
         </div>
         <div className="panel preview-panel">
           <GenerationProgress />

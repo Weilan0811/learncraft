@@ -133,56 +133,123 @@ validate_unit -> render_unit -> publish_unit_render -> merge_unit_result
 - `frontend/src/components/generation/GenerationProgress.tsx` 增加已渲染 unit 数和最新事件展示。
 - `frontend/src/components/generation/ExportActions.tsx` 调整为任务完成后才允许导出。
 
+### 第四阶段：接入 social_post
+
+已完成 `social_post` 内容类型接入，用于验证 direct workflow。
+
+- 新增 social post 规格 schema：
+  - `WechatBriefOutline`
+  - `WechatArticleDraft`
+  - `ImageSlotPlan`
+  - `SocialPostSpec`
+  - `SocialPostValidationReport`
+- 新增 social post render schema：
+  - `SocialPostRenderModel`
+  - `SocialPostPreviewAsset`
+  - `SocialPostExportFile`
+- 新增 `SocialPostProfile`，并注册到 content type registry。
+- 新增 direct path workflow：
+
+```text
+retrieve_for_planning
+  -> route_generation_mode
+  -> generate_direct_content
+  -> validate_direct_content
+  -> render_direct_content
+  -> finalize_task
+```
+
+- `social_post` 已从 outline + unit loop 中独立出来，走单篇文章 direct workflow。
+- 新增 `SocialPostGenerator`：
+  - real provider 模式下按 outline、draft、image slot plan 三步结构化生成。
+  - stub 模式下生成可用于本地开发和测试的 fallback 文章。
+  - 对缺失的 `citation_refs` 做规范化补齐。
+  - 将微信封面推荐比例 `2.35:1` 映射为当前图片 provider 支持的 `21:9` 生成比例。
+- 新增 `SocialPostValidator`：
+  - 校验标题、摘要、section 数量、section 引用、图片 slot、图片 asset 绑定。
+  - final validation 不再重复合并 pre validation issue，避免前端重复展示同一错误。
+- 新增 `SocialPostRenderer`：
+  - 将内部 `SocialPostSpec` 转换为 wechat-claw article JSON。
+  - 渲染微信公众号 HTML 预览。
+  - 回填 cover、headline、section 图片。
+  - 输出 HTML 和 article JSON 文件。
+- 新增 HTML exporter 对 `social_post` 的支持。
+- 新增 image assets exporter 对任务图片资产的打包支持。
+- 前端已支持 `social_post` 任务创建、轮询、HTML preview 和导出入口。
+
+### 第四阶段补充：social_post 真实生成可观测性
+
+已针对 social post direct workflow 增强失败定位能力。
+
+- real provider 模式下，LLM 生成失败不再静默 fallback。
+- LLM 生成失败会暴露具体阶段：
+  - `social_post_outline_generation`
+  - `social_post_draft_generation`
+  - `social_post_image_plan_generation`
+- 如果需要 fallback，必须通过 `generation_options.allow_fallback=true` 显式允许。
+- fallback 产物会在 metadata 中记录：
+  - `generation_mode`
+  - `fallback_reason`
+- 新增 workflow debug artifact 输出：
+  - `storage/debug_workflow/{task_id}/trace.json`
+  - `storage/debug_workflow/{task_id}/steps/*.json`
+  - `storage/debug_workflow/{task_id}/final_state.json`
+  - `storage/debug_workflow/{task_id}/content_spec.json`
+  - `storage/debug_workflow/{task_id}/render_model.json`
+  - `storage/debug_workflow/{task_id}/elements.json`
+  - `storage/debug_workflow/{task_id}/generated_assets.json`
+- 普通任务日志会记录对应 step artifact 路径，便于从 JSONL 日志跳转到完整中间产物。
+- KB 检索为空或异常时会记录 `workflow_errors`，包含 query 摘要、状态、chunk 数和错误信息。
+- LLM schema repair 失败时会在错误信息中包含 schema 名和 validation errors。
+
+### 第四阶段当前边界：微信发布暂缓
+
+当前 social post 已支持本地预览和导出，但尚未接入微信公众号发布链路。
+
+- 本地预览使用 `/api/assets/{asset_id}/download` 图片地址。
+- wechat-claw 会提示：
+  - `meta.thumb_media_id is missing`
+  - content image URL does not look like WeChat CDN
+- 这些提示属于发布前 warning，不影响本地 HTML preview。
+- 暂不处理微信素材上传、`thumb_media_id` 回填和正文图片 CDN URL 回填。
+
 ## 已验证内容
 
 已运行以下验证：
 
 ```bash
-uv run pytest backend/tests -q
+uv run pytest backend/tests/test_workflow_logs.py backend/tests/test_social_post_prompts.py::test_social_post_real_mode_llm_failure_is_not_silent_fallback backend/tests/test_social_post_prompts.py::test_social_post_real_mode_generator_uses_structured_prompt_sequence backend/tests/test_social_post_prompts.py::test_social_post_real_mode_normalizes_missing_citations_and_provider_cover_ratio -q
 ```
 
 结果：
 
 ```text
-82 passed, 2 skipped, 1 warning
+6 passed, 1 warning
 ```
 
 ```bash
-npm run build
+uv run pytest backend/tests/test_workflow_logs.py backend/tests/test_social_post_validator.py backend/tests/test_social_post_renderer.py backend/tests/test_api.py::test_social_post_task_lifecycle_exposes_html_preview_and_export -q
 ```
 
-结果：构建通过。Vite 仍提示 chunk size 超过 500 kB，这是打包体积警告，不是构建失败。
-
-```bash
-uv run python backend/scripts/export_json_schema.py
-```
-
-结果：执行通过，并刷新 schema exports。
-
-## 待办事项
-
-### 第四阶段：接入 social_post
-
-建议下一步优先接入 `social_post`，用于验证 direct workflow。
-
-- 新增 `SocialPostSpec`
-- 新增 `SocialPostRenderModel`
-- 新增 `SocialPostProfile`
-- 新增 `SocialPostGenerator`
-- 新增 `SocialPostValidator`
-- 新增 `SocialPostRenderer`
-- 新增 direct path workflow：
+结果：
 
 ```text
-retrieve_for_planning
-  -> generate_social_post_spec
-  -> validate_social_post
-  -> generate_required_elements
-  -> render_social_post
-  -> finalize
+11 passed, 1 warning
 ```
 
-- 前端新增 social post 预览 renderer。
+```bash
+uv run pytest backend/tests/test_social_post_prompts.py -q
+```
+
+结果：
+
+```text
+4 passed, 1 failed
+```
+
+失败项为既有 prompt 文案测试：`test_social_post_prompts_embed_wechat_writing_standards` 要求 prompt 文件包含 `docs/general.md` 字样，当前 prompt 文件未包含该文本。
+
+## 待办事项
 
 ### 第五阶段：接入 podcast
 
@@ -226,13 +293,11 @@ PPT 增强待办：
 
 ### Workflow kernel 继续解耦
 
-当前主图仍然主要服务 outline + unit loop。后续应继续推进：
+当前主图已支持 unit path 和 direct path。后续应继续推进：
 
-- 新增 `route_generation_mode`。
-- 将 unit path 和 direct path 明确拆分。
 - 将 generator / validator / renderer strategy 进一步放入 profile。
 - 将 lecture / slide_deck 的剩余分支继续向 profile 或 strategy 下沉。
-- 为未来 `social_post`、`podcast`、`video_script` 避免继续污染主图。
+- 为未来 `podcast`、`video_script` 避免继续污染主图。
 
 ### 事件流能力增强
 
@@ -246,13 +311,24 @@ PPT 增强待办：
 
 ### 日志与可观测性增强
 
-当前已有基础结构化日志，但还可继续增强：
+当前已有结构化日志和 debug artifact，但还可继续增强：
 
 - 记录每个节点耗时。
 - 记录 LLM prompt 摘要、模型名、token usage。
 - 记录元素生成重试次数和 fallback 原因。
 - 增加日志下载接口。
 - 增加 task detail 页面中的日志查看面板。
+- 前端增加 debug artifact 链接或结构化日志查看入口。
+
+### 微信发布链路
+
+social post 当前只做到本地预览和导出，发布功能暂缓。
+
+- 接入微信素材上传。
+- cover 上传后回填 `meta.thumb_media_id`。
+- headline / section 图片上传后回填微信 CDN URL。
+- 增加 publish-ready validation。
+- 增加发布前检查和发布失败日志。
 
 ### 数据库与迁移
 
@@ -274,14 +350,16 @@ PPT 增强待办：
 
 ### 测试待办
 
+- 修复 `test_social_post_prompts_embed_wechat_writing_standards` 与当前 prompt 文案之间的不一致。
 - 为前端 store 增加测试框架和单元测试。
 - 为 partial preview UI 增加组件测试。
 - 为 API 增加 events 增量查询测试。
 - 为数据库迁移增加 MySQL 集成验证。
 - 增加真实 provider 模式下的慢任务流式输出测试。
+- 增加真实 social post provider 生成的慢任务回归测试。
 
 ## 当前注意事项
 
-- 当前工作区中 `docs/openmaic_slide_backend_modification_plan.md` 处于删除状态，该变化并非本轮阶段改造的核心内容，需要单独确认是否保留删除。
-- `docs/improve.md` 当前处于未跟踪状态，需要确认是否纳入版本管理。
-- 浏览器插件验证曾出现连接超时；已通过后端测试、前端 build 和接口测试覆盖主要功能。
+- 当前 social post 预览阶段仍会出现微信发布相关 warning，原因是尚未上传图片到微信素材库。
+- 当前 real provider 模式下默认不再静默 fallback；如需保留 fallback，需显式传入 `generation_options.allow_fallback=true`。
+- 当前 debug artifact 会写入 `storage/debug_workflow/{task_id}`，需要评估长期存储清理策略。

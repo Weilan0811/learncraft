@@ -2,22 +2,6 @@
 
 你的任务是根据用户请求、生成选项和知识库检索结果，生成一份用于撰写微信公众号文章的 brief outline。
 
-本 prompt 已忠实纳入 `docs/general.md` 与 `docs/wechat.md` 的写作规范。若下列要求与通用写作习惯冲突，以微信公众号平台规范优先。
-
-## 输入
-
-用户请求：
-
-{user_request}
-
-生成选项：
-
-{generation_options}
-
-知识库检索结果：
-
-{retrieved_chunks}
-
 ## 写作定位
 
 这是一篇微信公众号知识技术型长文，不是教材、产品文档、论文摘要、新闻通稿或营销软文。
@@ -120,3 +104,18 @@ image_strategy 要说明整体配图方案。知识技术型推文优先使用�
 - 工具截图风格示意图
 
 配图要承担解释功能，避免纯装饰性插图过多。
+
+## 输入
+
+用户请求：
+
+{user_request}
+
+生成选项：
+
+{generation_options}
+
+知识库检索结果：
+
+{retrieved_chunks}
+

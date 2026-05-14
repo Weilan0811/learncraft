@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from langgraph.graph import END, START, StateGraph
 
+from app.core.debug_artifacts import WorkflowDebugArtifacts
 from app.core.logging import append_workflow_log
 from app.core.task import TaskStatus
 from app.schemas.request import ContentGenerationRequest
@@ -83,6 +84,8 @@ def stream_content_generation(
         progress=build_progress(stage="running", current_node="run_content_generation"),
     )
     graph = build_content_generation_graph()
+    debug_artifacts = WorkflowDebugArtifacts(state.request_id)
+    debug_step_paths: dict[str, str] = {}
 
     current = state.model_dump(mode="python")
     current["stream_events"] = [
@@ -105,7 +108,14 @@ def stream_content_generation(
     )
     yield current
 
-    for event in graph.stream(state, stream_mode="values"):
+    for event_type, payload in graph.stream(state, stream_mode=["updates", "values"]):
+        if event_type == "updates":
+            for node_name, node_output in payload.items():
+                debug_step_paths[str(node_name)] = debug_artifacts.write_step(str(node_name), node_output)
+            continue
+        if event_type != "values":
+            continue
+        event = payload
         previous_logs = current.get("logs", [])
         previous_stream_events = current.get("stream_events", [])
         current.update(event)
@@ -120,11 +130,12 @@ def stream_content_generation(
                 stage=str(current.get("status", TaskStatus.running)),
                 current_node=current.get("current_node"),
             )
-        current = _append_stream_log(current)
+        current = _append_stream_log(current, debug_artifact_path=debug_step_paths.get(str(current.get("current_node"))))
+        debug_artifacts.write_state_artifacts(current)
         yield current
 
 
-def _append_stream_log(current: dict[str, object]) -> dict[str, object]:
+def _append_stream_log(current: dict[str, object], debug_artifact_path: str | None = None) -> dict[str, object]:
     node = current.get("current_node")
     status = current.get("status")
     status_value = getattr(status, "value", status)
@@ -142,6 +153,8 @@ def _append_stream_log(current: dict[str, object]) -> dict[str, object]:
             "status": str(status_value),
             "progress": current.get("progress") or {},
             "errors": current.get("errors") or [],
+            "workflow_errors": current.get("workflow_errors") or [],
+            **({"debug_artifact_path": debug_artifact_path} if debug_artifact_path else {}),
         },
     )
     if status_value in {TaskStatus.completed, TaskStatus.failed}:

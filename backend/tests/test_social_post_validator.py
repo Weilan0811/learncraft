@@ -1,6 +1,8 @@
 from app.generators.social_post_generator import SocialPostGenerator
+from app.renderers.social_post_renderer import to_wechat_claw_article
 from app.schemas.state import ContentGenerationState, RetrievedChunk
 from app.validators.social_post_validator import SocialPostValidator
+from app.workflows.nodes.direct_content_node import validate_direct_content
 
 
 def build_state() -> ContentGenerationState:
@@ -53,3 +55,14 @@ def test_social_post_validator_requires_generated_cover_asset_for_final_validati
 
     assert report.ok is False
     assert any("required image slot cover is missing a generated asset" == issue.message for issue in report.issues)
+
+
+def test_direct_content_validation_does_not_duplicate_pre_asset_errors() -> None:
+    spec = SocialPostGenerator().generate(build_state())
+    spec.draft.sections[0].citation_refs = []
+    spec = spec.model_copy(update={"article_json": to_wechat_claw_article(spec), "image_assets": []})
+    state = build_state().model_copy(update={"content_spec": spec})
+
+    result = validate_direct_content(state)
+
+    assert result["errors"].count("section must include citation_refs") == 1

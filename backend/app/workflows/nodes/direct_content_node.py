@@ -13,7 +13,19 @@ from app.workflows.nodes.helpers import build_progress, ensure_monotonic_progres
 def generate_direct_content(state: ContentGenerationState) -> dict[str, object]:
     if state.content_type != "social_post":
         return {"errors": state.errors + [f"Unsupported direct content type: {state.content_type}"], "current_node": "generate_direct_content"}
-    spec = SocialPostGenerator().generate(state)
+    try:
+        spec = SocialPostGenerator().generate(state)
+    except Exception as exc:
+        error = str(exc)
+        return {
+            "errors": state.errors + [error],
+            "validation_report": {"passed": False, "errors": [error]},
+            "current_node": "generate_direct_content",
+            "progress": ensure_monotonic_progress(
+                state.progress,
+                build_progress(stage="generating_direct_content", current_node="generate_direct_content"),
+            ),
+        }
     event = TaskStreamEvent(
         event_id=f"event_{uuid4().hex[:12]}",
         task_id=state.request_id,
@@ -32,6 +44,16 @@ def generate_direct_content(state: ContentGenerationState) -> dict[str, object]:
 
 def validate_direct_content(state: ContentGenerationState) -> dict[str, object]:
     if not isinstance(state.content_spec, SocialPostSpec):
+        if state.errors:
+            return {
+                "validation_report": {"passed": False, "errors": state.errors},
+                "errors": state.errors,
+                "current_node": "validate_direct_content",
+                "progress": ensure_monotonic_progress(
+                    state.progress,
+                    build_progress(stage="validating_direct_content", current_node="validate_direct_content"),
+                ),
+            }
         return {"errors": state.errors + ["SocialPostSpec is required for direct validation"], "current_node": "validate_direct_content"}
     validator = SocialPostValidator()
     available_chunk_ids = {chunk.id for chunk in [*state.planning_chunks, *state.retrieved_chunks]}
@@ -39,7 +61,7 @@ def validate_direct_content(state: ContentGenerationState) -> dict[str, object]:
     article_json = to_wechat_claw_article(state.content_spec)
     spec = state.content_spec.model_copy(update={"article_json": article_json, "validation_report": pre_report})
     final_report = validator.validate_final(spec)
-    errors = [issue.message for issue in [*pre_report.issues, *final_report.issues] if issue.severity == "error"]
+    errors = [issue.message for issue in final_report.issues if issue.severity == "error"]
     return {
         "content_spec": spec.model_copy(update={"validation_report": final_report if final_report.issues else pre_report}),
         "validation_report": {"passed": not errors, "errors": errors},

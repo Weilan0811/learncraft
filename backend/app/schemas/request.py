@@ -23,6 +23,7 @@ class GenerationOptions(SchemaModel):
     include_mindmap: bool = False
     image_style: str | None = None
     citation_policy: Literal["none", "light", "strict"] = "light"
+    allow_fallback: bool = False
 
     slide_theme: str | None = None
     speaker_notes: bool = True

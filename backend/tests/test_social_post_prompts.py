@@ -174,3 +174,132 @@ def test_social_post_real_mode_generator_uses_structured_prompt_sequence(monkeyp
     assert spec.title == "Agent workflow"
     assert [slot.slot_id for slot in spec.image_slots] == ["cover"]
     assert fake_llm.schemas == ["WechatBriefOutline", "WechatArticleDraft", "ImageSlotPlan"]
+
+
+def test_social_post_real_mode_normalizes_missing_citations_and_provider_cover_ratio(monkeypatch) -> None:
+    state = ContentGenerationState(
+        request_id="task_prompt",
+        content_type="social_post",
+        topic="Agent workflow",
+        user_prompt="Write a WeChat article.",
+        raw_request={"content_type": "social_post", "topic": "Agent workflow"},
+        normalized_request={"language": "zh-CN", "include_images": True},
+        planning_chunks=[],
+        retrieved_chunks=[],
+    )
+
+    class RealSettings:
+        provider_mode = "real"
+
+    class FakeLLM:
+        def generate_structured(self, prompt: str, schema):
+            if schema is WechatBriefOutline:
+                return WechatBriefOutline(
+                    topic="Agent workflow",
+                    article_type="engineering_practice",
+                    writing_angle="Explain direct workflow clearly.",
+                    core_question="How should social posts be generated?",
+                    central_thesis="Use a direct workflow for single-artifact social posts.",
+                    sections=[
+                        {"section_id": "sec-01", "title": "Problem", "core_question": "Why not unit loop?"},
+                        {"section_id": "sec-02", "title": "Workflow", "core_question": "How does it run?"},
+                        {"section_id": "sec-03", "title": "Validation", "core_question": "What is checked?"},
+                    ],
+                )
+            if schema is WechatArticleDraft:
+                return WechatArticleDraft(
+                    meta={"title": "Agent workflow", "digest": "A direct workflow article for WeChat preview."},
+                    headline={"title": "Agent workflow", "body": ["Direct workflows fit single-article output."]},
+                    sections=[
+                        {"section_id": "sec-01", "cn": "Problem", "blocks": [{"type": "paragraph", "text": "One article needs one path."}]},
+                        {"section_id": "sec-02", "cn": "Workflow", "blocks": [{"type": "paragraph", "text": "Generate draft then render HTML."}]},
+                        {"section_id": "sec-03", "cn": "Validation", "blocks": [{"type": "paragraph", "text": "Check slots and HTML."}]},
+                    ],
+                )
+            if schema is ImageSlotPlan:
+                return ImageSlotPlan(
+                    image_slots=[
+                        ImageSlot(
+                            slot_id="cover",
+                            target="meta.cover_image",
+                            target_path="meta.cover_image",
+                            aspect_ratio="2.35:1",
+                            caption="Cover",
+                            visual_type="cover",
+                            purpose="Show the article theme.",
+                            context_summary="Agent workflow",
+                            prompt_en="Professional WeChat cover about agent workflow.",
+                        ),
+                        ImageSlot(
+                            slot_id="headline",
+                            target="headline.image",
+                            target_path="headline.image",
+                            aspect_ratio="16:9",
+                            caption="Headline",
+                            visual_type="workflow_diagram",
+                            purpose="Show the workflow.",
+                            context_summary="Agent workflow",
+                            prompt_en="Professional WeChat workflow diagram.",
+                        ),
+                    ]
+                )
+            raise AssertionError(schema)
+
+    class FakeImageService:
+        def __init__(self) -> None:
+            self.aspect_ratios: list[str] = []
+
+        def generate_image(self, title: str, description: str, aspect_ratio: str = "16:9", asset_id: str | None = None):
+            from app.schemas.elements import ImageElement
+
+            self.aspect_ratios.append(aspect_ratio)
+            return ImageElement(
+                id=asset_id or title,
+                title=title,
+                prompt=description,
+                asset_url=f"/api/assets/{asset_id}/download",
+                alt_text=title,
+                width=1024,
+                height=576,
+            )
+
+    fake_image_service = FakeImageService()
+    monkeypatch.setattr("app.generators.social_post_generator.get_settings", lambda: RealSettings())
+    monkeypatch.setattr("app.generators.social_post_generator.get_llm_service", lambda: FakeLLM())
+    monkeypatch.setattr("app.generators.social_post_generator.get_image_generation_service", lambda: fake_image_service)
+
+    spec = SocialPostGenerator().generate(state)
+
+    assert all(section.citation_refs for section in spec.draft.sections)
+    assert all(block.citation_refs for section in spec.draft.sections for block in section.blocks if hasattr(block, "citation_refs"))
+    assert [asset.status for asset in spec.image_assets] == ["generated", "generated"]
+    assert fake_image_service.aspect_ratios == ["21:9", "16:9"]
+
+
+def test_social_post_real_mode_llm_failure_is_not_silent_fallback(monkeypatch) -> None:
+    state = ContentGenerationState(
+        request_id="task_prompt_failure",
+        content_type="social_post",
+        topic="Agent workflow",
+        user_prompt="Write a WeChat article.",
+        raw_request={"content_type": "social_post", "topic": "Agent workflow"},
+        normalized_request={"language": "zh-CN", "include_images": False},
+    )
+
+    class RealSettings:
+        provider_mode = "real"
+
+    class FailingLLM:
+        def generate_structured(self, prompt: str, schema):
+            raise RuntimeError("schema validation failed")
+
+    monkeypatch.setattr("app.generators.social_post_generator.get_settings", lambda: RealSettings())
+    monkeypatch.setattr("app.generators.social_post_generator.get_llm_service", lambda: FailingLLM())
+
+    try:
+        SocialPostGenerator().generate(state)
+    except RuntimeError as exc:
+        assert "social_post_outline_generation failed" in str(exc)
+        assert "schema validation failed" in str(exc)
+    else:
+        raise AssertionError("real-mode LLM failure should not silently fall back")
