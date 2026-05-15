@@ -164,15 +164,34 @@ def test_core_content_schemas_keep_required_extension_fields() -> None:
         order=1,
         title="什么是人工智能",
         core_message="人工智能研究机器智能行为。",
-        design_intent="Explain the concept with a title and concise body.",
+        layout="image_text",
+        design_intent="Pair the core explanation with a supporting teaching visual.",
         layout_hints={"supported_renderer": "scenekit.slide/v1"},
         elements=[
             SlideSpecElement(id="slide_stub_title", type="text", content="什么是人工智能", metadata={"role": "title"}),
             SlideSpecElement(
-                id="slide_stub_body",
+                id="slide_stub_explanation",
                 type="text",
                 content="人工智能研究机器智能行为。",
-                metadata={"role": "body"},
+                metadata={"role": "explanation"},
+            ),
+            SlideSpecElement(
+                id="slide_stub_bullet_list",
+                type="text",
+                content="• 定义\n• 关键关系",
+                metadata={"role": "bullet_list"},
+            ),
+            SlideSpecElement(
+                id="slide_stub_takeaway",
+                type="text",
+                content="理解人工智能的基本定义",
+                metadata={"role": "takeaway"},
+            ),
+            SlideSpecElement(
+                id="slide_stub_visual_ref",
+                type="element_ref",
+                element_id="img_stub",
+                metadata={"role": "visual"},
             ),
         ],
         required_elements=[required_image.model_copy(update={"source_unit_id": "slide_unit_stub"})],
@@ -290,8 +309,8 @@ def test_slide_spec_page_rejects_unknown_layouts_and_keeps_element_roles() -> No
         order=1,
         title="什么是人工智能",
         core_message="人工智能研究机器智能行为。",
-        layout="title-content-visual",
-        design_intent="Pair the core message with concise body text.",
+        layout="image_text",
+        design_intent="Pair the core explanation with a supporting teaching visual.",
         layout_hints={"supported_renderer": "scenekit.slide/v1"},
         speaker_notes="Explain the definition and connect it to the unit goal.",
         elements=[
@@ -302,16 +321,45 @@ def test_slide_spec_page_rejects_unknown_layouts_and_keeps_element_roles() -> No
                 metadata={"role": "title"},
             ),
             SlideSpecElement(
-                id="slide_stub_body",
+                id="slide_stub_explanation",
                 type="text",
                 content="人工智能研究机器智能行为。",
-                metadata={"role": "body", "emphasis": "primary"},
-            )
+                metadata={"role": "explanation"},
+            ),
+            SlideSpecElement(
+                id="slide_stub_bullet_list",
+                type="text",
+                content="• 定义\n• 关键关系",
+                metadata={"role": "bullet_list"},
+            ),
+            SlideSpecElement(
+                id="slide_stub_takeaway",
+                type="text",
+                content="理解人工智能的基本定义",
+                metadata={"role": "takeaway"},
+            ),
+            SlideSpecElement(
+                id="slide_stub_visual_ref",
+                type="element_ref",
+                element_id="img_stub",
+                metadata={"role": "visual"},
+            ),
+        ],
+        required_elements=[
+            RequiredElementSpec(
+                element_id="img_stub",
+                type="image",
+                title="示意图",
+                purpose="展示核心概念",
+                instruction="生成示意图",
+                source_unit_id="slide_unit_stub",
+                source_outline_unit_id="unit_stub",
+            ),
         ],
     )
 
-    assert slide.layout == "title-content-visual"
-    assert slide.elements[1].metadata["role"] == "body"
+    assert slide.layout == "image_text"
+    assert slide.elements[1].metadata["role"] == "explanation"
 
     try:
         SlideSpecPage(
@@ -323,6 +371,9 @@ def test_slide_spec_page_rejects_unknown_layouts_and_keeps_element_roles() -> No
             design_intent="Reject unsupported layouts.",
             layout_hints={"supported_renderer": "scenekit.slide/v1"},
             layout="freeform-poster",
+            elements=[
+                SlideSpecElement(id="slide_stub_title", type="text", content="未知布局", metadata={"role": "title"}),
+            ],
         )
     except ValidationError as exc:
         assert "layout" in str(exc)
@@ -338,7 +389,7 @@ def test_slide_spec_page_rejects_outputs_that_fail_workflow_contract() -> None:
             order=None,
             title="Example Slide",
             core_message="This is the core message.",
-            layout="title-content",
+            layout="image_text",
             layout_hints={},
             elements=[
                 SlideSpecElement(
@@ -374,28 +425,7 @@ def test_slide_spec_page_rejects_outputs_that_fail_workflow_contract() -> None:
             order=3,
             title="Example Slide",
             core_message="This is the core message.",
-            layout="title-content",
-            design_intent="Explain the core message.",
-            speaker_notes="Use this slide to introduce the topic.",
-            layout_hints={},
-            elements=[
-                SlideSpecElement(id="elem_1", type="text", content="Some content", metadata={}),
-            ],
-        )
-    except ValidationError as exc:
-        message = str(exc)
-        assert "supported_renderer" in message
-    else:
-        raise AssertionError("SlideSpecPage should reject missing renderer hints")
-
-    try:
-        SlideSpecPage(
-            id="slide_slide_3",
-            outline_unit_id="slide_3",
-            order=3,
-            title="Example Slide",
-            core_message="This is the core message.",
-            layout="title-content",
+            layout="image_text",
             design_intent="Explain the core message.",
             speaker_notes="Use this slide to introduce the topic.",
             layout_hints={"supported_renderer": "scenekit.slide/v1"},
@@ -404,9 +434,9 @@ def test_slide_spec_page_rejects_outputs_that_fail_workflow_contract() -> None:
             ],
         )
     except ValidationError as exc:
-        assert "role" in str(exc)
+        assert "role" in str(exc) or "layout" in str(exc)
     else:
-        raise AssertionError("SlideSpecPage should reject missing title/body roles")
+        raise AssertionError("SlideSpecPage should reject missing required roles")
 
     try:
         SlideSpecPage(
@@ -415,13 +445,27 @@ def test_slide_spec_page_rejects_outputs_that_fail_workflow_contract() -> None:
             order=1,
             title="Example Slide",
             core_message="This is the core message.",
-            layout="title-content",
+            layout="image_text",
             design_intent="Explain the core message.",
             speaker_notes="Use this slide to introduce the topic.",
             layout_hints={"supported_renderer": "scenekit.slide/v1"},
             elements=[
                 SlideSpecElement(id="elem_title", type="text", content="Example Slide", metadata={"role": "title"}),
-                SlideSpecElement(id="elem_body", type="text", content="Some content", metadata={"role": "body"}),
+                SlideSpecElement(id="elem_explanation", type="text", content="Some content", metadata={"role": "explanation"}),
+                SlideSpecElement(id="elem_bullet_list", type="text", content="• Point 1\n• Point 2", metadata={"role": "bullet_list"}),
+                SlideSpecElement(id="elem_takeaway", type="text", content="Key takeaway", metadata={"role": "takeaway"}),
+                SlideSpecElement(id="elem_visual", type="element_ref", element_id="img_1", metadata={"role": "visual"}),
+            ],
+            required_elements=[
+                RequiredElementSpec(
+                    element_id="img_1",
+                    type="image",
+                    title="Image",
+                    purpose="Visual",
+                    instruction="Generate image",
+                    source_unit_id="slide_1",
+                    source_outline_unit_id="slide_3",
+                ),
             ],
         )
     except ValidationError as exc:

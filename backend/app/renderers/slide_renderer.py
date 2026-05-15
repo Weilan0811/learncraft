@@ -11,8 +11,6 @@ from app.schemas.render import (
     KitSlideBackground,
     KitSlideElement,
     KitSlidePage,
-    KitTableCell,
-    KitTableElement,
     KitTextElement,
     KitTheme,
     SlidePageModel,
@@ -64,18 +62,6 @@ def _theme_for_slide(spec: SlideDeckSpec, order: int) -> KitTheme:
 
 
 def _background_for_layout(layout: str, theme: KitTheme) -> KitSlideBackground:
-    if layout in {"section-divider", "cover"}:
-        return KitSlideBackground(
-            type="gradient",
-            gradient={
-                "type": "linear",
-                "rotate": 135,
-                "colors": [
-                    {"pos": 0, "color": "#FFFFFF"},
-                    {"pos": 1, "color": "#E0F2FE"},
-                ],
-            },
-        )
     return KitSlideBackground(type="solid", color=theme.backgroundColor)
 
 
@@ -88,15 +74,9 @@ def _render_slide_page(
     text_items = _collect_text_items(slide)
     visual_refs = _collect_visual_refs(slide, element_lookup)
 
-    if slide.layout in {"cover", "section-divider"}:
-        return _render_cover_like(slide, text_items, visual_refs, theme, spec.title)
-    if slide.layout == "visual-left-content-right":
-        return _render_visual_left_content_right(slide, text_items, visual_refs, theme)
-    if slide.layout == "title-content-visual":
-        return _render_title_content_visual(slide, text_items, visual_refs, theme)
-    if slide.layout == "summary-cards":
-        return _render_summary_cards(slide, text_items, visual_refs, theme)
-    return _render_title_content(slide, text_items, visual_refs, theme)
+    if slide.layout == "visual_summary":
+        return _render_visual_summary(slide, text_items, visual_refs, theme)
+    return _render_image_text(slide, text_items, visual_refs, theme)
 
 
 def _collect_text_items(slide: SlideSpecPage) -> list[dict[str, str]]:
@@ -104,7 +84,7 @@ def _collect_text_items(slide: SlideSpecPage) -> list[dict[str, str]]:
     for element in slide.elements:
         if element.type != "text" or not element.content:
             continue
-        role = str(element.metadata.get("role") or "body")
+        role = str(element.metadata.get("role") or "explanation")
         if role == "title":
             continue
         items.append(
@@ -116,10 +96,10 @@ def _collect_text_items(slide: SlideSpecPage) -> list[dict[str, str]]:
             }
         )
 
-    if not any(item["role"] == "body" for item in items):
-        items.insert(0, {"id": f"{slide.id}_body_auto", "role": "body", "content": slide.core_message, "name": "body"})
+    if not any(item["role"] in {"explanation", "body"} for item in items):
+        items.insert(0, {"id": f"{slide.id}_explanation_auto", "role": "explanation", "content": slide.core_message, "name": "explanation"})
 
-    if not any(item["role"] in {"takeaway", "callout"} for item in items) and slide.core_message:
+    if not any(item["role"] == "takeaway" for item in items) and slide.core_message:
         items.append(
             {
                 "id": f"{slide.id}_takeaway_auto",
@@ -159,159 +139,63 @@ def _collect_visual_refs(
     return refs[:1]
 
 
-def _render_cover_like(
+def _render_image_text(
     slide: SlideSpecPage,
     text_items: list[dict[str, str]],
     visual_refs: list[dict[str, object]],
     theme: KitTheme,
-    deck_title: str,
 ) -> list[KitSlideElement]:
-    elements: list[KitSlideElement] = [
-        _shape(f"{slide.id}_accent", 68, 88, 96, 8, theme.themeColors[0], radius=8),
+    elements = _standard_header(slide, theme, title_width=500)
+
+    explanation = _content_by_role(text_items, "explanation") or slide.core_message
+    elements.append(
         _text(
-            f"{slide.id}_title",
-            "Title",
-            68,
-            128,
-            700,
-            118,
-            slide.title,
+            f"{slide.id}_explanation",
+            "Explanation",
+            64,
+            152,
+            490,
+            60,
+            explanation,
             theme,
-            font_size=44,
-            bold=True,
-            color="#0F172A",
-            line_height=1.12,
-        ),
-        _text(
-            f"{slide.id}_subtitle",
-            "Core message",
-            72,
-            264,
-            640,
-            92,
-            _primary_body(text_items, slide.core_message),
-            theme,
-            font_size=24,
-            color="#334155",
-            line_height=1.35,
-        ),
-    ]
-    if slide.layout == "cover":
+            font_size=20,
+            color="#1F2937",
+            line_height=1.4,
+        )
+    )
+
+    bullet_content = _content_by_role(text_items, "bullet_list")
+    if bullet_content:
         elements.append(
             _text(
-                f"{slide.id}_deck_label",
-                "Deck label",
-                72,
-                406,
-                520,
-                36,
-                deck_title,
+                f"{slide.id}_bullet_list",
+                "Bullet list",
+                64,
+                222,
+                490,
+                140,
+                bullet_content,
                 theme,
-                font_size=16,
-                color="#64748B",
+                font_size=17,
+                color="#334155",
+                line_height=1.45,
             )
         )
-    if visual_refs:
-        visual = _visual_element(visual_refs[0], 690, 152, 210, 150, theme)
-        if visual is not None:
-            elements.append(visual)
-    return elements
-
-
-def _render_title_content(
-    slide: SlideSpecPage,
-    text_items: list[dict[str, str]],
-    visual_refs: list[dict[str, object]],
-    theme: KitTheme,
-) -> list[KitSlideElement]:
-    elements = _standard_header(slide, theme, title_width=760)
-    body_items = _body_items(text_items)
-    if _looks_like_table(_content_by_role(text_items, "comparison")):
-        table = _table_from_text(f"{slide.id}_comparison_table", _content_by_role(text_items, "comparison"), 142, 186, 676, 168, theme)
-        if table is not None:
-            elements.append(table)
-            elements.extend(_takeaway_bar(slide, text_items, theme, top=402))
-            return elements
-
-    cards = _content_cards(slide, body_items[:3], theme, x=72, y=168, width=246, height=132, gap=24)
-    if cards:
-        elements.extend(cards)
-    else:
-        elements.extend(
-            _feature_block(
-                f"{slide.id}_main",
-                "核心内容",
-                _primary_body(text_items, slide.core_message),
-                82,
-                172,
-                690,
-                160,
-                theme,
-                fill="#F8FAFC",
-            )
-        )
-    elements.extend(_takeaway_bar(slide, text_items, theme, top=408))
-    return elements
-
-
-def _render_title_content_visual(
-    slide: SlideSpecPage,
-    text_items: list[dict[str, str]],
-    visual_refs: list[dict[str, object]],
-    theme: KitTheme,
-) -> list[KitSlideElement]:
-    elements = _standard_header(slide, theme, title_width=560)
-    left_items = _body_items(text_items)[:3]
-    elements.extend(_vertical_blocks(slide, left_items, theme, x=64, y=160, width=480, max_bottom=410))
 
     if visual_refs:
-        elements.append(_shape(f"{slide.id}_visual_panel", 582, 150, 310, 210, "#F1F5F9", radius=20, outline="#E2E8F0"))
-        visual = _visual_element(visual_refs[0], 606, 172, 262, 166, theme)
+        elements.append(_shape(f"{slide.id}_visual_panel", 576, 148, 320, 232, "#F1F5F9", radius=18, outline="#E2E8F0"))
+        visual = _visual_element(visual_refs[0], 594, 166, 284, 196, theme)
         if visual is not None:
             elements.append(visual)
-    else:
-        elements.extend(
-            _feature_block(
-                f"{slide.id}_right_callout",
-                "提示",
-                _content_by_role(text_items, "callout") or _content_by_role(text_items, "example") or slide.core_message,
-                590,
-                166,
-                280,
-                170,
-                theme,
-                fill="#ECFDF5",
-                accent="#0F766E",
-            )
-        )
-    elements.extend(_takeaway_bar(slide, text_items, theme, top=426))
-    return elements
-
-
-def _render_visual_left_content_right(
-    slide: SlideSpecPage,
-    text_items: list[dict[str, str]],
-    visual_refs: list[dict[str, object]],
-    theme: KitTheme,
-) -> list[KitSlideElement]:
-    elements = _standard_header(slide, theme, title_width=760)
-    if visual_refs:
-        elements.append(_shape(f"{slide.id}_visual_back", 64, 160, 374, 236, "#F1F5F9", radius=18, outline="#E2E8F0"))
-        visual = _visual_element(visual_refs[0], 82, 178, 338, 190, theme)
-        if visual is not None:
-            elements.append(visual)
-        caption = _content_by_role(text_items, "caption")
-        if caption:
-            elements.append(_text(f"{slide.id}_caption", "Caption", 82, 374, 338, 40, caption, theme, font_size=13, color="#475569", align="center", bold=True))
     else:
         elements.extend(
             _feature_block(
                 f"{slide.id}_visual_fallback",
                 "核心信息",
                 slide.core_message,
-                64,
-                172,
-                350,
+                576,
+                152,
+                310,
                 180,
                 theme,
                 fill="#F8FAFC",
@@ -319,29 +203,56 @@ def _render_visual_left_content_right(
             )
         )
 
-    right_items = _body_items(text_items)[:4]
-    elements.extend(_vertical_blocks(slide, right_items, theme, x=492, y=160, width=382, max_bottom=408))
-    elements.extend(_takeaway_bar(slide, text_items, theme, top=430))
+    elements.extend(_takeaway_bar(slide, text_items, theme, top=420))
     return elements
 
 
-def _render_summary_cards(
+def _render_visual_summary(
     slide: SlideSpecPage,
     text_items: list[dict[str, str]],
     visual_refs: list[dict[str, object]],
     theme: KitTheme,
 ) -> list[KitSlideElement]:
     elements = _standard_header(slide, theme, title_width=760)
-    card_items = _card_items(text_items, slide.core_message)
-    if len(card_items) <= 2:
-        elements.extend(_content_cards(slide, card_items, theme, x=116, y=176, width=320, height=146, gap=36))
-    else:
-        elements.extend(_content_cards(slide, card_items[:4], theme, x=72, y=164, width=188, height=158, gap=24))
+
     if visual_refs:
-        visual = _visual_element(visual_refs[0], 686, 342, 180, 100, theme)
+        elements.append(_shape(f"{slide.id}_visual_back", 64, 152, 540, 260, "#F1F5F9", radius=18, outline="#E2E8F0"))
+        visual = _visual_element(visual_refs[0], 82, 168, 504, 228, theme)
         if visual is not None:
             elements.append(visual)
-    elements.extend(_takeaway_bar(slide, text_items, theme, top=414))
+    else:
+        elements.extend(
+            _feature_block(
+                f"{slide.id}_visual_fallback",
+                "结构总览",
+                slide.core_message,
+                64,
+                152,
+                540,
+                240,
+                theme,
+                fill="#F8FAFC",
+                accent=theme.themeColors[0],
+            )
+        )
+
+    summary_text = _content_by_role(text_items, "summary_text") or slide.core_message
+    elements.extend(
+        _feature_block(
+            f"{slide.id}_summary",
+            "总结",
+            summary_text,
+            624,
+            152,
+            272,
+            260,
+            theme,
+            fill="#EFF6FF",
+            accent=theme.themeColors[0],
+        )
+    )
+
+    elements.extend(_takeaway_bar(slide, text_items, theme, top=440))
     return elements
 
 
@@ -364,70 +275,6 @@ def _standard_header(slide: SlideSpecPage, theme: KitTheme, title_width: int) ->
         _line(f"{slide.id}_accent_line", 64, 124, 86, theme.themeColors[0], stroke_width=4),
         _line(f"{slide.id}_divider", 150, 126, 736, "#CBD5E1", stroke_width=1),
     ]
-
-
-def _content_cards(
-    slide: SlideSpecPage,
-    items: list[dict[str, str]],
-    theme: KitTheme,
-    x: int,
-    y: int,
-    width: int,
-    height: int,
-    gap: int,
-) -> list[KitSlideElement]:
-    elements: list[KitSlideElement] = []
-    for index, item in enumerate(items):
-        left = x + index * (width + gap)
-        title = _role_label(item["role"], index + 1)
-        elements.extend(
-            _feature_block(
-                f"{slide.id}_card_{index + 1}",
-                title,
-                item["content"],
-                left,
-                y,
-                width,
-                height,
-                theme,
-                fill=_card_fill(index),
-                accent=theme.themeColors[index % len(theme.themeColors)],
-            )
-        )
-    return elements
-
-
-def _vertical_blocks(
-    slide: SlideSpecPage,
-    items: list[dict[str, str]],
-    theme: KitTheme,
-    x: int,
-    y: int,
-    width: int,
-    max_bottom: int,
-) -> list[KitSlideElement]:
-    elements: list[KitSlideElement] = []
-    if not items:
-        return elements
-    available = max_bottom - y
-    block_height = max(70, min(116, (available - 14 * (len(items) - 1)) // len(items)))
-    for index, item in enumerate(items):
-        top = y + index * (block_height + 14)
-        elements.extend(
-            _feature_block(
-                f"{slide.id}_block_{index + 1}",
-                _role_label(item["role"], index + 1),
-                item["content"],
-                x,
-                top,
-                width,
-                block_height,
-                theme,
-                fill=_card_fill(index),
-                accent=theme.themeColors[index % len(theme.themeColors)],
-            )
-        )
-    return elements
 
 
 def _feature_block(
@@ -536,120 +383,11 @@ def _visual_element(ref: dict[str, object], left: int, top: int, width: int, hei
     return None
 
 
-def _table_from_text(
-    element_id: str,
-    content: str,
-    left: int,
-    top: int,
-    width: int,
-    height: int,
-    theme: KitTheme,
-) -> KitTableElement | None:
-    rows = []
-    for line in content.splitlines():
-        line = line.strip()
-        if not line or set(line.replace("|", "").strip()) <= {"-", ":"}:
-            continue
-        if "|" not in line:
-            continue
-        cells = [cell.strip() for cell in line.strip("|").split("|")]
-        if len(cells) >= 2:
-            rows.append(cells[:4])
-    if len(rows) < 2:
-        return None
-
-    data: list[list[KitTableCell]] = []
-    for row_index, row in enumerate(rows[:5]):
-        data.append(
-            [
-                KitTableCell(
-                    id=f"{element_id}_r{row_index}_c{col_index}",
-                    text=_fit_text(cell, 36),
-                    style={
-                        "bold": row_index == 0,
-                        "align": "center" if row_index == 0 else "left",
-                        "backcolor": "#EFF6FF" if row_index == 0 else "#FFFFFF",
-                        "fontSize": 14,
-                    },
-                )
-                for col_index, cell in enumerate(row)
-            ]
-        )
-    return KitTableElement(
-        id=element_id,
-        name="Comparison table",
-        left=left,
-        top=top,
-        width=width,
-        height=height,
-        rotate=0,
-        data=data,
-        outline=KitElementOutline(width=1, color="#CBD5E1", style="solid"),
-        fontSize=14,
-        fontName=theme.fontName,
-        textColor="#111827",
-    )
-
-
-def _body_items(text_items: list[dict[str, str]]) -> list[dict[str, str]]:
-    preferred_roles = ["body", "bullet-list", "example", "comparison", "callout", "note"]
-    result = [item for role in preferred_roles for item in text_items if item["role"] == role]
-    return result or text_items[:2]
-
-
-def _card_items(text_items: list[dict[str, str]], fallback: str) -> list[dict[str, str]]:
-    items = [item for item in text_items if item["role"] not in {"takeaway", "caption"}]
-    if len(items) == 1:
-        parts = _split_points(items[0]["content"])
-        if len(parts) >= 3:
-            return [
-                {"id": f"auto_{index}", "role": "bullet-list", "content": part, "name": "point"}
-                for index, part in enumerate(parts[:4], 1)
-            ]
-    if not items:
-        return [{"id": "auto_summary", "role": "body", "content": fallback, "name": "summary"}]
-    return items
-
-
-def _primary_body(text_items: list[dict[str, str]], fallback: str) -> str:
-    return _content_by_role(text_items, "body") or fallback
-
-
 def _content_by_role(text_items: list[dict[str, str]], role: str) -> str:
     for item in text_items:
         if item["role"] == role and item["content"]:
             return item["content"]
     return ""
-
-
-def _split_points(content: str) -> list[str]:
-    lines = [line.strip(" -•\t") for line in content.replace("；", "\n").replace(";", "\n").splitlines()]
-    return [line for line in lines if line]
-
-
-def _looks_like_table(content: str) -> bool:
-    if not content:
-        return False
-    return sum(1 for line in content.splitlines() if "|" in line) >= 2
-
-
-def _role_label(role: str, index: int) -> str:
-    labels = {
-        "body": "核心解释",
-        "bullet-list": f"要点 {index}",
-        "example": "例子",
-        "comparison": "对比",
-        "callout": "重点提示",
-        "quote": "观点",
-        "note": "注释",
-        "caption": "图示说明",
-    }
-    return labels.get(role, f"要点 {index}")
-
-
-def _card_fill(index: int) -> str:
-    fills = ["#EFF6FF", "#ECFDF5", "#FFFBEB", "#F8FAFC"]
-    return fills[index % len(fills)]
 
 
 def _shape(

@@ -27,6 +27,7 @@ class ImageGenerationService(Protocol):
         description: str,
         aspect_ratio: str = "16:9",
         asset_id: str | None = None,
+        layout: str = "image_text",
     ) -> ImageElement:
         """Generate and persist an image asset."""
         ...
@@ -42,6 +43,7 @@ class StubImageGenerationService:
         description: str,
         aspect_ratio: str = "16:9",
         asset_id: str | None = None,
+        layout: str = "image_text",
     ) -> ImageElement:
         prompt = f"Clean educational illustration, {description}, aspect ratio {aspect_ratio}"
         svg = self._placeholder_svg(title=title, description=description)
@@ -121,10 +123,11 @@ class APIMartImageGenerationService:
         description: str,
         aspect_ratio: str = "16:9",
         asset_id: str | None = None,
+        layout: str = "image_text",
     ) -> ImageElement:
         if not description.strip():
             raise APIMartImageGenerationError(f"Image prompt is empty for title: {title}")
-        prompt = self._build_prompt(description=description, aspect_ratio=aspect_ratio)
+        prompt = self._build_prompt(description=description, aspect_ratio=aspect_ratio, layout=layout)
         data = self._submit_generation_request(prompt=prompt, aspect_ratio=aspect_ratio)
         response_mode = "task"
         task_id = self._extract_task_id(data)
@@ -238,13 +241,25 @@ class APIMartImageGenerationService:
         return {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
 
     @staticmethod
-    def _build_prompt(description: str, aspect_ratio: str) -> str:
+    def _build_prompt(description: str, aspect_ratio: str, layout: str = "image_text") -> str:
+        if layout == "visual_summary":
+            return (
+                "Create a structured summary diagram for educational content, not a presentation slide. "
+                "Render a clear infographic, flowchart, framework diagram, or process diagram. "
+                "The visual should carry the main structural information. "
+                "Moderate text labels are allowed if they are readable. Keep the hierarchy clear and visually organized. "
+                "Do not create a full PowerPoint slide screenshot, decorative illustration without structure, "
+                "title page, agenda page, or bullet-list layout. "
+                f"Description: {description}. Aspect ratio {aspect_ratio}."
+            )
         return (
             "Create a standalone illustration or diagram asset for educational content, not a presentation slide. "
             "Render only the focused visual object requested, such as a timeline, process diagram, comparison graphic, "
-            "architecture sketch, or concept illustration. Do not create a slide title, header banner, footer, agenda "
-            "section, summary panel, bullet-list page, or full-page lecture layout. Keep text labels minimal and only "
-            f"where necessary. Description: {description}. Aspect ratio {aspect_ratio}."
+            "architecture sketch, or concept illustration. Keep information density low. "
+            "Use little or no text inside the image. "
+            "Do not create a slide title, header banner, footer, agenda "
+            "section, summary panel, bullet-list page, or full-page lecture layout. "
+            f"Description: {description}. Aspect ratio {aspect_ratio}."
         )
 
     @staticmethod
@@ -332,6 +347,7 @@ class BailianImageGenerationService:
         description: str,
         aspect_ratio: str = "16:9",
         asset_id: str | None = None,
+        layout: str = "image_text",
     ) -> ImageElement:
         prompt = f"Clean educational illustration, {description}, aspect ratio {aspect_ratio}"
         response = self.client.post(
