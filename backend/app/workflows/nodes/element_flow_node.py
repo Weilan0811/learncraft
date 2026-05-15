@@ -8,6 +8,7 @@ from app.workflows.nodes.helpers import SUPPORTED_WORKFLOW_ELEMENTS, current_out
 def collect_unit_required_elements(state: ContentGenerationState) -> dict[str, object]:
     unit = current_outline_unit(state)
     unit_spec = state.current_unit_spec
+    layout = getattr(unit_spec, "layout", None) or "image_text"
     requests: list[ElementRequest] = []
     if unit_spec is not None:
         for required in unit_spec.required_elements:
@@ -26,6 +27,7 @@ def collect_unit_required_elements(state: ContentGenerationState) -> dict[str, o
                         "unit_title": unit.title,
                         "core_message": unit.core_message,
                         "key_points": unit.key_points,
+                        "layout": layout,
                     },
                     constraints={
                         "language": (state.normalized_request or {}).get("language", "zh-CN"),

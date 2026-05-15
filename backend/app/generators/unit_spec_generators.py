@@ -1,16 +1,26 @@
 import json
 import os
+import re
 from typing import cast
 
 from app.core.config import get_settings
 from app.schemas.outline import OutlineUnit
 from app.schemas.specs import (
+    BULLET_LIST_MAX,
+    BULLET_LIST_MIN,
+    BULLET_MAX_CN,
     ElementReferenceBlock,
+    EXPLANATION_MAX_SENTENCES,
+    IMAGE_TEXT_REQUIRED_ROLES,
     LectureSection,
     RequiredElementSpec,
     SlideSpecElement,
     SlideSpecPage,
+    SUMMARY_TEXT_MAX_SENTENCES,
+    TAKEAWAY_MAX_CN,
     TextBlock,
+    TITLE_MAX_CN,
+    VISUAL_SUMMARY_REQUIRED_ROLES,
 )
 from app.schemas.state import ContentGenerationState
 from app.services.llm_service import get_llm_service
@@ -32,12 +42,281 @@ def build_slide_unit_spec(state: ContentGenerationState, unit: OutlineUnit, chun
     settings = get_settings()
 
     if settings.provider_mode == "stub":
-        return build_slide_unit_spec_fallback(state, unit, chunk_ids)
+        return normalize_slide_spec(build_slide_unit_spec_fallback(state, unit, chunk_ids), unit, state)
 
     try:
-        return generate_slide_unit_spec_with_llm(state, unit, chunk_ids)
+        raw_spec = generate_slide_unit_spec_with_llm(state, unit, chunk_ids)
+        return normalize_slide_spec(raw_spec, unit, state)
     except Exception:
-        return build_slide_unit_spec_fallback(state, unit, chunk_ids)
+        return normalize_slide_spec(build_slide_unit_spec_fallback(state, unit, chunk_ids), unit, state)
+
+
+def normalize_slide_spec(spec: SlideSpecPage, unit: OutlineUnit, state: ContentGenerationState) -> SlideSpecPage:
+    layout = spec.layout
+    if layout not in ("image_text", "visual_summary"):
+        layout = _choose_slide_layout(unit)
+
+    elements = _normalize_elements(spec, layout, unit)
+    required_elements = _normalize_required_elements(spec, layout, unit, state, elements)
+    speaker_notes = spec.speaker_notes or f"Explain this slide around the goal: {unit.goal}."
+    design_intent = spec.design_intent or _design_intent_for_layout(layout)
+    layout_hints = dict(spec.layout_hints)
+    layout_hints["supported_renderer"] = "scenekit.slide/v1"
+    layout_hints["density"] = "rich" if layout == "visual_summary" else "balanced"
+
+    visual_refs = [e for e in elements if e.type == "element_ref" and e.metadata.get("role") == "visual"]
+    if visual_refs:
+        layout_hints["primary_visual"] = visual_refs[0].element_id
+
+    return SlideSpecPage(
+        id=spec.id,
+        outline_unit_id=spec.outline_unit_id,
+        order=spec.order,
+        title=spec.title,
+        core_message=spec.core_message,
+        layout=layout,
+        design_intent=design_intent,
+        theme_variant=spec.theme_variant,
+        layout_hints=layout_hints,
+        elements=elements,
+        required_elements=required_elements,
+        speaker_notes=speaker_notes,
+        source_chunk_ids=spec.source_chunk_ids,
+    )
+
+
+def _normalize_elements(spec: SlideSpecPage, layout: str, unit: OutlineUnit) -> list[SlideSpecElement]:
+    elements = list(spec.elements)
+    role_map = {
+        "body": "explanation",
+        "bullet-list": "bullet_list",
+        "example": "explanation",
+        "comparison": "explanation",
+        "callout": "takeaway",
+        "note": "explanation",
+        "caption": "explanation",
+    }
+
+    for i, element in enumerate(elements):
+        if element.type != "text":
+            continue
+        role = str(element.metadata.get("role") or "")
+        if role in role_map:
+            new_metadata = dict(element.metadata)
+            new_metadata["role"] = role_map[role]
+            elements[i] = element.model_copy(update={"metadata": new_metadata})
+
+    roles = {str(e.metadata.get("role") or "") for e in elements if e.type == "text"}
+
+    if layout == "image_text":
+        elements = _ensure_image_text_roles(elements, roles, spec, unit)
+    elif layout == "visual_summary":
+        elements = _ensure_visual_summary_roles(elements, roles, spec, unit)
+
+    elements = _enforce_text_budget(elements, layout)
+
+    return elements
+
+
+def _ensure_image_text_roles(
+    elements: list[SlideSpecElement],
+    roles: set[str],
+    spec: SlideSpecPage,
+    unit: OutlineUnit,
+) -> list[SlideSpecElement]:
+    slide_id = spec.id
+    extra_notes: list[str] = []
+
+    if "title" not in roles:
+        elements.insert(0, SlideSpecElement(
+            id=f"{slide_id}_title", type="text", content=unit.title[:TITLE_MAX_CN], metadata={"role": "title"},
+        ))
+
+    if "explanation" not in roles:
+        content = spec.core_message or unit.core_message
+        elements.append(SlideSpecElement(
+            id=f"{slide_id}_explanation", type="text", content=content, metadata={"role": "explanation"},
+        ))
+
+    if "bullet_list" not in roles:
+        points = unit.key_points[:BULLET_LIST_MAX] if unit.key_points else ["核心概念", "关键关系"]
+        bullet_content = "\n".join(f"• {p[:BULLET_MAX_CN]}" for p in points)
+        elements.append(SlideSpecElement(
+            id=f"{slide_id}_bullet_list", type="text", content=bullet_content, metadata={"role": "bullet_list"},
+        ))
+
+    if "takeaway" not in roles:
+        takeaway = spec.core_message or unit.core_message
+        elements.append(SlideSpecElement(
+            id=f"{slide_id}_takeaway", type="text", content=takeaway[:TAKEAWAY_MAX_CN], metadata={"role": "takeaway"},
+        ))
+
+    visual_refs = [e for e in elements if e.type == "element_ref" and e.metadata.get("role") == "visual"]
+    if not visual_refs:
+        image_id = f"image_{spec.id}"
+        elements.append(SlideSpecElement(
+            id=f"{slide_id}_visual_ref", type="element_ref", element_id=image_id,
+            metadata={"role": "visual", "placement": "primary"},
+        ))
+
+    return elements
+
+
+def _ensure_visual_summary_roles(
+    elements: list[SlideSpecElement],
+    roles: set[str],
+    spec: SlideSpecPage,
+    unit: OutlineUnit,
+) -> list[SlideSpecElement]:
+    slide_id = spec.id
+
+    bullet_elements = [e for e in elements if e.type == "text" and e.metadata.get("role") == "bullet_list"]
+    if bullet_elements and "summary_text" not in roles:
+        merged = "。".join(
+            line.strip(" •-\t") for e in bullet_elements for line in (e.content or "").splitlines() if line.strip()
+        )
+        elements.append(SlideSpecElement(
+            id=f"{slide_id}_summary_text", type="text", content=merged, metadata={"role": "summary_text"},
+        ))
+        for be in bullet_elements:
+            elements.remove(be)
+
+    if "title" not in roles:
+        elements.insert(0, SlideSpecElement(
+            id=f"{slide_id}_title", type="text", content=unit.title[:TITLE_MAX_CN], metadata={"role": "title"},
+        ))
+
+    if "summary_text" not in roles:
+        content = spec.core_message or unit.core_message
+        elements.append(SlideSpecElement(
+            id=f"{slide_id}_summary_text", type="text", content=content, metadata={"role": "summary_text"},
+        ))
+
+    visual_refs = [e for e in elements if e.type == "element_ref" and e.metadata.get("role") == "visual"]
+    if not visual_refs:
+        image_id = f"image_{spec.id}"
+        elements.append(SlideSpecElement(
+            id=f"{slide_id}_visual_ref", type="element_ref", element_id=image_id,
+            metadata={"role": "visual", "placement": "primary"},
+        ))
+
+    return elements
+
+
+def _enforce_text_budget(elements: list[SlideSpecElement], layout: str) -> list[SlideSpecElement]:
+    result = []
+    for element in elements:
+        if element.type != "text" or not element.content:
+            result.append(element)
+            continue
+
+        role = str(element.metadata.get("role") or "")
+        content = element.content
+
+        if role == "title":
+            content = _truncate_chinese(content, TITLE_MAX_CN)
+        elif role == "explanation":
+            content = _truncate_sentences(content, EXPLANATION_MAX_SENTENCES)
+        elif role == "bullet_list":
+            lines = [line.strip() for line in content.splitlines() if line.strip()]
+            lines = lines[:BULLET_LIST_MAX]
+            lines = [f"• {line.lstrip('• -').strip()[:BULLET_MAX_CN]}" for line in lines]
+            if len(lines) < BULLET_LIST_MIN:
+                while len(lines) < BULLET_LIST_MIN:
+                    lines.append("• ...")
+            content = "\n".join(lines)
+        elif role == "summary_text":
+            content = _truncate_sentences(content, SUMMARY_TEXT_MAX_SENTENCES)
+        elif role == "takeaway":
+            content = _truncate_chinese(content, TAKEAWAY_MAX_CN)
+
+        result.append(element.model_copy(update={"content": content}))
+
+    return result
+
+
+def _truncate_chinese(text: str, max_cn: int) -> str:
+    cn_count = 0
+    for i, ch in enumerate(text):
+        if "\u4e00" <= ch <= "\u9fff":
+            cn_count += 1
+            if cn_count > max_cn:
+                return text[:i] + "…"
+    return text
+
+
+def _truncate_sentences(text: str, max_sentences: int) -> str:
+    parts = re.split(r"([。！？；.!?;])", text)
+    sentences: list[str] = []
+    current = ""
+    count = 0
+    for part in parts:
+        current += part
+        if re.match(r"[。！？；.!?;]", part):
+            sentences.append(current)
+            current = ""
+            count += 1
+            if count >= max_sentences:
+                break
+    if current.strip():
+        sentences.append(current)
+    return "".join(sentences[:max_sentences])
+
+
+def _normalize_required_elements(
+    spec: SlideSpecPage,
+    layout: str,
+    unit: OutlineUnit,
+    state: ContentGenerationState,
+    elements: list[SlideSpecElement],
+) -> list[RequiredElementSpec]:
+    visual_refs = [e for e in elements if e.type == "element_ref" and e.metadata.get("role") == "visual"]
+    if not visual_refs:
+        return spec.required_elements
+
+    visual_element_id = visual_refs[0].element_id
+    existing = {r.element_id for r in spec.required_elements}
+
+    result = [r for r in spec.required_elements if r.type == "image"]
+
+    if visual_element_id not in existing:
+        if layout == "image_text":
+            instruction = (
+                f"Create a focused visual asset for a teaching slide about '{unit.title}'. "
+                f"Use a realistic illustration, hand-drawn sketch, or clean educational illustration style. "
+                f"The image should explain one concept or scenario. Keep information density low. "
+                f"Use little or no text inside the image. "
+                f"Do not create a mind-map, dense infographic, poster, full slide, title page, agenda page, or bullet-list layout."
+            )
+            style = "clean educational illustration, realistic diagram, hand-drawn sketch"
+            aspect_ratio = "4:3"
+        else:
+            instruction = (
+                f"Create a structured summary diagram for a teaching slide about '{unit.title}'. "
+                f"Use a clear infographic, flowchart, framework diagram, or process diagram style. "
+                f"The image should carry the main structural information of the slide. "
+                f"Moderate text labels are allowed if they are readable. "
+                f"Keep the hierarchy clear and visually organized. "
+                f"Do not create a full PowerPoint slide screenshot or a decorative illustration without structure."
+            )
+            style = "infographic, flowchart, framework diagram, process diagram"
+            aspect_ratio = "16:9"
+
+        result.append(RequiredElementSpec(
+            element_id=visual_element_id,
+            type="image",
+            title=f"{unit.title} visual",
+            purpose=f"Support the {layout} slide with a {'low-density illustration' if layout == 'image_text' else 'structured summary diagram'}.",
+            instruction=instruction,
+            style=style,
+            aspect_ratio=aspect_ratio,
+            source_unit_id=spec.id,
+            source_outline_unit_id=unit.id,
+            source_chunk_ids=spec.source_chunk_ids,
+            priority="high",
+        ))
+
+    return result
 
 
 def generate_lecture_unit_spec_with_llm(
@@ -223,75 +502,59 @@ def build_slide_unit_spec_fallback(
     state: ContentGenerationState, unit: OutlineUnit, chunk_ids: list[str]
 ) -> SlideSpecPage:
     slide_id = f"slide_{unit.id}"
-    options = state.normalized_request or {}
-    include_images = bool(options.get("include_images", True))
-    include_mindmap = bool(options.get("include_mindmap", False))
     layout = _choose_slide_layout(unit)
+    options = state.normalized_request or {}
 
-    required_elements: list[RequiredElementSpec] = []
+    if layout == "visual_summary":
+        return _build_visual_summary_fallback(slide_id, unit, state, chunk_ids, options)
+
+    return _build_image_text_fallback(slide_id, unit, state, chunk_ids, options)
+
+
+def _build_image_text_fallback(
+    slide_id: str,
+    unit: OutlineUnit,
+    state: ContentGenerationState,
+    chunk_ids: list[str],
+    options: dict[str, object],
+) -> SlideSpecPage:
+    image_id = f"image_{state.request_id}_{unit.id}"
+    points = unit.key_points[:BULLET_LIST_MAX] if unit.key_points else ["核心概念", "关键关系"]
+    bullet_content = "\n".join(f"• {p[:BULLET_MAX_CN]}" for p in points)
+    if len(points) < BULLET_LIST_MIN:
+        while len(points) < BULLET_LIST_MIN:
+            bullet_content += "\n• …"
+            points.append("…")
+
     elements = [
-        SlideSpecElement(id=f"{slide_id}_title", type="text", content=unit.title, metadata={"role": "title"}),
-        SlideSpecElement(
-            id=f"{slide_id}_body",
-            type="text",
-            content=unit.core_message,
-            metadata={"role": "body", "emphasis": "primary"},
+        SlideSpecElement(id=f"{slide_id}_title", type="text", content=unit.title[:TITLE_MAX_CN], metadata={"role": "title"}),
+        SlideSpecElement(id=f"{slide_id}_explanation", type="text", content=unit.core_message, metadata={"role": "explanation"}),
+        SlideSpecElement(id=f"{slide_id}_bullet_list", type="text", content=bullet_content, metadata={"role": "bullet_list"}),
+        SlideSpecElement(id=f"{slide_id}_takeaway", type="text", content=unit.core_message[:TAKEAWAY_MAX_CN], metadata={"role": "takeaway"}),
+        SlideSpecElement(id=f"{slide_id}_visual_ref", type="element_ref", element_id=image_id, metadata={"role": "visual", "placement": "primary"}),
+    ]
+
+    required_elements = [
+        RequiredElementSpec(
+            element_id=image_id,
+            type="image",
+            title=f"{unit.title} illustration",
+            purpose="Support the image_text slide with a low-density teaching visual.",
+            instruction=(
+                f"Create a focused visual asset for a teaching slide about '{unit.title}'. "
+                f"Use a realistic illustration, hand-drawn sketch, or clean educational illustration style. "
+                f"The image should explain one concept or scenario. Keep information density low. "
+                f"Use little or no text inside the image. "
+                f"Do not create a mind-map, dense infographic, poster, full slide, title page, agenda page, or bullet-list layout."
+            ),
+            style=str(options.get("image_style") or "clean educational illustration, realistic diagram"),
+            aspect_ratio="4:3",
+            source_unit_id=slide_id,
+            source_outline_unit_id=unit.id,
+            source_chunk_ids=chunk_ids,
+            priority="high",
         ),
     ]
-    layout_hints: dict[str, object] = {
-        "density": "balanced",
-        "supported_renderer": "scenekit.slide/v1",
-    }
-
-    if include_images:
-        image_spec = _image_spec_for_unit(
-            unit=unit,
-            unit_spec_id=slide_id,
-            request_id=state.request_id,
-            chunk_ids=chunk_ids,
-            aspect_ratio="16:9",
-            style=str(options.get("image_style") or "clean educational illustration"),
-            purpose="Support the slide's single core message with a simple teaching visual.",
-            instruction=(
-                f"Create a local illustration asset for '{unit.title}', meant to be placed inside a slide rather than "
-                f"serve as the slide itself. Focus on: {unit.core_message}. Use one clear diagram, timeline, process "
-                "graphic, or concept illustration with concise labels. Do not create a full presentation slide, title "
-                "bar, footer, agenda, bullet list panel, or summary strip."
-            ),
-        )
-        required_elements.append(image_spec)
-        layout_hints["primary_visual"] = image_spec.element_id
-        elements.append(
-            SlideSpecElement(
-                id=f"{slide_id}_image_ref",
-                type="element_ref",
-                element_id=image_spec.element_id,
-                metadata={"role": "visual", "placement": "primary"},
-            )
-        )
-
-    if include_mindmap:
-        mindmap_spec = _mindmap_spec_for_unit(
-            unit=unit,
-            unit_spec_id=slide_id,
-            request_id=state.request_id,
-            chunk_ids=chunk_ids,
-            purpose="Show relationships among slide concepts only when helpful.",
-            instruction=(
-                f"Create Markmap-compatible Markdown with root '{unit.title}', at most 3 levels, and 3-5 branches. "
-                "Use short labels suitable for a slide."
-            ),
-        )
-        required_elements.append(mindmap_spec)
-        layout_hints["secondary_visual"] = mindmap_spec.element_id
-        elements.append(
-            SlideSpecElement(
-                id=f"{slide_id}_mindmap_ref",
-                type="element_ref",
-                element_id=mindmap_spec.element_id,
-                metadata={"role": "mindmap", "placement": "supporting", "downgrade": "text"},
-            )
-        )
 
     return SlideSpecPage(
         id=slide_id,
@@ -299,10 +562,65 @@ def build_slide_unit_spec_fallback(
         order=unit.order,
         title=unit.title,
         core_message=unit.core_message,
-        layout=layout,
-        design_intent=_design_intent_for_layout(layout),
+        layout="image_text",
+        design_intent=_design_intent_for_layout("image_text"),
         theme_variant="teaching-clean",
-        layout_hints=layout_hints,
+        layout_hints={"density": "balanced", "supported_renderer": "scenekit.slide/v1", "primary_visual": image_id},
+        required_elements=required_elements,
+        speaker_notes=f"Explain this slide around the goal: {unit.goal}.",
+        source_chunk_ids=chunk_ids,
+        elements=elements,
+    )
+
+
+def _build_visual_summary_fallback(
+    slide_id: str,
+    unit: OutlineUnit,
+    state: ContentGenerationState,
+    chunk_ids: list[str],
+    options: dict[str, object],
+) -> SlideSpecPage:
+    image_id = f"image_{state.request_id}_{unit.id}"
+
+    elements = [
+        SlideSpecElement(id=f"{slide_id}_title", type="text", content=unit.title[:TITLE_MAX_CN], metadata={"role": "title"}),
+        SlideSpecElement(id=f"{slide_id}_summary_text", type="text", content=unit.core_message, metadata={"role": "summary_text"}),
+        SlideSpecElement(id=f"{slide_id}_visual_ref", type="element_ref", element_id=image_id, metadata={"role": "visual", "placement": "primary"}),
+    ]
+
+    required_elements = [
+        RequiredElementSpec(
+            element_id=image_id,
+            type="image",
+            title=f"{unit.title} summary diagram",
+            purpose="Support the visual_summary slide with a structured summary diagram.",
+            instruction=(
+                f"Create a structured summary diagram for a teaching slide about '{unit.title}'. "
+                f"Use a clear infographic, flowchart, framework diagram, or process diagram style. "
+                f"The image should carry the main structural information of the slide. "
+                f"Moderate text labels are allowed if they are readable. "
+                f"Keep the hierarchy clear and visually organized. "
+                f"Do not create a full PowerPoint slide screenshot or a decorative illustration without structure."
+            ),
+            style=str(options.get("image_style") or "infographic, flowchart, framework diagram"),
+            aspect_ratio="16:9",
+            source_unit_id=slide_id,
+            source_outline_unit_id=unit.id,
+            source_chunk_ids=chunk_ids,
+            priority="high",
+        ),
+    ]
+
+    return SlideSpecPage(
+        id=slide_id,
+        outline_unit_id=unit.id,
+        order=unit.order,
+        title=unit.title,
+        core_message=unit.core_message,
+        layout="visual_summary",
+        design_intent=_design_intent_for_layout("visual_summary"),
+        theme_variant="teaching-clean",
+        layout_hints={"density": "rich", "supported_renderer": "scenekit.slide/v1", "primary_visual": image_id},
         required_elements=required_elements,
         speaker_notes=f"Explain this slide around the goal: {unit.goal}.",
         source_chunk_ids=chunk_ids,
@@ -357,32 +675,16 @@ def _mindmap_spec_for_unit(
 
 
 def _choose_slide_layout(unit: OutlineUnit) -> str:
-    supported = {
-        "cover",
-        "section-divider",
-        "title-content",
-        "title-content-visual",
-        "visual-left-content-right",
-        "summary-cards",
-    }
-    if unit.visual_strategy in supported:
+    if unit.visual_strategy in ("image_text", "visual_summary"):
         return unit.visual_strategy
-    if unit.order == 1:
-        return "cover"
-    if len(unit.key_points) >= 4:
-        return "summary-cards"
-    if unit.order % 2 == 0:
-        return "visual-left-content-right"
-    return "title-content-visual"
+    if unit.visual_strategy in ("process", "timeline", "comparison", "summary"):
+        return "visual_summary"
+    return "image_text"
 
 
 def _design_intent_for_layout(layout: str) -> str:
     intents = {
-        "cover": "Open the deck with a clear topic signal and one concise message.",
-        "section-divider": "Separate the deck into a new conceptual section.",
-        "title-content": "Explain one idea with a strong title and readable message block.",
-        "title-content-visual": "Pair the core explanation with a supporting teaching visual.",
-        "visual-left-content-right": "Lead with a visual and explain it in a compact text panel.",
-        "summary-cards": "Summarize several key points as scan-friendly visual cards.",
+        "image_text": "Pair the core explanation with a supporting teaching visual.",
+        "visual_summary": "Present a structured summary diagram with concise text.",
     }
-    return intents.get(layout, intents["title-content-visual"])
+    return intents.get(layout, intents["image_text"])

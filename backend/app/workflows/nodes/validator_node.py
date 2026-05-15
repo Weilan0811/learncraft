@@ -1,7 +1,15 @@
 from typing import cast
 
 from app.schemas.elements import ImageElement, MindmapElement
-from app.schemas.specs import ElementReferenceBlock, LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage
+from app.schemas.specs import (
+    ElementReferenceBlock,
+    IMAGE_TEXT_REQUIRED_ROLES,
+    LectureSection,
+    LectureSpec,
+    SlideDeckSpec,
+    SlideSpecPage,
+    VISUAL_SUMMARY_REQUIRED_ROLES,
+)
 from app.schemas.state import ContentGenerationState
 from app.workflows.nodes.helpers import (
     SUPPORTED_WORKFLOW_ELEMENTS,
@@ -100,18 +108,24 @@ def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
             if not unit_spec.elements:
                 errors.append(f"slide {unit_spec.id} must have at least one element")
 
-            text_elements = [e for e in unit_spec.elements if e.type == "text"]
-            if len(text_elements) < 2:
-                errors.append(f"slide {unit_spec.id} should have title and body text elements")
-
-            if not unit_spec.layout_hints.get("supported_renderer"):
-                errors.append("slide unit_spec.layout_hints.supported_renderer is missing")
+            if unit_spec.layout not in ("image_text", "visual_summary"):
+                errors.append(f"slide {unit_spec.id} has unsupported layout: {unit_spec.layout}")
 
             roles = [element.metadata.get("role") for element in unit_spec.elements]
             if "title" not in roles:
                 errors.append("slide unit spec is missing a title role element")
-            if "body" not in roles:
-                errors.append("slide unit spec is missing a body role element")
+
+            if unit_spec.layout == "image_text":
+                missing = IMAGE_TEXT_REQUIRED_ROLES - set(roles)
+                if missing:
+                    errors.append(f"slide {unit_spec.id} image_text layout missing roles: {missing}")
+            elif unit_spec.layout == "visual_summary":
+                missing = VISUAL_SUMMARY_REQUIRED_ROLES - set(roles)
+                if missing:
+                    errors.append(f"slide {unit_spec.id} visual_summary layout missing roles: {missing}")
+
+            if not unit_spec.layout_hints.get("supported_renderer"):
+                errors.append("slide unit_spec.layout_hints.supported_renderer is missing")
 
         required_ids = {item.element_id for item in unit_spec.required_elements}
         if len(required_ids) != len(unit_spec.required_elements):

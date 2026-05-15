@@ -1,3 +1,4 @@
+import re
 from typing import Literal
 
 from pydantic import Field, model_validator
@@ -6,14 +7,37 @@ from app.schemas.base import Metadata, SchemaModel
 from app.schemas.specs.common import RequiredElementSpec
 
 
-SlideLayout = Literal[
-    "cover",
-    "section-divider",
-    "title-content",
-    "title-content-visual",
-    "visual-left-content-right",
-    "summary-cards",
+SlideLayout = Literal["image_text", "visual_summary"]
+
+SlideElementRole = Literal[
+    "title",
+    "explanation",
+    "bullet_list",
+    "summary_text",
+    "takeaway",
+    "visual",
 ]
+
+IMAGE_TEXT_REQUIRED_ROLES: set[str] = {"title", "explanation", "bullet_list", "takeaway", "visual"}
+VISUAL_SUMMARY_REQUIRED_ROLES: set[str] = {"title", "summary_text", "visual"}
+VISUAL_SUMMARY_OPTIONAL_ROLES: set[str] = {"takeaway"}
+
+TITLE_MAX_CN = 20
+EXPLANATION_MAX_SENTENCES = 2
+BULLET_LIST_MIN = 2
+BULLET_LIST_MAX = 4
+BULLET_MAX_CN = 28
+SUMMARY_TEXT_MAX_SENTENCES = 3
+TAKEAWAY_MAX_CN = 32
+
+
+def _count_chinese_chars(text: str) -> int:
+    return sum(1 for ch in text if "\u4e00" <= ch <= "\u9fff")
+
+
+def _count_sentences(text: str) -> int:
+    parts = re.split(r"[。！？；.!?;]", text)
+    return sum(1 for p in parts if p.strip())
 
 
 class SlideSpecElement(SchemaModel):
@@ -38,7 +62,7 @@ class SlideSpecPage(SchemaModel):
     order: int
     title: str
     core_message: str
-    layout: SlideLayout = "title-content"
+    layout: SlideLayout = "image_text"
     design_intent: str
     theme_variant: str | None = None
     layout_hints: Metadata = Field(default_factory=dict)
@@ -55,14 +79,17 @@ class SlideSpecPage(SchemaModel):
         outline_order = _trailing_order(self.outline_unit_id)
         if outline_order is not None and self.order != outline_order:
             raise ValueError("slide order must match outline_unit_id numeric suffix")
-        if self.layout_hints.get("supported_renderer") != "scenekit.slide/v1":
-            raise ValueError("layout_hints.supported_renderer must be scenekit.slide/v1")
 
-        roles = [element.metadata.get("role") for element in self.elements]
-        if "title" not in roles:
-            raise ValueError("slide elements must include a title role")
-        if "body" not in roles:
-            raise ValueError("slide elements must include a body role")
+        roles = [str(element.metadata.get("role") or "") for element in self.elements]
+
+        if self.layout == "image_text":
+            missing = IMAGE_TEXT_REQUIRED_ROLES - set(roles)
+            if missing:
+                raise ValueError(f"image_text layout requires roles: {missing}")
+        elif self.layout == "visual_summary":
+            missing = VISUAL_SUMMARY_REQUIRED_ROLES - set(roles)
+            if missing:
+                raise ValueError(f"visual_summary layout requires roles: {missing}")
 
         required_ids = {item.element_id for item in self.required_elements}
         if len(required_ids) != len(self.required_elements):
@@ -75,6 +102,30 @@ class SlideSpecPage(SchemaModel):
                 raise ValueError(f"required element {item.element_id} source_unit_id must match slide id")
             if item.source_outline_unit_id != self.outline_unit_id:
                 raise ValueError(f"required element {item.element_id} source_outline_unit_id must match slide outline_unit_id")
+
+        for element in self.elements:
+            if element.type != "text" or not element.content:
+                continue
+            role = str(element.metadata.get("role") or "")
+            if role == "title":
+                if _count_chinese_chars(element.content) > TITLE_MAX_CN:
+                    raise ValueError(f"title exceeds {TITLE_MAX_CN} chinese characters")
+            elif role == "explanation":
+                if _count_sentences(element.content) > EXPLANATION_MAX_SENTENCES:
+                    raise ValueError(f"explanation exceeds {EXPLANATION_MAX_SENTENCES} sentences")
+            elif role == "bullet_list":
+                lines = [line.strip() for line in element.content.splitlines() if line.strip()]
+                if len(lines) < BULLET_LIST_MIN or len(lines) > BULLET_LIST_MAX:
+                    raise ValueError(f"bullet_list must have {BULLET_LIST_MIN}-{BULLET_LIST_MAX} items")
+                for line in lines:
+                    if _count_chinese_chars(line) > BULLET_MAX_CN:
+                        raise ValueError(f"bullet item exceeds {BULLET_MAX_CN} chinese characters: {line[:20]}")
+            elif role == "summary_text":
+                if _count_sentences(element.content) > SUMMARY_TEXT_MAX_SENTENCES:
+                    raise ValueError(f"summary_text exceeds {SUMMARY_TEXT_MAX_SENTENCES} sentences")
+            elif role == "takeaway":
+                if _count_chinese_chars(element.content) > TAKEAWAY_MAX_CN:
+                    raise ValueError(f"takeaway exceeds {TAKEAWAY_MAX_CN} chinese characters")
 
         return self
 
@@ -97,5 +148,3 @@ class SlideDeckSpec(SchemaModel):
     title: str
     metadata: Metadata = Field(default_factory=dict)
     slides: list[SlideSpecPage] = Field(default_factory=list)
-    # TODO(MVP-slide): Add deck-level theme, slide count, speaker notes, and
-    # asset dependency declarations for scene-content-kit/PPTX export.

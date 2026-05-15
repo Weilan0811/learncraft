@@ -6,6 +6,7 @@ from app.workflows.nodes.helpers import fallback_image_element
 def generate_image_element(state: dict[str, object]) -> dict[str, object]:
     request = ElementRequest.model_validate(state["element_request"])
     description = _build_image_description(request)
+    layout = str(request.context.get("layout", "image_text"))
     try:
         aspect_ratio = str(request.constraints.get("aspect_ratio", "16:9"))
         generated = get_image_generation_service().generate_image(
@@ -13,6 +14,7 @@ def generate_image_element(state: dict[str, object]) -> dict[str, object]:
             description=description,
             aspect_ratio=aspect_ratio,
             asset_id=request.element_id,
+            layout=layout,
         )
         element = generated.model_copy(
             update={
