@@ -10,6 +10,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 revision: str = "20260511_0003"
@@ -19,22 +20,36 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("content_generation_task", sa.Column("outline", sa.JSON(), nullable=True))
-    op.add_column("content_generation_task", sa.Column("partial_render_model", sa.JSON(), nullable=True))
-    if op.get_bind().dialect.name == "sqlite":
-        op.add_column("content_generation_task", sa.Column("unit_results", sa.JSON(), nullable=False, server_default="{}"))
-        op.add_column("content_generation_task", sa.Column("render_units", sa.JSON(), nullable=False, server_default="{}"))
-        op.add_column("content_generation_task", sa.Column("stream_events", sa.JSON(), nullable=False, server_default="[]"))
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    columns = {column["name"] for column in inspector.get_columns("content_generation_task")}
+
+    if "outline" not in columns:
+        op.add_column("content_generation_task", sa.Column("outline", sa.JSON(), nullable=True))
+    if "partial_render_model" not in columns:
+        op.add_column("content_generation_task", sa.Column("partial_render_model", sa.JSON(), nullable=True))
+
+    if bind.dialect.name == "sqlite":
+        if "unit_results" not in columns:
+            op.add_column("content_generation_task", sa.Column("unit_results", sa.JSON(), nullable=False, server_default="{}"))
+        if "render_units" not in columns:
+            op.add_column("content_generation_task", sa.Column("render_units", sa.JSON(), nullable=False, server_default="{}"))
+        if "stream_events" not in columns:
+            op.add_column("content_generation_task", sa.Column("stream_events", sa.JSON(), nullable=False, server_default="[]"))
         return
-    op.add_column("content_generation_task", sa.Column("unit_results", sa.JSON(), nullable=True))
-    op.add_column("content_generation_task", sa.Column("render_units", sa.JSON(), nullable=True))
-    op.add_column("content_generation_task", sa.Column("stream_events", sa.JSON(), nullable=True))
-    op.execute("UPDATE content_generation_task SET unit_results = '{}' WHERE unit_results IS NULL")
-    op.execute("UPDATE content_generation_task SET render_units = '{}' WHERE render_units IS NULL")
-    op.execute("UPDATE content_generation_task SET stream_events = '[]' WHERE stream_events IS NULL")
-    op.alter_column("content_generation_task", "unit_results", nullable=False)
-    op.alter_column("content_generation_task", "render_units", nullable=False)
-    op.alter_column("content_generation_task", "stream_events", nullable=False)
+
+    if "unit_results" not in columns:
+        op.add_column("content_generation_task", sa.Column("unit_results", sa.JSON(), nullable=True))
+        op.execute("UPDATE content_generation_task SET unit_results = '{}' WHERE unit_results IS NULL")
+        op.alter_column("content_generation_task", "unit_results", existing_type=sa.JSON(), nullable=False)
+    if "render_units" not in columns:
+        op.add_column("content_generation_task", sa.Column("render_units", sa.JSON(), nullable=True))
+        op.execute("UPDATE content_generation_task SET render_units = '{}' WHERE render_units IS NULL")
+        op.alter_column("content_generation_task", "render_units", existing_type=sa.JSON(), nullable=False)
+    if "stream_events" not in columns:
+        op.add_column("content_generation_task", sa.Column("stream_events", sa.JSON(), nullable=True))
+        op.execute("UPDATE content_generation_task SET stream_events = '[]' WHERE stream_events IS NULL")
+        op.alter_column("content_generation_task", "stream_events", existing_type=sa.JSON(), nullable=False)
 
 
 def downgrade() -> None:
