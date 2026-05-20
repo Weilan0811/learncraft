@@ -165,14 +165,10 @@
       "type": "string"
     },
     "layout": {
-      "default": "title-content",
+      "default": "image_text",
       "enum": [
-        "cover",
-        "section-divider",
-        "title-content",
-        "title-content-visual",
-        "visual-left-content-right",
-        "summary-cards"
+        "image_text",
+        "visual_summary"
       ],
       "title": "Layout",
       "type": "string"

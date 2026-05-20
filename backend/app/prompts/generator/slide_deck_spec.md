@@ -37,23 +37,26 @@ layout 只能为 `image_text` 或 `visual_summary`。
 
 页面结构：
 - 顶部：标题
-- 左侧：1 张辅助说明图
-- 右侧：核心解释 + 2 到 4 条要点
-- 底部：1 条核心总结句
+- 左侧：两张独立信息卡片
+- 右侧：1 张辅助说明图
+- 底部：1 句纯总结文本
 
 必须包含的元素角色：
 - `title`
-- `explanation`
-- `bullet_list`
-- `takeaway`
+- `lead_card`
+- `support_card`
+- `summary_text`
 - `visual`
 
 文本预算：
 - title：不超过 20 个中文字符
-- explanation：不超过 2 句
-- bullet_list：2 到 4 条
+- lead_card 标题标签：不超过 6 个中文字符
+- lead_card 正文：段落不超过 2 句，或 bullet 不超过 3 条
+- support_card 标题标签：不超过 6 个中文字符
+- support_card 正文：段落不超过 2 句，或 bullet 不超过 4 条
 - 每条 bullet：不超过 28 个中文字符
-- takeaway：不超过 32 个中文字符
+- summary_text：不超过 32 个中文字符，不加“核心点：”“总结：”“结论：”等前缀
+- summary_text 不得复制或同义复述 lead_card，不得直接复制 core_message；它应提炼行动判断、风险提醒或结构性结论，与 lead_card 互补。
 
 图片要求：
 - 低信息密度视觉辅助
@@ -71,21 +74,17 @@ layout 只能为 `image_text` 或 `visual_summary`。
 
 页面结构：
 - 顶部：标题
-- 中部：1 张大尺寸示意图
-- 下方或右侧：简短总结性文本
+- 中上部：1 张大尺寸横向示意图
+- 底部：1 句纯总结文本
 
 必须包含的元素角色：
 - `title`
-- `summary_text`
 - `visual`
-
-可选包含的元素角色：
-- `takeaway`
+- `summary_text`
 
 文本预算：
 - title：不超过 20 个中文字符
-- summary_text：不超过 3 句
-- takeaway：不超过 32 个中文字符
+- summary_text：不超过 36 个中文字符，不加“核心点：”“总结：”“结论：”等前缀
 
 图片要求：
 - 承担主要信息表达功能
@@ -107,19 +106,25 @@ layout 只能为 `image_text` 或 `visual_summary`。
 
 2. 核心解释文本元素：
    - `type = "text"`
-   - `metadata.role = "explanation"`
-   - `content` 不超过 2 句
+   - `metadata.role = "lead_card"`
+   - `metadata.display_label` 为卡片标题，如“核心解释”“案例说明”“机制说明”“例子”
+   - `metadata.content_format` 为 `paragraph` 或 `bullets`
+   - `content` 段落不超过 2 句，bullet 不超过 3 条
 
 3. 要点文本元素：
    - `type = "text"`
-   - `metadata.role = "bullet_list"`
-   - `content` 为 2-4 行，每行一条要点，每条不超过 28 个中文字符
-   - 每条要点以 "• " 开头
+   - `metadata.role = "support_card"`
+   - `metadata.display_label` 为卡片标题，如“关键要点”“例子”“启发”“过程要点”
+   - `metadata.content_format` 为 `paragraph` 或 `bullets`
+   - `content` 段落不超过 2 句，bullet 不超过 4 条
+   - bullet 每行以 "• " 开头
 
 4. 总结文本元素：
    - `type = "text"`
-   - `metadata.role = "takeaway"`
+   - `metadata.role = "summary_text"`
    - `content` 不超过 32 个中文字符
+   - 不要添加“核心点：”“总结：”“结论：”等固定前缀
+   - summary_text 不得复制或同义复述 lead_card，也不得直接复制 core_message；优先从 support_card 中提炼行动判断、风险提醒或结构性结论
 
 5. 图片引用元素：
    - `type = "element_ref"`
@@ -139,7 +144,8 @@ layout 只能为 `image_text` 或 `visual_summary`。
 2. 总结文本元素：
    - `type = "text"`
    - `metadata.role = "summary_text"`
-   - `content` 不超过 3 句
+   - `content` 不超过 36 个中文字符
+   - 不要添加“核心点：”“总结：”“结论：”等固定前缀
 
 3. 图片引用元素：
    - `type = "element_ref"`
@@ -147,11 +153,7 @@ layout 只能为 `image_text` 或 `visual_summary`。
    - `metadata.placement = "primary"`
    - `element_id` 对应 `required_elements` 中的 image
 
-可选：
-4. 总结句文本元素：
-   - `type = "text"`
-   - `metadata.role = "takeaway"`
-   - `content` 不超过 32 个中文字符
+不要生成额外 summary card、takeaway 块、lead_card 或 support_card。
 
 ---
 
@@ -163,7 +165,7 @@ layout 只能为 `image_text` 或 `visual_summary`。
   - `type = "image"`
   - `purpose` 说明图片服务于哪一个教学目标
   - `instruction` 必须描述局部视觉资产，不是整页 PPT
-  - `aspect_ratio` 建议为 `4:3`（image_text）或 `16:9`（visual_summary）
+  - `aspect_ratio` 建议为 `4:3`（image_text）或 `21:9`（visual_summary）
   - `style` 根据 layout 选择：
     - image_text：使用清爽教学插画、简洁概念图、写实示意图风格
     - visual_summary：使用流程图、结构图、信息图、框架图风格
@@ -174,8 +176,11 @@ instruction 必须说明：
 - 画面主体
 - 视觉形式：概念图、场景图、技术示意图等
 - 需要强调的信息
-- 图片是"嵌入页面中的局部教学视觉资产"，不是整页 PPT
-- 避免生成完整 PPT 页面、标题栏、页脚、大段文字、复杂表格、密集信息图
+- 图片会放在右侧中等尺寸区域
+- 只展示一个清晰场景、对象、隐喻或动作
+- 明确说明图片是局部教学插画资产，不是完整 PPT 页面
+- 禁止标题栏、页眉、页脚、slide 边框、讲义卡片式页面
+- 避免信息图、流程图、架构图、脑图、密集箭头、多面板、小字和完整 PPT 页面
 
 ### visual_summary 图片 instruction 要求
 
@@ -183,8 +188,13 @@ instruction 必须说明：
 - 画面主体和结构关系
 - 视觉形式：流程图、结构图、信息图、框架图等
 - 层级关系和连接方式
-- 允许少量可读文字标签
-- 避免纯装饰性插图、整页 PPT 截图
+- 使用横向宽幅画布
+- 明确说明图片是 diagram asset，不是完整幻灯片截图
+- 主体必须放在 centered safe area，四周保留安全留白
+- 使用 3-5 个主要节点，最多 2 层结构
+- 使用大号可读标签，每个节点最多一行短标签
+- 禁止外层标题、顶部横幅、页脚、底部说明条、slide 边框
+- 避免编号大卡片、密集箭头、密集小字、海报式布局和整页 PPT 截图
 
 ---
 
@@ -232,13 +242,15 @@ instruction 必须说明：
 生成前请逐项检查：
 
 1. layout 是否只使用 image_text 或 visual_summary。
-2. required roles 是否齐全（image_text: title/explanation/bullet_list/takeaway/visual；visual_summary: title/summary_text/visual）。
-3. 文本是否符合预算（title ≤ 20字、explanation ≤ 2句、bullet 2-4条且每条 ≤ 28字、summary_text ≤ 3句、takeaway ≤ 32字）。
+2. required roles 是否齐全（image_text: title/lead_card/support_card/summary_text/visual；visual_summary: title/visual/summary_text）。
+3. 文本是否符合预算（title ≤ 20字、卡片标题 ≤ 6字、bullet 每条 ≤ 28字、image_text summary_text ≤ 32字、visual_summary summary_text ≤ 36字）。
 4. 页面内容是否具体、可讲解、可展示。
 5. visual instruction 是否与 layout 匹配。
 6. image_text 页是否避免信息密集图。
 7. visual_summary 页是否让图片承担总结结构功能。
-8. 输出是否为合法 JSON。
+8. summary_text 是否没有“核心点：”“总结：”“结论：”等固定前缀。
+9. summary_text 是否与 lead_card/core_message 形成互补而非重复。
+10. 输出是否为合法 JSON。
 
 ---
 

@@ -1,4 +1,5 @@
 from html import escape
+import re
 from textwrap import shorten
 
 from app.schemas.elements import ContentElement
@@ -84,7 +85,7 @@ def _collect_text_items(slide: SlideSpecPage) -> list[dict[str, str]]:
     for element in slide.elements:
         if element.type != "text" or not element.content:
             continue
-        role = str(element.metadata.get("role") or "explanation")
+        role = str(element.metadata.get("role") or "lead_card")
         if role == "title":
             continue
         items.append(
@@ -93,19 +94,33 @@ def _collect_text_items(slide: SlideSpecPage) -> list[dict[str, str]]:
                 "role": role,
                 "content": element.content.strip(),
                 "name": str(element.metadata.get("name") or role),
+                "display_label": str(element.metadata.get("display_label") or ""),
+                "content_format": str(element.metadata.get("content_format") or "paragraph"),
             }
         )
 
-    if not any(item["role"] in {"explanation", "body"} for item in items):
-        items.insert(0, {"id": f"{slide.id}_explanation_auto", "role": "explanation", "content": slide.core_message, "name": "explanation"})
+    if slide.layout == "image_text" and not any(item["role"] == "lead_card" for item in items):
+        items.insert(
+            0,
+            {
+                "id": f"{slide.id}_lead_card_auto",
+                "role": "lead_card",
+                "content": slide.core_message,
+                "name": "lead_card",
+                "display_label": "核心解释",
+                "content_format": "paragraph",
+            },
+        )
 
-    if not any(item["role"] == "takeaway" for item in items) and slide.core_message:
+    if not any(item["role"] == "summary_text" for item in items) and slide.core_message:
         items.append(
             {
-                "id": f"{slide.id}_takeaway_auto",
-                "role": "takeaway",
+                "id": f"{slide.id}_summary_text_auto",
+                "role": "summary_text",
                 "content": slide.core_message,
-                "name": "takeaway",
+                "name": "summary_text",
+                "display_label": "",
+                "content_format": "paragraph",
             }
         )
     return _deduplicate_items(items)
@@ -145,46 +160,61 @@ def _render_image_text(
     visual_refs: list[dict[str, object]],
     theme: KitTheme,
 ) -> list[KitSlideElement]:
-    elements = _standard_header(slide, theme, title_width=500)
+    elements = _standard_header(slide, theme, title_width=780)
 
-    explanation = _content_by_role(text_items, "explanation") or slide.core_message
-    elements.append(
-        _text(
-            f"{slide.id}_explanation",
-            "Explanation",
+    lead_card = _item_by_role(text_items, "lead_card")
+    support_card = _item_by_role(text_items, "support_card")
+    if lead_card is None:
+        lead_card = {
+            "id": f"{slide.id}_lead_card_auto",
+            "role": "lead_card",
+            "content": slide.core_message,
+            "name": "lead_card",
+            "display_label": "核心解释",
+            "content_format": "paragraph",
+        }
+    if support_card is None:
+        support_card = {
+            "id": f"{slide.id}_support_card_auto",
+            "role": "support_card",
+            "content": slide.core_message,
+            "name": "support_card",
+            "display_label": "关键要点",
+            "content_format": "paragraph",
+        }
+
+    elements.extend(
+        _card_block(
+            f"{slide.id}_lead_card",
+            str(lead_card.get("display_label") or "核心解释"),
+            str(lead_card.get("content") or ""),
             64,
-            152,
-            490,
-            60,
-            explanation,
+            156,
+            420,
+            110,
             theme,
-            font_size=20,
-            color="#1F2937",
-            line_height=1.4,
+            fill="#EFF6FF",
+            accent=theme.themeColors[0],
+        )
+    )
+    elements.extend(
+        _card_block(
+            f"{slide.id}_support_card",
+            str(support_card.get("display_label") or "关键要点"),
+            str(support_card.get("content") or ""),
+            64,
+            282,
+            440,
+            132,
+            theme,
+            fill="#FFFFFF",
+            accent=theme.themeColors[2] if len(theme.themeColors) > 2 else theme.themeColors[0],
         )
     )
 
-    bullet_content = _content_by_role(text_items, "bullet_list")
-    if bullet_content:
-        elements.append(
-            _text(
-                f"{slide.id}_bullet_list",
-                "Bullet list",
-                64,
-                222,
-                490,
-                140,
-                bullet_content,
-                theme,
-                font_size=17,
-                color="#334155",
-                line_height=1.45,
-            )
-        )
-
     if visual_refs:
-        elements.append(_shape(f"{slide.id}_visual_panel", 576, 148, 320, 232, "#F1F5F9", radius=18, outline="#E2E8F0"))
-        visual = _visual_element(visual_refs[0], 594, 166, 284, 196, theme)
+        elements.append(_shape(f"{slide.id}_visual_panel", 552, 156, 344, 258, "#F1F5F9", radius=18, outline="#E2E8F0"))
+        visual = _visual_element(visual_refs[0], 572, 178, 304, 214, theme)
         if visual is not None:
             elements.append(visual)
     else:
@@ -193,17 +223,17 @@ def _render_image_text(
                 f"{slide.id}_visual_fallback",
                 "核心信息",
                 slide.core_message,
-                576,
-                152,
-                310,
-                180,
+                552,
+                156,
+                344,
+                258,
                 theme,
                 fill="#F8FAFC",
                 accent=theme.themeColors[0],
             )
         )
 
-    elements.extend(_takeaway_bar(slide, text_items, theme, top=420))
+    elements.extend(_summary_bar(slide, text_items, theme, top=456))
     return elements
 
 
@@ -216,8 +246,8 @@ def _render_visual_summary(
     elements = _standard_header(slide, theme, title_width=760)
 
     if visual_refs:
-        elements.append(_shape(f"{slide.id}_visual_back", 64, 152, 540, 260, "#F1F5F9", radius=18, outline="#E2E8F0"))
-        visual = _visual_element(visual_refs[0], 82, 168, 504, 228, theme)
+        elements.append(_shape(f"{slide.id}_visual_back", 64, 146, 832, 320, "#F1F5F9", radius=18, outline="#E2E8F0"))
+        visual = _visual_element(visual_refs[0], 84, 166, 792, 280, theme)
         if visual is not None:
             elements.append(visual)
     else:
@@ -227,32 +257,16 @@ def _render_visual_summary(
                 "结构总览",
                 slide.core_message,
                 64,
-                152,
-                540,
-                240,
+                146,
+                832,
+                320,
                 theme,
                 fill="#F8FAFC",
                 accent=theme.themeColors[0],
             )
         )
 
-    summary_text = _content_by_role(text_items, "summary_text") or slide.core_message
-    elements.extend(
-        _feature_block(
-            f"{slide.id}_summary",
-            "总结",
-            summary_text,
-            624,
-            152,
-            272,
-            260,
-            theme,
-            fill="#EFF6FF",
-            accent=theme.themeColors[0],
-        )
-    )
-
-    elements.extend(_takeaway_bar(slide, text_items, theme, top=440))
+    elements.extend(_summary_bar(slide, text_items, theme, top=470))
     return elements
 
 
@@ -322,22 +336,52 @@ def _feature_block(
     ]
 
 
-def _takeaway_bar(slide: SlideSpecPage, text_items: list[dict[str, str]], theme: KitTheme, top: int) -> list[KitSlideElement]:
-    takeaway = _content_by_role(text_items, "takeaway") or slide.core_message
-    if not takeaway:
+def _card_block(
+    block_id: str,
+    label: str,
+    content: str,
+    left: int,
+    top: int,
+    width: int,
+    height: int,
+    theme: KitTheme,
+    fill: str,
+    accent: str,
+) -> list[KitSlideElement]:
+    return [
+        _shape(f"{block_id}_shape", left, top, width, height, fill, radius=16, outline="#DDE7F0"),
+        _shape(f"{block_id}_accent", left, top, 7, height, accent, radius=8),
+        _text(
+            f"{block_id}_text",
+            "Card text",
+            left + 22,
+            top + 24,
+            width - 44,
+            height - 34,
+            _fit_card_text(content, 190),
+            theme,
+            font_size=16 if _has_bullet_lines(content) else 17,
+            color="#1F2937",
+            line_height=1.32,
+        ),
+    ]
+
+
+def _summary_bar(slide: SlideSpecPage, text_items: list[dict[str, str]], theme: KitTheme, top: int) -> list[KitSlideElement]:
+    summary = _content_by_role(text_items, "summary_text") or slide.core_message
+    if not summary:
         return []
     return [
-        _shape(f"{slide.id}_takeaway_shape", 92, top, 776, 58, "#F8FAFC", radius=14, outline="#E2E8F0"),
         _text(
-            f"{slide.id}_takeaway_text",
-            "Takeaway",
-            112,
-            top + 12,
-            736,
-            34,
-            f"核心点：{_fit_text(takeaway, 92)}",
+            f"{slide.id}_summary_text",
+            "Summary",
+            64,
+            top,
+            832,
+            26,
+            _fit_text(_strip_summary_prefix(summary), 92),
             theme,
-            font_size=18,
+            font_size=16,
             bold=True,
             color=theme.themeColors[0],
             align="center",
@@ -388,6 +432,13 @@ def _content_by_role(text_items: list[dict[str, str]], role: str) -> str:
         if item["role"] == role and item["content"]:
             return item["content"]
     return ""
+
+
+def _item_by_role(text_items: list[dict[str, str]], role: str) -> dict[str, str] | None:
+    for item in text_items:
+        if item["role"] == role and item["content"]:
+            return item
+    return None
 
 
 def _shape(
@@ -491,3 +542,18 @@ def _preformatted(value: str) -> str:
 def _fit_text(value: str, max_chars: int) -> str:
     normalized = " ".join(str(value).split())
     return shorten(normalized, width=max_chars, placeholder="…")
+
+
+def _fit_card_text(value: str, max_chars: int) -> str:
+    if _has_bullet_lines(value):
+        lines = [shorten(line.strip(), width=max_chars, placeholder="…") for line in str(value).splitlines() if line.strip()]
+        return "\n".join(lines)
+    return _fit_text(value, max_chars)
+
+
+def _has_bullet_lines(value: str) -> bool:
+    return any(line.strip().startswith(("•", "-", "*")) for line in str(value).splitlines())
+
+
+def _strip_summary_prefix(text: str) -> str:
+    return re.sub(r"^\s*(核心点|总结|结论)\s*[:：]\s*", "", text).strip()

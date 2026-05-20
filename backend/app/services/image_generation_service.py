@@ -244,21 +244,26 @@ class APIMartImageGenerationService:
     def _build_prompt(description: str, aspect_ratio: str, layout: str = "image_text") -> str:
         if layout == "visual_summary":
             return (
-                "Create a structured summary diagram for educational content, not a presentation slide. "
-                "Render a clear infographic, flowchart, framework diagram, or process diagram. "
-                "The visual should carry the main structural information. "
-                "Moderate text labels are allowed if they are readable. Keep the hierarchy clear and visually organized. "
-                "Do not create a full PowerPoint slide screenshot, decorative illustration without structure, "
-                "title page, agenda page, or bullet-list layout. "
+                "Create a wide landscape summary diagram asset for the upper area of a teaching slide, not a full slide. "
+                "Use a clear framework diagram, flowchart, process diagram, or structured summary diagram. "
+                "The diagram should fit a wide horizontal canvas. "
+                "Keep the main content inside a centered safe area with generous margins. "
+                "Use 3-5 major nodes and at most 2 hierarchy levels. "
+                "Use large readable labels with at most one short line per node. "
+                "No outer title, no top banner, no footer, no bottom explanation bar, no slide border. "
+                "Avoid numbered large cards, dense arrows, dense small text, poster layout, and full PowerPoint slide screenshot. "
                 f"Description: {description}. Aspect ratio {aspect_ratio}."
             )
         return (
-            "Create a standalone illustration or diagram asset for educational content, not a presentation slide. "
-            "Render only the focused visual object requested, such as a timeline, process diagram, comparison graphic, "
-            "architecture sketch, or concept illustration. Keep information density low. "
-            "Use little or no text inside the image. "
-            "Do not create a slide title, header banner, footer, agenda "
-            "section, summary panel, bullet-list page, or full-page lecture layout. "
+            "Create a low-density teaching illustration asset for a slide, not a full slide. "
+            "The image will appear in a medium-sized right-side panel. "
+            "Show one clear scene, object, metaphor, or simple action. "
+            "Use realistic illustration, hand-drawn sketch, or clean educational illustration style. "
+            "No title bar, no header, no footer, no slide border, no lecture card layout. "
+            "No infographic. No flowchart. No architecture diagram. No mind map. "
+            "No dense arrows. No multiple panels. No small text. "
+            "Use at most 1-3 short labels only if necessary. "
+            "The image must remain readable in a compact slide image area. "
             f"Description: {description}. Aspect ratio {aspect_ratio}."
         )
 
@@ -319,6 +324,8 @@ class APIMartImageGenerationService:
             return {"width": 1024, "height": 1024}
         if aspect_ratio == "9:16":
             return {"width": 576, "height": 1024}
+        if aspect_ratio == "21:9":
+            return {"width": 1344, "height": 576}
         return {"width": 1024, "height": 576}
 
 
