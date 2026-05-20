@@ -170,22 +170,22 @@ def test_core_content_schemas_keep_required_extension_fields() -> None:
         elements=[
             SlideSpecElement(id="slide_stub_title", type="text", content="什么是人工智能", metadata={"role": "title"}),
             SlideSpecElement(
-                id="slide_stub_explanation",
+                id="slide_stub_lead_card",
                 type="text",
                 content="人工智能研究机器智能行为。",
-                metadata={"role": "explanation"},
+                metadata={"role": "lead_card", "display_label": "核心解释", "content_format": "paragraph"},
             ),
             SlideSpecElement(
-                id="slide_stub_bullet_list",
+                id="slide_stub_support_card",
                 type="text",
                 content="• 定义\n• 关键关系",
-                metadata={"role": "bullet_list"},
+                metadata={"role": "support_card", "display_label": "关键要点", "content_format": "bullets"},
             ),
             SlideSpecElement(
-                id="slide_stub_takeaway",
+                id="slide_stub_summary_text",
                 type="text",
                 content="理解人工智能的基本定义",
-                metadata={"role": "takeaway"},
+                metadata={"role": "summary_text"},
             ),
             SlideSpecElement(
                 id="slide_stub_visual_ref",
@@ -321,22 +321,22 @@ def test_slide_spec_page_rejects_unknown_layouts_and_keeps_element_roles() -> No
                 metadata={"role": "title"},
             ),
             SlideSpecElement(
-                id="slide_stub_explanation",
+                id="slide_stub_lead_card",
                 type="text",
                 content="人工智能研究机器智能行为。",
-                metadata={"role": "explanation"},
+                metadata={"role": "lead_card", "display_label": "核心解释", "content_format": "paragraph"},
             ),
             SlideSpecElement(
-                id="slide_stub_bullet_list",
+                id="slide_stub_support_card",
                 type="text",
                 content="• 定义\n• 关键关系",
-                metadata={"role": "bullet_list"},
+                metadata={"role": "support_card", "display_label": "关键要点", "content_format": "bullets"},
             ),
             SlideSpecElement(
-                id="slide_stub_takeaway",
+                id="slide_stub_summary_text",
                 type="text",
                 content="理解人工智能的基本定义",
-                metadata={"role": "takeaway"},
+                metadata={"role": "summary_text"},
             ),
             SlideSpecElement(
                 id="slide_stub_visual_ref",
@@ -359,7 +359,7 @@ def test_slide_spec_page_rejects_unknown_layouts_and_keeps_element_roles() -> No
     )
 
     assert slide.layout == "image_text"
-    assert slide.elements[1].metadata["role"] == "explanation"
+    assert slide.elements[1].metadata["role"] == "lead_card"
 
     try:
         SlideSpecPage(
@@ -451,9 +451,19 @@ def test_slide_spec_page_rejects_outputs_that_fail_workflow_contract() -> None:
             layout_hints={"supported_renderer": "scenekit.slide/v1"},
             elements=[
                 SlideSpecElement(id="elem_title", type="text", content="Example Slide", metadata={"role": "title"}),
-                SlideSpecElement(id="elem_explanation", type="text", content="Some content", metadata={"role": "explanation"}),
-                SlideSpecElement(id="elem_bullet_list", type="text", content="• Point 1\n• Point 2", metadata={"role": "bullet_list"}),
-                SlideSpecElement(id="elem_takeaway", type="text", content="Key takeaway", metadata={"role": "takeaway"}),
+                SlideSpecElement(
+                    id="elem_lead_card",
+                    type="text",
+                    content="Some content",
+                    metadata={"role": "lead_card", "display_label": "核心解释", "content_format": "paragraph"},
+                ),
+                SlideSpecElement(
+                    id="elem_support_card",
+                    type="text",
+                    content="• Point 1\n• Point 2",
+                    metadata={"role": "support_card", "display_label": "关键要点", "content_format": "bullets"},
+                ),
+                SlideSpecElement(id="elem_summary_text", type="text", content="Key takeaway", metadata={"role": "summary_text"}),
                 SlideSpecElement(id="elem_visual", type="element_ref", element_id="img_1", metadata={"role": "visual"}),
             ],
             required_elements=[

@@ -25,6 +25,13 @@ interface SlidePageData {
     defaultColor?: string;
     fontSize?: number;
     bold?: boolean;
+    italic?: boolean;
+    underline?: boolean;
+    align?: "left" | "center" | "right" | "justify";
+    verticalAlign?: "top" | "middle" | "bottom";
+    fill?: string;
+    opacity?: number;
+    lineHeight?: number;
   }>;
   speakerNotes?: string;
 }
@@ -45,6 +52,13 @@ function adaptSlidePage(pageData: SlidePageData, index: number): KitScene {
         defaultColor: el.defaultColor,
         fontSize: el.fontSize,
         bold: el.bold,
+        italic: el.italic,
+        underline: el.underline,
+        align: el.align,
+        verticalAlign: el.verticalAlign,
+        fill: el.fill,
+        opacity: el.opacity,
+        lineHeight: el.lineHeight,
       };
     }
     if (el.type === "image") {

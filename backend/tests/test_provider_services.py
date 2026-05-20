@@ -280,9 +280,9 @@ def test_apimart_image_prompt_forbids_full_slide_layouts() -> None:
         aspect_ratio="16:9",
     )
 
-    assert "standalone illustration or diagram asset" in prompt
-    assert "not a presentation slide" in prompt
-    assert "Do not create a slide title" in prompt
+    assert "low-density teaching illustration" in prompt
+    assert "medium-sized right-side panel" in prompt
+    assert "No infographic" in prompt
 
 
 def test_apimart_image_service_failed_task_raises_without_retrying_paid_submit() -> None:

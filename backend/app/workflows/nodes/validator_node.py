@@ -1,4 +1,5 @@
 from typing import cast
+import re
 
 from app.schemas.elements import ImageElement, MindmapElement
 from app.schemas.specs import (
@@ -119,10 +120,27 @@ def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
                 missing = IMAGE_TEXT_REQUIRED_ROLES - set(roles)
                 if missing:
                     errors.append(f"slide {unit_spec.id} image_text layout missing roles: {missing}")
+                extra = set(str(role) for role in roles) - IMAGE_TEXT_REQUIRED_ROLES
+                if extra:
+                    errors.append(f"slide {unit_spec.id} image_text layout has unsupported roles: {extra}")
+                card_roles = [role for role in roles if role in {"lead_card", "support_card"}]
+                if card_roles.count("lead_card") != 1 or card_roles.count("support_card") != 1:
+                    errors.append(f"slide {unit_spec.id} image_text layout must have exactly two text cards")
+                for element in unit_spec.elements:
+                    if element.metadata.get("role") in {"lead_card", "support_card"} and not element.metadata.get("display_label"):
+                        errors.append(f"slide {unit_spec.id} {element.metadata.get('role')} display_label is missing")
+                    if element.metadata.get("role") == "summary_text" and element.content and _has_summary_prefix(element.content):
+                        errors.append(f"slide {unit_spec.id} summary_text must not include fixed summary prefix")
             elif unit_spec.layout == "visual_summary":
                 missing = VISUAL_SUMMARY_REQUIRED_ROLES - set(roles)
                 if missing:
                     errors.append(f"slide {unit_spec.id} visual_summary layout missing roles: {missing}")
+                extra_cards = {"lead_card", "support_card", "explanation", "bullet_list", "takeaway"} & set(str(role) for role in roles)
+                if extra_cards:
+                    errors.append(f"slide {unit_spec.id} visual_summary layout has extra text card roles: {extra_cards}")
+                for element in unit_spec.elements:
+                    if element.metadata.get("role") == "summary_text" and element.content and _has_summary_prefix(element.content):
+                        errors.append(f"slide {unit_spec.id} summary_text must not include fixed summary prefix")
 
             if not unit_spec.layout_hints.get("supported_renderer"):
                 errors.append("slide unit_spec.layout_hints.supported_renderer is missing")
@@ -225,6 +243,10 @@ def _validate_mindmap_markdown(markdown: str) -> list[str]:
         errors.append("recommended to have at most 6 first-level branches")
 
     return errors
+
+
+def _has_summary_prefix(text: str) -> bool:
+    return bool(re.match(r"^\s*(核心点|总结|结论)\s*[:：]", text))
 
 
 def route_after_unit_validation(state: ContentGenerationState) -> str:
