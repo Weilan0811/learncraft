@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.assets import router as assets_router
 from app.api.content_generation import router as content_generation_router
+from app.api.learning import router as learning_router
 from app.core.config import get_settings
 
 
@@ -30,3 +31,4 @@ def health_check() -> dict[str, str]:
 
 app.include_router(content_generation_router, prefix="/api/content-generation", tags=["content-generation"])
 app.include_router(assets_router, prefix="/api/assets", tags=["assets"])
+app.include_router(learning_router, prefix="/api", tags=["learning"])

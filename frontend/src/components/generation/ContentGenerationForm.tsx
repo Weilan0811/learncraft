@@ -23,6 +23,11 @@ const defaultsByType: Record<MvpContentType, { topic: string; prompt: string; sy
     topic: "AI Agent 工作流的设计与实践",
     prompt: "根据给定内容生成一段适合中文 TTS 播放的双人播客对话，要求 Person1/Person2 自然来回交流，并保留清晰观点推进。",
     systemPrompt: "内容准确、表达自然、节奏适合收听。"
+  },
+  interactive_html: {
+    topic: "生成式 AI 如何理解你的问题？",
+    prompt: "生成一份面向初学者的互动式 HTML 课程，包含讲解、互动练习和对话式教学引导。",
+    systemPrompt: "内容准确、结构清晰、适合互动式学习。"
   }
 };
 
@@ -64,8 +69,8 @@ export function ContentGenerationForm() {
     setContentType(nextType);
     setTopic(defaultsByType[nextType].topic);
     setUserPrompt(defaultsByType[nextType].prompt);
-    if (nextType === "social_post" || nextType === "podcast_script") {
-      if (nextType === "podcast_script") {
+    if (nextType === "social_post" || nextType === "podcast_script" || nextType === "interactive_html") {
+      if (nextType === "podcast_script" || nextType === "interactive_html") {
         setIncludeImages(false);
       }
       setIncludeCharts(false);
@@ -73,7 +78,7 @@ export function ContentGenerationForm() {
     }
   }
 
-  const visualOptionsDisabled = contentType === "social_post" || contentType === "podcast_script";
+  const visualOptionsDisabled = contentType === "social_post" || contentType === "podcast_script" || contentType === "interactive_html";
 
   return (
     <form className="generation-form" onSubmit={handleSubmit}>
@@ -84,6 +89,7 @@ export function ContentGenerationForm() {
           <option value="slide_deck">Slide Deck</option>
           <option value="social_post">Social Post</option>
           <option value="podcast_script">Podcast</option>
+          <option value="interactive_html">Interactive HTML</option>
         </select>
       </label>
 

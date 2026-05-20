@@ -1,4 +1,5 @@
 from app.content_types.base import ContentTypeProfile
+from app.content_types.interactive_html import build_interactive_html_profile
 from app.content_types.lecture import build_lecture_profile
 from app.content_types.podcast import build_podcast_profile
 from app.content_types.slide_deck import build_slide_deck_profile
@@ -11,6 +12,7 @@ CONTENT_TYPE_PROFILES: dict[str, ContentTypeProfile] = {
     "slide_deck": build_slide_deck_profile(),
     "social_post": build_social_post_profile(),
     "podcast_script": build_podcast_profile(),
+    "interactive_html": build_interactive_html_profile(),
 }
 
 

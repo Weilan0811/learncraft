@@ -1,10 +1,11 @@
 import type { ExportType, MvpContentType } from "./content";
+import type { InteractiveHtmlRenderModel } from "./interactiveHtml";
 import type { LectureRenderModel } from "./lecture";
 import type { PodcastRenderModel } from "./podcast";
 import type { SlideRenderModel } from "./slide";
 import type { SocialPostRenderModel } from "./socialPost";
 
-export type RenderModel = LectureRenderModel | SlideRenderModel | SocialPostRenderModel | PodcastRenderModel;
+export type RenderModel = LectureRenderModel | SlideRenderModel | SocialPostRenderModel | PodcastRenderModel | InteractiveHtmlRenderModel;
 
 export interface ExportFile {
   type: ExportType;

@@ -1,3 +1,4 @@
+import { InteractiveHtmlRenderer } from "../components/renderers/InteractiveHtmlRenderer";
 import { LectureRenderer } from "../components/renderers/LectureRenderer";
 import { PodcastRenderer } from "../components/renderers/PodcastRenderer";
 import { SlideDeckPreview } from "../components/renderers/SlideRenderer/SlideDeckPreview";
@@ -28,6 +29,10 @@ export function ContentPreviewPage() {
 
   if (activePreview.render_model.render_type === "podcast_script") {
     return <PodcastRenderer model={activePreview.render_model} />;
+  }
+
+  if (activePreview.render_model.render_type === "interactive_html_page") {
+    return <InteractiveHtmlRenderer model={activePreview.render_model} />;
   }
 
   return <LectureRenderer model={activePreview.render_model} />;

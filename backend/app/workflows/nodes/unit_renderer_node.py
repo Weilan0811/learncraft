@@ -1,9 +1,18 @@
 from datetime import UTC, datetime
 
+from app.renderers.interactive_html_renderer import InteractiveHtmlRenderer
 from app.renderers.lecture_renderer import LectureRenderer
 from app.renderers.slide_renderer import SlideRenderer
-from app.schemas.render import LectureRenderModel, LectureRenderSection, SlidePageModel, SlideRenderModel
-from app.schemas.specs import LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage
+from app.schemas.render import (
+    InteractiveHtmlRenderModel,
+    InteractiveHtmlRenderSection,
+    LectureRenderModel,
+    LectureRenderSection,
+    SlidePageModel,
+    SlideRenderModel,
+)
+from app.schemas.specs import InteractiveHtmlSectionSpec, InteractiveHtmlSpec, LectureSection, LectureSpec, SlideDeckSpec, SlideSpecPage
+from app.schemas.specs.interactive_html import InteractiveHtmlMeta
 from app.schemas.state import ContentGenerationState, RenderUnitSnapshot
 from app.workflows.nodes.helpers import unit_progress
 
@@ -17,6 +26,8 @@ def render_unit(state: ContentGenerationState) -> dict[str, object]:
 
     if isinstance(state.current_unit_spec, LectureSection):
         fragment = LectureRenderer().render_unit(state.current_unit_spec, unit_elements).model_dump(mode="json")
+    elif isinstance(state.current_unit_spec, InteractiveHtmlSectionSpec):
+        fragment = InteractiveHtmlRenderer().render_unit(state.current_unit_spec, unit_elements).model_dump(mode="json")
     elif isinstance(state.current_unit_spec, SlideSpecPage):
         deck_spec = _partial_slide_deck_spec(state, [state.current_unit_spec])
         fragment = SlideRenderer().render_unit(state.current_unit_spec, unit_elements, deck_spec).model_dump(mode="json")
@@ -58,6 +69,19 @@ def _build_partial_render_model(state: ContentGenerationState, render_units: dic
     if state.content_type == "slide_deck":
         pages = [SlidePageModel.model_validate(snapshot.render_fragment) for snapshot in ordered if snapshot.status == "rendered"]
         return SlideRenderModel(title=state.outline.title if state.outline else state.topic, pages=pages)
+    if state.content_type == "interactive_html":
+        sections = [InteractiveHtmlRenderSection.model_validate(snapshot.render_fragment) for snapshot in ordered if snapshot.status == "rendered"]
+        spec = InteractiveHtmlSpec(
+            lesson_id=f"partial_lesson_{state.request_id}",
+            title=state.outline.title if state.outline else state.topic,
+            meta=InteractiveHtmlMeta(
+                language=(state.normalized_request or {}).get("language", "zh-CN"),
+                audience="general",
+                difficulty="introductory",
+            ),
+            sections=[],
+        )
+        return InteractiveHtmlRenderer()._assemble(spec, sections)
     sections = [LectureRenderSection.model_validate(snapshot.render_fragment) for snapshot in ordered if snapshot.status == "rendered"]
     spec = LectureSpec(
         id=f"partial_lecture_{state.request_id}",

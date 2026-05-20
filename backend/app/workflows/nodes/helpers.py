@@ -32,13 +32,19 @@ def current_outline_unit(state: ContentGenerationState) -> OutlineUnit:
     raise ValueError(f"Current outline unit not found: {unit_id}")
 
 
-def element_ref_ids(unit_spec: LectureSection | SlideSpecPage) -> list[str]:
+def element_ref_ids(unit_spec) -> list[str]:
+    from app.schemas.specs.interactive_html import InteractiveHtmlSectionSpec
+    if isinstance(unit_spec, InteractiveHtmlSectionSpec):
+        return []
     if isinstance(unit_spec, LectureSection):
         return [block.element_id for block in unit_spec.blocks if isinstance(block, ElementReferenceBlock)]
     return [element.element_id for element in unit_spec.elements if element.type == "element_ref" and element.element_id]
 
 
-def content_element_ref_ids(content_spec: LectureSpec | SlideDeckSpec) -> list[str]:
+def content_element_ref_ids(content_spec) -> list[str]:
+    from app.schemas.specs.interactive_html import InteractiveHtmlSpec
+    if isinstance(content_spec, InteractiveHtmlSpec):
+        return []
     if isinstance(content_spec, LectureSpec):
         return [element_id for section in content_spec.sections for element_id in element_ref_ids(section)]
     return [element_id for slide in content_spec.slides for element_id in element_ref_ids(slide)]
