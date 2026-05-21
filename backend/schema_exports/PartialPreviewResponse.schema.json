@@ -135,6 +135,237 @@
       "title": "AudioFileElement",
       "type": "object"
     },
+    "InteractionRenderRef": {
+      "additionalProperties": false,
+      "properties": {
+        "interaction_id": {
+          "title": "Interaction Id",
+          "type": "string"
+        },
+        "section_id": {
+          "title": "Section Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "target_concepts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Target Concepts",
+          "type": "array"
+        },
+        "event_type": {
+          "title": "Event Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "interaction_id",
+        "section_id",
+        "type",
+        "event_type"
+      ],
+      "title": "InteractionRenderRef",
+      "type": "object"
+    },
+    "InteractiveHtmlRenderBlockRef": {
+      "additionalProperties": false,
+      "properties": {
+        "block_id": {
+          "title": "Block Id",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "teaching_role": {
+          "title": "Teaching Role",
+          "type": "string"
+        },
+        "interaction_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Interaction Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "block_id",
+        "type",
+        "title",
+        "teaching_role"
+      ],
+      "title": "InteractiveHtmlRenderBlockRef",
+      "type": "object"
+    },
+    "InteractiveHtmlRenderModel": {
+      "additionalProperties": false,
+      "properties": {
+        "render_type": {
+          "default": "interactive_html_page",
+          "title": "Render Type",
+          "type": "string"
+        },
+        "lesson_id": {
+          "title": "Lesson Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "subtitle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subtitle"
+        },
+        "layout": {
+          "const": "vertical_lesson_with_tutor",
+          "default": "vertical_lesson_with_tutor",
+          "title": "Layout",
+          "type": "string"
+        },
+        "theme": {
+          "additionalProperties": true,
+          "title": "Theme",
+          "type": "object"
+        },
+        "navigation": {
+          "items": {
+            "$ref": "#/$defs/NavigationItem"
+          },
+          "title": "Navigation",
+          "type": "array"
+        },
+        "interactions": {
+          "items": {
+            "$ref": "#/$defs/InteractionRenderRef"
+          },
+          "title": "Interactions",
+          "type": "array"
+        },
+        "runtime": {
+          "$ref": "#/$defs/InteractiveRuntimeConfig"
+        },
+        "meta": {
+          "additionalProperties": true,
+          "title": "Meta",
+          "type": "object"
+        },
+        "pedagogy": {
+          "additionalProperties": true,
+          "title": "Pedagogy",
+          "type": "object"
+        },
+        "sections": {
+          "items": {
+            "$ref": "#/$defs/InteractiveHtmlRenderSection"
+          },
+          "title": "Sections",
+          "type": "array"
+        },
+        "citations": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Citations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "lesson_id",
+        "title"
+      ],
+      "title": "InteractiveHtmlRenderModel",
+      "type": "object"
+    },
+    "InteractiveHtmlRenderSection": {
+      "additionalProperties": false,
+      "properties": {
+        "section_id": {
+          "title": "Section Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "learning_goal": {
+          "title": "Learning Goal",
+          "type": "string"
+        },
+        "html_fragment": {
+          "title": "Html Fragment",
+          "type": "string"
+        },
+        "block_refs": {
+          "items": {
+            "$ref": "#/$defs/InteractiveHtmlRenderBlockRef"
+          },
+          "title": "Block Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "section_id",
+        "title",
+        "learning_goal",
+        "html_fragment"
+      ],
+      "title": "InteractiveHtmlRenderSection",
+      "type": "object"
+    },
+    "InteractiveRuntimeConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "progress_tracking": {
+          "default": true,
+          "title": "Progress Tracking",
+          "type": "boolean"
+        },
+        "scoring_enabled": {
+          "default": true,
+          "title": "Scoring Enabled",
+          "type": "boolean"
+        },
+        "session_required": {
+          "default": true,
+          "title": "Session Required",
+          "type": "boolean"
+        },
+        "event_endpoint_template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "/api/interactive-lessons/{lesson_id}/sessions/{session_id}/events",
+          "title": "Event Endpoint Template"
+        }
+      },
+      "title": "InteractiveRuntimeConfig",
+      "type": "object"
+    },
     "KitElementOutline": {
       "additionalProperties": false,
       "properties": {
@@ -1381,6 +1612,30 @@
       "title": "LectureRenderSection",
       "type": "object"
     },
+    "NavigationItem": {
+      "additionalProperties": false,
+      "properties": {
+        "section_id": {
+          "title": "Section Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "anchor": {
+          "title": "Anchor",
+          "type": "string"
+        }
+      },
+      "required": [
+        "section_id",
+        "title",
+        "anchor"
+      ],
+      "title": "NavigationItem",
+      "type": "object"
+    },
     "PodcastAudioSegment": {
       "additionalProperties": false,
       "properties": {
@@ -1911,6 +2166,7 @@
         "slide_deck",
         "social_post",
         "podcast_script",
+        "interactive_html",
         "video_script",
         "project_task",
         "quiz_pack",
@@ -1932,6 +2188,9 @@
         },
         {
           "$ref": "#/$defs/PodcastRenderModel"
+        },
+        {
+          "$ref": "#/$defs/InteractiveHtmlRenderModel"
         }
       ],
       "title": "Render Model"

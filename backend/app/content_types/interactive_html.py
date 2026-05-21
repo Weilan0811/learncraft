@@ -1,4 +1,5 @@
 from app.content_types.base import ContentTypeProfile, ElementPolicy
+from app.renderers.interactive_html_composer import InteractiveHtmlComposer
 from app.renderers.interactive_html_renderer import InteractiveHtmlRenderer
 from app.schemas.render.interactive_html import InteractiveHtmlRenderModel
 from app.schemas.specs.interactive_html import InteractiveHtmlSectionSpec, InteractiveHtmlSpec

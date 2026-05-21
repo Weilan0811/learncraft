@@ -6,7 +6,9 @@ from app.workflows.nodes.image_element_node import generate_image_element
 from app.workflows.nodes.mindmap_element_node import generate_mindmap_element
 from app.workflows.nodes.planner_node import plan_outline
 from app.workflows.nodes.renderer_node import lecture_renderer, slide_renderer
+from app.workflows.nodes.render_unit_repair_node import fallback_render_unit, repair_render_unit
 from app.workflows.nodes.retriever_node import retrieve_for_planning, retrieve_for_unit
+from app.workflows.nodes.unit_spec_repair_node import fallback_unit_spec, repair_unit_spec
 from app.workflows.nodes.unit_loop_node import initialize_section_units, initialize_slide_units, merge_unit_result
 from app.workflows.nodes.unit_spec_generator_node import generate_unit_spec
 from app.workflows.nodes.validator_node import validate_content, validate_outline, validate_unit, validate_unit_spec
@@ -25,8 +27,12 @@ def test_workflow_nodes_are_importable_from_focused_modules() -> None:
         plan_outline,
         lecture_renderer,
         slide_renderer,
+        repair_render_unit,
+        fallback_render_unit,
         retrieve_for_planning,
         retrieve_for_unit,
+        repair_unit_spec,
+        fallback_unit_spec,
         initialize_section_units,
         initialize_slide_units,
         merge_unit_result,

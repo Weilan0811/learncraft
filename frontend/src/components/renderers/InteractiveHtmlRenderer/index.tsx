@@ -1,11 +1,14 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import type { InteractiveHtmlRenderModel, CreateSessionResponse, SubmitEventRequest } from "../../../types/interactiveHtml";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import DOMPurify from "dompurify";
+import type {
+  CreateSessionResponse,
+  InteractiveHtmlRenderModel,
+  InteractiveHtmlRenderedUnit,
+  LearningEventPayload,
+  LearningEventType,
+  SubmitEventRequest,
+} from "../../../types/interactiveHtml";
 import { createLearningSession, submitLearningEvent } from "../../../api/learningApi";
-
-import { HeadingBlock, ParagraphBlock, ConceptCardBlock, CalloutBlock, ExampleBlock, SummaryBlock } from "./blocks/ContentBlocks";
-import { AnimatedFlowBlock, CaseCompareBlock, ContextInspectorBlock, StepperBlock } from "./blocks/DisplayBlocks";
-import { SingleChoiceBlock, MultipleChoiceBlock, ShortAnswerBlock, DragMatchBlock, SequenceBlock, FlashcardBlock } from "./blocks/InteractiveBlocks";
-import { SocraticChatBlock, ScenarioBlock } from "./blocks/DialogueBlocks";
 import "./styles.css";
 
 interface Props {
@@ -13,114 +16,82 @@ interface Props {
   fullscreen?: boolean;
 }
 
-type BlockType = InteractiveHtmlRenderModel["sections"][0]["render_blocks"][0];
-
-const BLOCK_RENDERERS: Record<string, React.FC<{
-  block: BlockType;
-  lessonId?: string;
-  sessionId?: string;
-  sectionId?: string;
-  onSubmitEvent?: (event: SubmitEventRequest) => void;
-  onScore?: (points: number) => void;
-}>> = {
-  heading: HeadingBlock as any,
-  paragraph: ParagraphBlock as any,
-  concept_card: ConceptCardBlock as any,
-  callout: CalloutBlock as any,
-  example: ExampleBlock as any,
-  summary: SummaryBlock as any,
-  animated_flow: AnimatedFlowBlock as any,
-  case_compare: CaseCompareBlock as any,
-  context_inspector: ContextInspectorBlock as any,
-  stepper: StepperBlock as any,
-  single_choice: SingleChoiceBlock as any,
-  multiple_choice: MultipleChoiceBlock as any,
-  short_answer: ShortAnswerBlock as any,
-  drag_match: DragMatchBlock as any,
-  sequence: SequenceBlock as any,
-  flashcard: FlashcardBlock as any,
-  socratic_chat: SocraticChatBlock as any,
-  scenario: ScenarioBlock as any,
+const ACTION_EVENT_TYPE: Partial<Record<string, LearningEventType>> = {
+  "single-choice": "single_choice_answered",
+  "multiple-choice": "multiple_choice_answered",
+  "short-answer": "short_answer_submitted",
+  "sequence-select": "sequence_submitted",
+  "match-select": "drag_match_submitted",
 };
 
-/** Block types that should start a new sub-card (tall/heavy content) */
-const SUB_CARD_BREAK = new Set([
-  "animated_flow", "case_compare", "context_inspector", "stepper",
-  "single_choice", "multiple_choice", "short_answer", "drag_match",
-  "sequence", "flashcard", "socratic_chat", "scenario",
-  "example", "summary",
-]);
+const SANITIZE_CONFIG = {
+  ADD_TAGS: ["section"],
+  ADD_ATTR: [
+    "aria-label",
+    "aria-labelledby",
+    "aria-describedby",
+    "aria-controls",
+    "aria-expanded",
+    "aria-selected",
+    "role",
+    "data-ih-action",
+    "data-section-id",
+    "data-block-id",
+    "data-block-type",
+    "data-interaction-id",
+    "data-option-id",
+    "data-item-id",
+    "data-target-id",
+    "data-tab-target",
+    "data-tab-panel",
+    "data-flow-id",
+    "data-step",
+    "data-correct",
+  ],
+  FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "meta", "svg"],
+  FORBID_ATTR: ["onclick", "onchange", "oninput", "onkeydown", "onkeyup", "onmouseover"],
+};
 
-/** Check if two strings are effectively the same title */
-function isSameTitle(a: string, b: string): boolean {
-  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, "");
-  const na = norm(a);
-  const nb = norm(b);
-  if (!na || !nb) return false;
-  return na === nb || na.includes(nb) || nb.includes(na);
+function optionIds(container: Element, selector = ".selected,[aria-pressed='true']"): string[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(selector))
+    .map((el) => el.dataset.optionId || el.dataset.itemId || "")
+    .filter(Boolean);
 }
 
-/** Remove consecutive duplicate paragraph blocks */
-function dedupBlocks(blocks: BlockType[]): BlockType[] {
-  const out: BlockType[] = [];
-  for (const b of blocks) {
-    if (b.type === "paragraph" && out.length > 0) {
-      const prev = out[out.length - 1];
-      const prevText = ((prev as any).block_data?.text ?? "") as string;
-      const curText = ((b as any).block_data?.text ?? "") as string;
-      if (prev.type === "paragraph" && prevText === curText) continue;
-    }
-    out.push(b);
-  }
-  return out;
+function sectionIdFor(target: HTMLElement): string {
+  return target.closest<HTMLElement>("[data-section-id]")?.dataset.sectionId || "";
 }
 
-/** Infer module eyebrow label from blocks, or use section order as fallback */
-const MODULE_DETECT_PATTERNS: Array<{ types: string[]; label: string }> = [
-  { types: ["socratic_chat"], label: "启发式多轮问答" },
-  { types: ["scenario"], label: "情景教学" },
-  { types: ["animated_flow"], label: "流程动画式讲解" },
-  { types: ["case_compare"], label: "案例理解" },
-  { types: ["flashcard", "drag_match", "sequence", "single_choice", "multiple_choice", "short_answer"], label: "综合练习模块" },
-  { types: ["concept_card"], label: "知识点讲解" },
-  { types: ["summary"], label: "总结回顾" },
-];
-
-function deriveEyebrow(blocks: BlockType[], sectionOrder: number, totalSections: number): string {
-  const typeSet = new Set(blocks.map((b) => b.type));
-  for (const pattern of MODULE_DETECT_PATTERNS) {
-    if (pattern.types.some((t) => typeSet.has(t))) return pattern.label;
-  }
-  if (sectionOrder === 0) return "课程导入";
-  if (sectionOrder === totalSections - 1) return "总结回顾";
-  return "";
+function setPressed(el: HTMLElement, pressed: boolean): void {
+  el.classList.toggle("selected", pressed);
+  el.classList.toggle("active", pressed);
+  el.setAttribute("aria-pressed", pressed ? "true" : "false");
 }
 
-/** Split a section's blocks into sub-card groups that each fit ~1 viewport */
-function splitIntoSubCards(blocks: BlockType[]): BlockType[][] {
-  const pages: BlockType[][] = [];
-  let current: BlockType[] = [];
-  let lightCount = 0;
+function useScopedStyles(sections: InteractiveHtmlRenderedUnit[]) {
+  const styleRef = useRef<HTMLStyleElement | null>(null);
 
-  for (const b of blocks) {
-    const isHeavy = SUB_CARD_BREAK.has(b.type);
-
-    if (isHeavy && current.length > 0) {
-      pages.push(current);
-      current = [];
-      lightCount = 0;
-    } else if (!isHeavy && lightCount >= 4) {
-      pages.push(current);
-      current = [];
-      lightCount = 0;
+  useEffect(() => {
+    if (!styleRef.current) {
+      styleRef.current = document.createElement("style");
+      styleRef.current.setAttribute("data-ih-scoped", "true");
+      document.head.appendChild(styleRef.current);
     }
 
-    current.push(b);
-    if (!isHeavy) lightCount++;
-  }
+    const css = sections
+      .filter((section) => section.css_fragment?.trim())
+      .map((section) => `/* scope: ${section.style_scope_id} */\n${section.css_fragment}`)
+      .join("\n\n");
 
-  if (current.length > 0) pages.push(current);
-  return pages;
+    styleRef.current.textContent = css;
+
+    return () => {
+      if (styleRef.current && styleRef.current.parentNode) {
+        styleRef.current.parentNode.removeChild(styleRef.current);
+        styleRef.current = null;
+      }
+    };
+  }, [sections]);
 }
 
 export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = false }) => {
@@ -130,9 +101,20 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
 
+  useScopedStyles(model.sections);
+
   useEffect(() => {
     createLearningSession(model.lesson_id).then(setSession).catch(console.error);
   }, [model.lesson_id]);
+
+  const sanitizedSections = useMemo(
+    () =>
+      model.sections.map((section) => ({
+        ...section,
+        html_fragment: DOMPurify.sanitize(section.html_fragment, SANITIZE_CONFIG),
+      })),
+    [model.sections]
+  );
 
   const handleSubmitEvent = useCallback(async (event: SubmitEventRequest) => {
     if (!session) return;
@@ -143,11 +125,32 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     }
   }, [model.lesson_id, session]);
 
-  const addScore = useCallback((points: number) => {
-    setScore((s) => s + points);
+  const markComplete = useCallback((sectionId: string) => {
+    if (!sectionId) return;
+    setCompletedSections((prev) => {
+      if (prev.has(sectionId)) return prev;
+      const next = new Set(prev);
+      next.add(sectionId);
+      return next;
+    });
+    setScore((s) => s + 5);
   }, []);
 
-  // IntersectionObserver: highlight active section in sidebar
+  const submitInteraction = useCallback((params: {
+    sectionId: string;
+    interactionId?: string;
+    eventType?: LearningEventType;
+    payload?: LearningEventPayload;
+  }) => {
+    if (!params.sectionId || !params.eventType) return;
+    void handleSubmitEvent({
+      section_id: params.sectionId,
+      interaction_id: params.interactionId || null,
+      event_type: params.eventType,
+      payload: params.payload ?? {},
+    });
+  }, [handleSubmitEvent]);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -165,155 +168,173 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     return () => {
       currentRefs.forEach((el) => observer.unobserve(el));
     };
-  }, [model.sections]);
-
-  const sections = model.sections;
+  }, [sanitizedSections]);
 
   const scrollToSection = (sectionId: string) => {
-    const el = sectionRefs.current.get(sectionId);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    sectionRefs.current.get(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleRuntimeClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-ih-action]");
+    if (!target) return;
+
+    const action = target.dataset.ihAction || "";
+    const sectionId = sectionIdFor(target);
+    const interactionId = target.dataset.interactionId;
+    const eventType = ACTION_EVENT_TYPE[action];
+    const interactionBox = target.closest<HTMLElement>("[data-interaction-id]") || target;
+
+    if (action === "complete-section") {
+      markComplete(sectionId);
+      return;
     }
-  };
 
-  const markComplete = (sectionId: string) => {
-    setCompletedSections((prev) => {
-      if (prev.has(sectionId)) return prev;
-      const next = new Set(prev);
-      next.add(sectionId);
-      return next;
-    });
-    addScore(5);
-  };
+    if (action === "tab-select") {
+      const tabTarget = target.dataset.tabTarget;
+      const tabsRoot = target.closest<HTMLElement>(".ih-tabs") || target.parentElement;
+      if (tabsRoot && tabTarget) {
+        tabsRoot.querySelectorAll<HTMLElement>("[data-ih-action='tab-select']").forEach((tab) => setPressed(tab, tab === target));
+        tabsRoot.querySelectorAll<HTMLElement>("[data-ih-tab-panel], .ih-tab-panel").forEach((panel) => {
+          const isActive = panel.id === tabTarget || panel.getAttribute("data-tab-panel") === tabTarget;
+          panel.classList.toggle("active", isActive);
+          panel.toggleAttribute("hidden", !isActive);
+        });
+      }
+      return;
+    }
 
-  const progressPercent = sections.length > 0
-    ? Math.round((completedSections.size / sections.length) * 100)
+    if (action === "flow-next" || action === "flow-prev" || action === "flow-reset") {
+      const flow = target.closest<HTMLElement>(".ih-flow-board,[data-flow-id]");
+      if (!flow) return;
+      const steps = Array.from(flow.querySelectorAll<HTMLElement>("[data-step]"));
+      const max = Math.max(steps.length - 1, 0);
+      const current = Number(flow.dataset.currentStep || "0");
+      const next = action === "flow-reset" ? 0 : action === "flow-next" ? Math.min(current + 1, max) : Math.max(current - 1, 0);
+      flow.dataset.currentStep = String(next);
+      steps.forEach((step, index) => {
+        step.classList.toggle("active", index === next);
+        step.classList.toggle("done", index < next);
+      });
+      return;
+    }
+
+    if (action === "single-choice") {
+      const optionId = target.dataset.optionId;
+      interactionBox.querySelectorAll<HTMLElement>("[data-option-id]").forEach((option) => setPressed(option, option === target));
+      target.classList.add("answered");
+      setScore((s) => s + 1);
+      submitInteraction({
+        sectionId,
+        interactionId,
+        eventType,
+        payload: { selected_option_ids: optionId ? [optionId] : [] },
+      });
+      return;
+    }
+
+    if (action === "multiple-choice") {
+      setPressed(target, !target.classList.contains("selected"));
+      submitInteraction({
+        sectionId,
+        interactionId,
+        eventType,
+        payload: { selected_option_ids: optionIds(interactionBox, "[data-option-id].selected") },
+      });
+      return;
+    }
+
+    if (action === "short-answer") {
+      const answer = interactionBox.querySelector<HTMLTextAreaElement | HTMLInputElement>("textarea,input[type='text']")?.value ?? "";
+      target.classList.toggle("answered", answer.trim().length > 0);
+      submitInteraction({
+        sectionId,
+        interactionId,
+        eventType,
+        payload: { answer_text: answer },
+      });
+      return;
+    }
+
+    if (action === "sequence-select") {
+      setPressed(target, !target.classList.contains("selected"));
+      submitInteraction({
+        sectionId,
+        interactionId,
+        eventType,
+        payload: { ordered_item_ids: optionIds(interactionBox, "[data-item-id].selected") },
+      });
+      return;
+    }
+
+    if (action === "match-select") {
+      const selectedSource = interactionBox.querySelector<HTMLElement>("[data-item-id].selected");
+      if (target.dataset.itemId) {
+        interactionBox.querySelectorAll<HTMLElement>("[data-item-id]").forEach((item) => setPressed(item, item === target));
+        return;
+      }
+      if (selectedSource && target.dataset.targetId) {
+        const pair = { [selectedSource.dataset.itemId || ""]: target.dataset.targetId };
+        selectedSource.classList.remove("selected", "active");
+        target.classList.add("selected-target");
+        submitInteraction({
+          sectionId,
+          interactionId,
+          eventType,
+          payload: { match_pairs: pair },
+        });
+      }
+    }
+  }, [markComplete, submitInteraction]);
+
+  const navigation = model.navigation.length > 0
+    ? model.navigation
+    : sanitizedSections.map((section) => ({
+        section_id: section.section_id,
+        title: section.title,
+        anchor: `#${section.section_id}`,
+      }));
+
+  const progressPercent = sanitizedSections.length > 0
+    ? Math.round((completedSections.size / sanitizedSections.length) * 100)
     : 0;
 
-  /** Render a group of blocks with concept-card grid detection */
-  const renderBlocks = (blocks: BlockType[], sectionId: string, sectionTitle?: string) => {
-    const elements: React.ReactNode[] = [];
-    let i = 0;
-
-    while (i < blocks.length) {
-      // Skip leading heading if it duplicates the section title
-      if (i === 0 && blocks[i].type === "heading" && sectionTitle) {
-        const headingText = ((blocks[i] as any).block_data?.text ?? "") as string;
-        if (isSameTitle(headingText, sectionTitle)) {
-          i++;
-          continue;
-        }
-      }
-
-      if (blocks[i].type === "concept_card") {
-        const grid: BlockType[] = [];
-        while (i < blocks.length && blocks[i].type === "concept_card") {
-          grid.push(blocks[i]);
-          i++;
-        }
-        const cols = grid.length === 2 ? "cols-2" : "";
-        elements.push(
-          <div key={`grid-${grid[0].block_id}`} className={`ih-concept-grid ${cols}`}>
-            {grid.map((b) => {
-              const R = BLOCK_RENDERERS[b.type];
-              return R ? (
-                <div key={b.block_id} className="ih-block">
-                  {b.tutor_message && <div className="ih-tutor-message">{b.tutor_message}</div>}
-                  <R block={b} />
-                </div>
-              ) : <div key={b.block_id} className="ih-unknown-block"><p>Unknown: {b.type}</p></div>;
-            })}
-          </div>
-        );
-        continue;
-      }
-
-      const b = blocks[i];
-      const R = BLOCK_RENDERERS[b.type];
-      if (!R) {
-        elements.push(<div key={b.block_id} className="ih-unknown-block"><p>Unknown: {b.type}</p></div>);
-      } else {
-        elements.push(
-          <div key={b.block_id} className="ih-block">
-            {b.tutor_message && <div className="ih-tutor-message">{b.tutor_message}</div>}
-            <R
-              block={b}
-              lessonId={model.lesson_id}
-              sessionId={session?.session_id ?? ""}
-              sectionId={sectionId}
-              onSubmitEvent={handleSubmitEvent}
-              onScore={addScore}
-            />
-          </div>
-        );
-      }
-      i++;
-    }
-    return elements;
-  };
-
-  /** Render a section's blocks split into viewport-sized sub-cards */
-  const renderSectionBlocks = (blocks: BlockType[], sectionId: string, sectionTitle: string) => {
-    const deduped = dedupBlocks(blocks);
-    const subCards = splitIntoSubCards(deduped);
-    return subCards.map((subBlocks, idx) => (
-      <div key={`subcard-${sectionId}-${idx}`} className="ih-sub-card">
-        {renderBlocks(subBlocks, sectionId, idx === 0 ? sectionTitle : undefined)}
-      </div>
-    ));
-  };
-
-  // ---- Sidebar ----
-  const sidebar = (
-    <aside className="ih-sidebar">
-      <div className="ih-brand">
-        <div className="ih-logo">AI</div>
-        <div>
-          <h1 className="ih-brand__title">{model.title}</h1>
-          <p className="ih-brand__subtitle">互动式课程</p>
-        </div>
-      </div>
-      <div className="ih-nav-title">课程目录</div>
-      <nav className="ih-nav">
-        {sections.map((section, i) => {
-          const navEyebrow = i === 0 ? "课程封面" : deriveEyebrow(section.render_blocks, i, sections.length);
-          return (
-          <button
-            key={section.section_id}
-            className={`ih-nav__link ${section.section_id === activeSection ? "active" : ""} ${completedSections.has(section.section_id) ? "done" : ""}`}
-            onClick={() => scrollToSection(section.section_id)}
-          >
-            <span className="ih-nav__dot" />
-            <span className="ih-nav__label">{navEyebrow || section.title}</span>
-            {completedSections.has(section.section_id) && <span className="ih-nav__check">&#10003;</span>}
-          </button>
-          );
-        })}
-      </nav>
-      <div className="ih-progress-card">
-        <strong>学习进度</strong>
-        <div className="ih-progress-bar"><span style={{ width: `${progressPercent}%` }} /></div>
-        <p className="ih-progress-text">已完成 {progressPercent}%</p>
-        <div className="ih-score-pill">互动积分 {score}</div>
-      </div>
-    </aside>
-  );
-
-  // ---- Main ----
   return (
     <div className={`ih-app${fullscreen ? " ih-app--fullscreen" : ""}`}>
-      {sidebar}
+      <aside className="ih-sidebar">
+        <div className="ih-brand">
+          <div className="ih-logo">AI</div>
+          <div>
+            <h1 className="ih-brand__title">{model.title}</h1>
+            <p className="ih-brand__subtitle">互动式课程</p>
+          </div>
+        </div>
+        <div className="ih-nav-title">课程目录</div>
+        <nav className="ih-nav">
+          {navigation.map((item, i) => (
+            <button
+              key={item.section_id}
+              className={`ih-nav__link ${item.section_id === activeSection ? "active" : ""} ${completedSections.has(item.section_id) ? "done" : ""}`}
+              onClick={() => scrollToSection(item.section_id)}
+            >
+              <span className="ih-nav__dot" />
+              <span className="ih-nav__label">{i === 0 ? "课程封面" : item.title}</span>
+              {completedSections.has(item.section_id) && <span className="ih-nav__check">&#10003;</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="ih-progress-card">
+          <strong>学习进度</strong>
+          <div className="ih-progress-bar"><span style={{ width: `${progressPercent}%` }} /></div>
+          <p className="ih-progress-text">已完成 {progressPercent}%</p>
+          <div className="ih-score-pill">互动积分 {score}</div>
+        </div>
+      </aside>
 
-      <main className="ih-main">
-        {/* Hero card */}
-        <section
-          id={sections[0]?.section_id}
-          ref={(el) => { if (el && sections[0]) sectionRefs.current.set(sections[0].section_id, el); }}
-          className="ih-module-card ih-module-card--hero"
-        >
+      <main className="ih-main" onClick={handleRuntimeClick}>
+        <section className="ih-module-card ih-module-card--hero">
           <div className="ih-hero-inner">
             <div className="ih-hero-text">
-              <div className="ih-eyebrow">课程封面 &middot; 共 {sections.length} 个模块</div>
+              <div className="ih-eyebrow">课程封面 &middot; 共 {sanitizedSections.length} 个单元</div>
               <h2 className="ih-hero-title">{model.title}</h2>
               {model.subtitle && <p className="ih-hero-subtitle">{model.subtitle}</p>}
             </div>
@@ -321,48 +342,39 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
               <div className="ih-hero-icon__shape" />
             </div>
           </div>
-          {sections[0] && renderSectionBlocks(sections[0].render_blocks, sections[0].section_id, sections[0].title)}
-          <div className="ih-module-card__footer">
-            <button
-              className={`ih-btn ih-btn--secondary ${completedSections.has(sections[0].section_id) ? "done" : ""}`}
-              onClick={() => markComplete(sections[0].section_id)}
-            >
-              {completedSections.has(sections[0].section_id) ? "已完成" : "标记完成"}
-            </button>
-          </div>
         </section>
 
-        {/* Remaining module cards */}
-        {sections.slice(1).map((section, idx) => {
-          const eyebrow = deriveEyebrow(section.render_blocks, idx + 1, sections.length);
-          return (
-          <section
+        {sanitizedSections.map((section, index) => (
+          <article
             key={section.section_id}
             id={section.section_id}
-            ref={(el) => { if (el) sectionRefs.current.set(section.section_id, el); }}
-            className="ih-module-card"
+            ref={(el) => {
+              if (el) sectionRefs.current.set(section.section_id, el);
+            }}
+            className={`ih-module-card ${section.style_scope_id}`}
+            data-section-id={section.section_id}
           >
             <div className="ih-module-card__header">
-              {eyebrow && <div className="ih-eyebrow">模块 {idx + 2} &middot; {eyebrow}</div>}
+              <div className="ih-eyebrow">单元 {index + 1}</div>
               <h2 className="ih-module-card__title">{section.title}</h2>
               <p className="ih-module-card__goal">{section.learning_goal}</p>
             </div>
-            <div className="ih-module-card__blocks">
-              {renderSectionBlocks(section.render_blocks, section.section_id, section.title)}
-            </div>
+            <div
+              className="ih-fragment"
+              dangerouslySetInnerHTML={{ __html: section.html_fragment }}
+            />
             <div className="ih-module-card__footer">
               <button
                 className={`ih-btn ih-btn--secondary ${completedSections.has(section.section_id) ? "done" : ""}`}
-                onClick={() => markComplete(section.section_id)}
+                data-ih-action="complete-section"
+                data-section-id={section.section_id}
               >
                 {completedSections.has(section.section_id) ? "已完成" : "标记完成"}
               </button>
             </div>
-          </section>
-          );
-        })}
+          </article>
+        ))}
 
-        {/* Citations */}
         {model.citations.length > 0 && (
           <footer className="ih-citations">
             <h3>参考资料</h3>

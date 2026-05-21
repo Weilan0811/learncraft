@@ -30,7 +30,7 @@ class CreateSessionRequest(SchemaModel):
 
 class SubmitEventRequest(SchemaModel):
     section_id: str
-    block_id: str
+    block_id: str | None = None
     interaction_id: str | None = None
     event_type: Literal[
         "single_choice_answered",

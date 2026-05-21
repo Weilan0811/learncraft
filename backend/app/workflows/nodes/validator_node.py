@@ -14,6 +14,12 @@ from app.schemas.specs import (
     VISUAL_SUMMARY_REQUIRED_ROLES,
 )
 from app.schemas.state import ContentGenerationState
+from app.validators.interactive_html_validator import (
+    validate_content as validate_interactive_html_content,
+)
+from app.validators.interactive_html_validator import (
+    validate_unit_spec as validate_interactive_html_unit_spec,
+)
 from app.workflows.nodes.helpers import (
     SUPPORTED_WORKFLOW_ELEMENTS,
     build_progress,
@@ -117,8 +123,8 @@ def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
             if not unit_spec.title or not unit_spec.learning_goal:
                 errors.append(f"interactive section {unit_spec.section_id} is missing required fields")
 
-            if not unit_spec.blocks:
-                errors.append(f"interactive section {unit_spec.section_id} must have at least one block")
+            report = validate_interactive_html_unit_spec(unit_spec)
+            errors.extend([f"{issue.path}: {issue.message}" for issue in report.issues])
 
         if isinstance(unit_spec, SlideSpecPage):
             if not unit_spec.title or not unit_spec.core_message:
@@ -190,7 +196,14 @@ def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
 
 def route_after_unit_spec_validation(state: ContentGenerationState) -> str:
     report = state.spec_validation_report or {}
-    return "pass" if report.get("passed") else "fail"
+    if report.get("passed"):
+        return "pass"
+    retry_key = f"unit_spec_repair:{state.current_unit_id or ''}"
+    if state.retry_counts.get(retry_key, 0) < 1:
+        return "repair"
+    if bool((state.normalized_request or {}).get("allow_fallback", False)):
+        return "fallback"
+    return "fail"
 
 
 def validate_unit(state: ContentGenerationState) -> dict[str, object]:
@@ -321,6 +334,8 @@ def validate_content(state: ContentGenerationState) -> dict[str, object]:
             section_ids = [sec.section_id for sec in content_type.sections]
             if len(section_ids) != len(set(section_ids)):
                 errors.append("interactive_html section ids must be unique")
+            report = validate_interactive_html_content(content_type)
+            errors.extend([f"{issue.path}: {issue.message}" for issue in report.issues])
 
         if isinstance(content_type, SlideDeckSpec):
             if not content_type.slides:

@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.18.4",
+    "bleach>=6.2.0",
     "fastapi>=0.115.0",
     "httpx>=0.27.0",
     "langchain-qdrant>=1.1.0",

@@ -6,6 +6,7 @@ from app.exporters.markdown_exporter import MarkdownExporter
 from app.exporters.pdf_exporter import PDFExporter
 from app.exporters.slide_exporter import SlideExporter
 from app.content_types.registry import get_content_type_profile
+from app.renderers.interactive_html_renderer import InteractiveHtmlRenderer
 from app.renderers.lecture_renderer import LectureRenderer
 from app.renderers.podcast_renderer import PodcastRenderer
 from app.renderers.slide_renderer import SlideRenderer
@@ -14,7 +15,7 @@ from app.schemas.base import ContentType, ExportType
 from app.services.storage_service import StorageService
 
 
-def get_renderer(content_type: ContentType) -> LectureRenderer | SlideRenderer | SocialPostRenderer | PodcastRenderer:
+def get_renderer(content_type: ContentType) -> LectureRenderer | SlideRenderer | SocialPostRenderer | PodcastRenderer | InteractiveHtmlRenderer:
     return get_content_type_profile(content_type).renderer_factory()
 
 

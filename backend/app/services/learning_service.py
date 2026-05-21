@@ -49,7 +49,7 @@ class InMemoryLearningService:
             "lesson_id": lesson_id,
             "session_id": session_id,
             "section_id": request.section_id,
-            "block_id": request.block_id,
+            "block_id": request.block_id or request.interaction_id or request.section_id,
             "interaction_id": request.interaction_id,
             "event_type": request.event_type,
             "payload": request.payload.model_dump(),
