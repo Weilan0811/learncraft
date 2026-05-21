@@ -11,7 +11,7 @@ def collect_unit_required_elements(state: ContentGenerationState) -> dict[str, o
     layout = getattr(unit_spec, "layout", None) or "image_text"
     requests: list[ElementRequest] = []
     if unit_spec is not None:
-        for required in unit_spec.required_elements:
+        for required in getattr(unit_spec, "required_elements", []):
             requests.append(
                 ElementRequest(
                     element_id=required.element_id,

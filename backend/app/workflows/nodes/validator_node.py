@@ -5,6 +5,8 @@ from app.schemas.elements import ImageElement, MindmapElement
 from app.schemas.specs import (
     ElementReferenceBlock,
     IMAGE_TEXT_REQUIRED_ROLES,
+    InteractiveHtmlSectionSpec,
+    InteractiveHtmlSpec,
     LectureSection,
     LectureSpec,
     SlideDeckSpec,
@@ -43,7 +45,12 @@ def validate_outline(state: ContentGenerationState) -> dict[str, object]:
         if state.outline.content_type != state.content_type:
             errors.append("outline.content_type must match request content_type")
 
-        expected_unit_type = "slide" if state.content_type == "slide_deck" else "section"
+        if state.content_type == "slide_deck":
+            expected_unit_type = "slide"
+        elif state.content_type == "interactive_html":
+            expected_unit_type = "interactive_section"
+        else:
+            expected_unit_type = "section"
         for unit in state.outline.units:
             if not unit.title or not unit.goal or not unit.core_message:
                 errors.append(f"outline unit {unit.id} is missing required text fields")
@@ -81,14 +88,18 @@ def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
     if unit_spec is None:
         errors.append("current_unit_spec is missing")
     else:
-        if unit_spec.outline_unit_id != unit.id:
-            errors.append("unit_spec.outline_unit_id does not match current unit")
+        if isinstance(unit_spec, InteractiveHtmlSectionSpec):
+            if unit_spec.section_id != unit.id:
+                errors.append("unit_spec.section_id does not match current unit")
+        else:
+            if unit_spec.outline_unit_id != unit.id:
+                errors.append("unit_spec.outline_unit_id does not match current unit")
 
-        if unit_spec.id != f"{'slide' if state.content_type == 'slide_deck' else 'lecture'}_{unit.id}":
-            errors.append("unit_spec.id format is incorrect")
+            if unit_spec.id != f"{'slide' if state.content_type == 'slide_deck' else 'lecture'}_{unit.id}":
+                errors.append("unit_spec.id format is incorrect")
 
-        if unit_spec.order != unit.order:
-            errors.append("unit_spec.order must match outline unit order")
+            if unit_spec.order != unit.order:
+                errors.append("unit_spec.order must match outline unit order")
 
         if isinstance(unit_spec, LectureSection):
             if not unit_spec.title or not unit_spec.summary or not unit_spec.learning_goal:
@@ -101,6 +112,13 @@ def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
                 text_blocks = [b for b in unit_spec.blocks if b.type == "text"]
                 if not text_blocks:
                     errors.append(f"lecture section {unit_spec.id} must have at least one text block")
+
+        if isinstance(unit_spec, InteractiveHtmlSectionSpec):
+            if not unit_spec.title or not unit_spec.learning_goal:
+                errors.append(f"interactive section {unit_spec.section_id} is missing required fields")
+
+            if not unit_spec.blocks:
+                errors.append(f"interactive section {unit_spec.section_id} must have at least one block")
 
         if isinstance(unit_spec, SlideSpecPage):
             if not unit_spec.title or not unit_spec.core_message:
@@ -145,20 +163,22 @@ def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
             if not unit_spec.layout_hints.get("supported_renderer"):
                 errors.append("slide unit_spec.layout_hints.supported_renderer is missing")
 
-        required_ids = {item.element_id for item in unit_spec.required_elements}
-        if len(required_ids) != len(unit_spec.required_elements):
+        required_elements = getattr(unit_spec, "required_elements", [])
+        required_ids = {item.element_id for item in required_elements}
+        if len(required_ids) != len(required_elements):
             errors.append("required element ids must be unique")
 
-        for item in unit_spec.required_elements:
+        for item in required_elements:
             if item.type not in SUPPORTED_WORKFLOW_ELEMENTS:
                 errors.append(f"unsupported required element type: {item.type}")
 
             if not item.source_chunk_ids and state.current_unit_context:
                 errors.append(f"required element {item.element_id} should reference source chunks")
 
-        for element_id in element_ref_ids(unit_spec):
-            if element_id not in required_ids:
-                errors.append(f"element_ref {element_id} is missing from required_elements")
+        if required_elements:
+            for element_id in element_ref_ids(unit_spec):
+                if element_id not in required_ids:
+                    errors.append(f"element_ref {element_id} is missing from required_elements")
 
     return {
         "spec_validation_report": {"passed": not errors, "errors": errors},
@@ -181,7 +201,7 @@ def validate_unit(state: ContentGenerationState) -> dict[str, object]:
     if unit_spec is None:
         errors.append("current_unit_spec is missing")
     else:
-        for required in unit_spec.required_elements:
+        for required in getattr(unit_spec, "required_elements", []):
             element = element_lookup.get(required.element_id)
 
             if element is None and required.priority == "high":
@@ -294,6 +314,14 @@ def validate_content(state: ContentGenerationState) -> dict[str, object]:
                 if extra:
                     errors.append(f"lecture sections has invalid outline unit references: {extra}")
 
+        if isinstance(content_type, InteractiveHtmlSpec):
+            if not content_type.sections:
+                errors.append("interactive_html spec must have at least one section")
+
+            section_ids = [sec.section_id for sec in content_type.sections]
+            if len(section_ids) != len(set(section_ids)):
+                errors.append("interactive_html section ids must be unique")
+
         if isinstance(content_type, SlideDeckSpec):
             if not content_type.slides:
                 errors.append("slide deck spec must have at least one slide")
@@ -320,6 +348,8 @@ def validate_content(state: ContentGenerationState) -> dict[str, object]:
 
         if isinstance(state.content_spec, LectureSpec):
             spec_units = {sec.outline_unit_id for sec in state.content_spec.sections if sec.outline_unit_id}
+        elif isinstance(state.content_spec, InteractiveHtmlSpec):
+            spec_units = {sec.section_id for sec in state.content_spec.sections if sec.section_id}
         elif isinstance(state.content_spec, SlideDeckSpec):
             spec_units = {slide.outline_unit_id for slide in state.content_spec.slides if slide.outline_unit_id}
 

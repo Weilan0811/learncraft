@@ -8,12 +8,13 @@ from app.schemas.base import ContentType, SchemaModel
 class OutlineUnit(SchemaModel):
     id: str
     order: int
-    unit_type: Literal["section", "slide"]
+    unit_type: Literal["section", "slide", "interactive_section"]
     title: str
     goal: str
     core_message: str
     key_points: list[str] = Field(default_factory=list)
     visual_strategy: str | None = None
+    module_type: str | None = None
     retrieval_queries: list[str] = Field(default_factory=list)
     source_chunk_ids: list[str] = Field(default_factory=list)
 

@@ -19,6 +19,10 @@ def initialize_slide_units(state: ContentGenerationState) -> dict[str, object]:
     return _initialize_units(state, current_node="initialize_slide_units")
 
 
+def initialize_interactive_html_units(state: ContentGenerationState) -> dict[str, object]:
+    return _initialize_units(state, current_node="initialize_interactive_html_units")
+
+
 def merge_unit_result(state: ContentGenerationState) -> dict[str, object]:
     unit = current_outline_unit(state)
     current_ids = {request.element_id for request in state.current_unit_element_requests}
@@ -86,6 +90,7 @@ __all__ = [
     "route_content_type_choice",
     "initialize_section_units",
     "initialize_slide_units",
+    "initialize_interactive_html_units",
     "merge_unit_result",
     "should_continue_units",
 ]

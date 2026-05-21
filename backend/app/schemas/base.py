@@ -8,6 +8,7 @@ ContentType = Literal[
     "slide_deck",
     "social_post",
     "podcast_script",
+    "interactive_html",
     "video_script",
     "project_task",
     "quiz_pack",

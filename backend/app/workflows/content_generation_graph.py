@@ -26,6 +26,7 @@ from app.workflows.nodes.normalize_request_node import normalize_request
 from app.workflows.nodes.planner_node import plan_outline
 from app.workflows.nodes.publish_event_node import publish_unit_render
 from app.workflows.nodes.renderer_node import (
+    interactive_html_renderer,
     lecture_renderer,
     route_renderer,
     route_renderer_choice,
@@ -33,6 +34,7 @@ from app.workflows.nodes.renderer_node import (
 )
 from app.workflows.nodes.retriever_node import retrieve_for_planning, retrieve_for_unit
 from app.workflows.nodes.unit_loop_node import (
+    initialize_interactive_html_units,
     initialize_section_units,
     initialize_slide_units,
     merge_unit_result,
@@ -205,6 +207,7 @@ def build_content_generation_graph():
     workflow.add_node("route_content_type", route_content_type)
     workflow.add_node("initialize_section_units", initialize_section_units)
     workflow.add_node("initialize_slide_units", initialize_slide_units)
+    workflow.add_node("initialize_interactive_html_units", initialize_interactive_html_units)
     workflow.add_node("retrieve_for_unit", retrieve_for_unit)
     workflow.add_node("generate_unit_spec", generate_unit_spec)
     workflow.add_node("validate_unit_spec", validate_unit_spec)
@@ -222,6 +225,7 @@ def build_content_generation_graph():
     workflow.add_node("route_renderer", route_renderer)
     workflow.add_node("lecture_renderer", lecture_renderer)
     workflow.add_node("slide_renderer", slide_renderer)
+    workflow.add_node("interactive_html_renderer", interactive_html_renderer)
     workflow.add_node("finalize_task", finalize_task)
     workflow.add_node("fail_task", fail_task)
 
@@ -249,10 +253,11 @@ def build_content_generation_graph():
     workflow.add_conditional_edges(
         "route_content_type",
         route_content_type_choice,
-        {"lecture": "initialize_section_units", "slide_deck": "initialize_slide_units"},
+        {"lecture": "initialize_section_units", "slide_deck": "initialize_slide_units", "interactive_html": "initialize_interactive_html_units"},
     )
     workflow.add_edge("initialize_section_units", "retrieve_for_unit")
     workflow.add_edge("initialize_slide_units", "retrieve_for_unit")
+    workflow.add_edge("initialize_interactive_html_units", "retrieve_for_unit")
     workflow.add_edge("retrieve_for_unit", "generate_unit_spec")
     workflow.add_edge("generate_unit_spec", "validate_unit_spec")
     workflow.add_conditional_edges(
@@ -290,10 +295,11 @@ def build_content_generation_graph():
     workflow.add_conditional_edges(
         "route_renderer",
         route_renderer_choice,
-        {"lecture": "lecture_renderer", "slide_deck": "slide_renderer"},
+        {"lecture": "lecture_renderer", "slide_deck": "slide_renderer", "interactive_html": "interactive_html_renderer"},
     )
     workflow.add_edge("lecture_renderer", "finalize_task")
     workflow.add_edge("slide_renderer", "finalize_task")
+    workflow.add_edge("interactive_html_renderer", "finalize_task")
     workflow.add_edge("finalize_task", END)
     workflow.add_edge("fail_task", END)
 

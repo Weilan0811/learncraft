@@ -8,7 +8,7 @@ from app.schemas.base import ContentType, SchemaModel
 from app.schemas.elements import ContentElement
 from app.schemas.outline import Outline
 from app.schemas.render import RenderModel
-from app.schemas.specs import ContentSpec, ElementRequest, LectureSection, SlideSpecPage
+from app.schemas.specs import ContentSpec, ElementRequest, InteractiveHtmlSectionSpec, LectureSection, SlideSpecPage
 
 
 class RetrievedChunk(SchemaModel):
@@ -82,7 +82,7 @@ class ElementStatus(SchemaModel):
 class UnitGenerationResult(SchemaModel):
     unit_id: str
     status: Literal["pending", "completed", "failed"] = "pending"
-    unit_spec: LectureSection | SlideSpecPage | None = None
+    unit_spec: LectureSection | SlideSpecPage | InteractiveHtmlSectionSpec | None = None
     element_requests: dict[str, ElementRequest] = Field(default_factory=dict)
     elements: dict[str, ContentElement] = Field(default_factory=dict)
     validation_report: dict[str, object] | None = None
@@ -109,7 +109,7 @@ class ContentGenerationState(SchemaModel):
     failed_unit_ids: list[str] = Field(default_factory=list)
     current_unit_index: int = 0
     current_unit_id: str | None = None
-    current_unit_spec: LectureSection | SlideSpecPage | None = None
+    current_unit_spec: LectureSection | SlideSpecPage | InteractiveHtmlSectionSpec | None = None
     current_unit_element_requests: list[ElementRequest] = Field(default_factory=list)
     current_unit_elements: Annotated[list[ContentElement], operator.add] = Field(default_factory=list)
     element_request: ElementRequest | None = None

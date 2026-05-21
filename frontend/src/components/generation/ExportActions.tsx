@@ -59,8 +59,22 @@ export function ExportActions() {
   const jsonUrl = articleJsonUrl(exportResult);
   const podcastExportTypes: ExportType[] = ["markdown", "audio"];
 
+  const canPreviewFullscreen = Boolean(
+    task && task.status === "completed" && task.content_type === "interactive_html"
+  );
+
+  const openFullscreenPreview = () => {
+    if (!task) return;
+    window.open(`/?fullscreen=${encodeURIComponent(task.task_id)}`, "_blank");
+  };
+
   return (
     <section className="export-actions">
+      {canPreviewFullscreen && (
+        <button type="button" className="fullscreen-preview-btn" onClick={openFullscreenPreview}>
+          Open in New Window
+        </button>
+      )}
       {task?.content_type === "podcast_script" ? (
         podcastExportTypes.map((type) => (
           <button type="button" disabled={!canExport} onClick={() => exportTask(type)} key={type}>
