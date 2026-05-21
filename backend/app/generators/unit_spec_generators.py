@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from html import escape
 from typing import cast
 
 from app.core.config import get_settings
@@ -489,6 +490,30 @@ def generate_interactive_html_unit_spec_with_llm(
     return cast(InteractiveHtmlSectionSpec, llm_service.generate_structured(prompt=prompt, schema=InteractiveHtmlSectionSpec))
 
 
+def repair_unit_spec_with_llm(
+    state: ContentGenerationState,
+    unit: OutlineUnit,
+    chunk_ids: list[str],
+    validation_errors: list[str],
+) -> LectureSection | SlideSpecPage | InteractiveHtmlSectionSpec:
+    content_type = state.content_type
+    if content_type == "slide_deck":
+        unit_spec_id = f"slide_{unit.id}"
+        schema = SlideSpecPage
+    elif content_type == "interactive_html":
+        unit_spec_id = unit.id
+        schema = InteractiveHtmlSectionSpec
+    else:
+        unit_spec_id = f"lecture_{unit.id}"
+        schema = LectureSection
+    prompt = _build_unit_spec_repair_prompt(content_type, state, unit, unit_spec_id, chunk_ids, validation_errors)
+    llm_service = get_llm_service()
+    repaired = llm_service.generate_structured(prompt=prompt, schema=schema)
+    if isinstance(repaired, SlideSpecPage):
+        return normalize_slide_spec(repaired, unit, state)
+    return repaired
+
+
 def _build_unit_spec_prompt(
     content_type: str,
     state: ContentGenerationState,
@@ -523,6 +548,49 @@ def _get_unit_spec_template_path(content_type: str) -> str:
     if content_type == "interactive_html":
         return os.path.join(prompts_dir, "interactive_html_unit_spec.md")
     return os.path.join(prompts_dir, "lecture_spec.md")
+
+
+def _build_unit_spec_repair_prompt(
+    content_type: str,
+    state: ContentGenerationState,
+    unit: OutlineUnit,
+    unit_spec_id: str,
+    chunk_ids: list[str],
+    validation_errors: list[str],
+) -> str:
+    generation_prompt = _build_unit_spec_prompt(content_type, state, unit, unit_spec_id, chunk_ids)
+    invalid_spec = state.current_unit_spec.model_dump(mode="json") if state.current_unit_spec else None
+    repair_contract = {
+        "content_type": content_type,
+        "unit_spec_id": unit_spec_id,
+        "outline_unit_id": unit.id,
+        "outline_unit_order": unit.order,
+        "validation_errors": validation_errors,
+        "invalid_unit_spec": invalid_spec,
+    }
+    if content_type == "interactive_html":
+        id_contract = {
+            "section_id": unit_spec_id,
+            "title": unit.title,
+            "learning_goal": unit.goal,
+        }
+    else:
+        id_contract = {
+            "id": unit_spec_id,
+            "outline_unit_id": unit.id,
+            "order": unit.order,
+        }
+    return (
+        f"{generation_prompt}\n\n"
+        "## Repair context\n"
+        "The previous unit spec failed workflow validation. Regenerate the full unit spec from scratch, using the same schema.\n"
+        "Use the validation errors and invalid unit spec below only as diagnostic input. Do not copy invalid values unless they satisfy the contract.\n"
+        "Hard contract for this unit:\n"
+        f"{json.dumps(id_contract, ensure_ascii=False, indent=2)}\n\n"
+        "Validation errors and previous invalid output:\n"
+        f"{json.dumps(repair_contract, ensure_ascii=False, indent=2)}\n\n"
+        "Return only corrected JSON for the requested schema."
+    )
 
 
 def _format_retrieval_results(chunks: list) -> str:
@@ -1180,3 +1248,75 @@ def _infer_module_type(order: int, title: str) -> str:
     if order >= 6:
         return "practice"
     return "concept"
+
+
+def build_interactive_html_unit_spec_fallback(
+    state: ContentGenerationState, unit: OutlineUnit, chunk_ids: list[str]
+) -> InteractiveHtmlSectionSpec:
+    """Stub fallback producing a valid teaching design spec (no HTML)."""
+    from app.schemas.specs.interactive_html import InteractiveHtmlTeachingBlock, InteractiveHtmlInteractionSpec
+
+    section_id = unit.id
+    title = unit.title
+    goal = unit.goal
+    core = unit.core_message or unit.goal
+    points = (unit.key_points or ["核心概念", "关键关系", "实践应用"])[:4]
+    interaction_id = f"{section_id}_check"
+    first_point = points[0] if points else "核心概念"
+
+    return InteractiveHtmlSectionSpec(
+        section_id=section_id,
+        title=title,
+        learning_goal=goal,
+        narrative_goal=f"理解{title}的核心要点并形成清晰判断",
+        teaching_flow=[
+            InteractiveHtmlTeachingBlock(
+                block_id=f"{section_id}_intro",
+                block_type="intro",
+                title=title,
+                teaching_role="set_context",
+                content_goal=core,
+                must_cover=[core],
+            ),
+            InteractiveHtmlTeachingBlock(
+                block_id=f"{section_id}_concepts",
+                block_type="concept_explanation",
+                title="关键概念线索",
+                teaching_role="explain_core",
+                content_goal="讲解本节核心概念及其相互关系",
+                must_cover=points[:3],
+            ),
+            InteractiveHtmlTeachingBlock(
+                block_id=f"{section_id}_check_block",
+                block_type="single_choice",
+                title="关键学习点诊断",
+                teaching_role="diagnose_understanding",
+                content_goal="诊断学习者对核心概念的理解程度",
+                must_cover=[first_point],
+                interaction_id=interaction_id,
+            ),
+            InteractiveHtmlTeachingBlock(
+                block_id=f"{section_id}_reflection",
+                block_type="reflection",
+                title="学习目标收束",
+                teaching_role="prompt_reflection",
+                content_goal=goal,
+                must_cover=[goal],
+            ),
+        ],
+        interaction_specs=[
+            InteractiveHtmlInteractionSpec(
+                interaction_id=interaction_id,
+                block_id=f"{section_id}_check_block",
+                type="single_choice",
+                event_type="single_choice_answered",
+                target_concepts=[first_point],
+                prompt="下面哪一项最能概括本节的关键学习点？",
+                options=[
+                    {"id": "a", "text": first_point},
+                    {"id": "b", "text": "只记住页面样式"},
+                ],
+            )
+        ],
+        citations=[],
+    )

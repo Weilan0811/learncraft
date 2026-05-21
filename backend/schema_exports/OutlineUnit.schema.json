@@ -12,7 +12,8 @@
     "unit_type": {
       "enum": [
         "section",
-        "slide"
+        "slide",
+        "interactive_section"
       ],
       "title": "Unit Type",
       "type": "string"
@@ -47,6 +48,18 @@
       ],
       "default": null,
       "title": "Visual Strategy"
+    },
+    "module_type": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Module Type"
     },
     "retrieval_queries": {
       "items": {

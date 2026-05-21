@@ -1,4 +1,5 @@
 from app.content_types.registry import get_content_type_profile
+from app.schemas.specs.interactive_html_style import DEFAULT_INTERACTIVE_HTML_STYLE_GUIDE
 from app.schemas.state import ContentGenerationState, UnitGenerationResult
 from app.workflows.nodes.helpers import build_progress, current_outline_unit, ensure_monotonic_progress
 
@@ -20,7 +21,10 @@ def initialize_slide_units(state: ContentGenerationState) -> dict[str, object]:
 
 
 def initialize_interactive_html_units(state: ContentGenerationState) -> dict[str, object]:
-    return _initialize_units(state, current_node="initialize_interactive_html_units")
+    result = _initialize_units(state, current_node="initialize_interactive_html_units")
+    if not state.style_guide:
+        result["style_guide"] = DEFAULT_INTERACTIVE_HTML_STYLE_GUIDE.model_dump()
+    return result
 
 
 def merge_unit_result(state: ContentGenerationState) -> dict[str, object]:

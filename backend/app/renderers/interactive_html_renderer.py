@@ -1,50 +1,58 @@
 from app.schemas.render.interactive_html import (
-    InteractiveHtmlRenderBlock,
+    InteractionRenderRef,
+    InteractiveHtmlRenderBlockRef,
     InteractiveHtmlRenderModel,
-    InteractiveHtmlRenderSection,
+    InteractiveHtmlRenderedUnit,
+    InteractiveRuntimeConfig,
+    NavigationItem,
 )
 from app.schemas.specs.interactive_html import InteractiveHtmlSpec
+from app.schemas.specs.interactive_html_style import InteractiveHtmlCourseStyleGuide
 
 
 class InteractiveHtmlRenderer:
-    """Render InteractiveHtmlSpec into frontend InteractiveHtmlRenderModel."""
+    """Assemble InteractiveHtmlRenderedUnit list into final InteractiveHtmlRenderModel."""
 
-    def render(self, spec: InteractiveHtmlSpec, _elements: list) -> InteractiveHtmlRenderModel:
-        sections = [self._render_section(sec) for sec in spec.sections]
-        return self._assemble(spec, sections)
-
-    def render_unit(self, section, _elements: list) -> InteractiveHtmlRenderSection:
-        return self._render_section(section)
-
-    def _render_section(self, section) -> InteractiveHtmlRenderSection:
-        blocks: list[InteractiveHtmlRenderBlock] = []
-        for block in section.blocks:
-            block_dict = block.model_dump(exclude_none=True)
-            blocks.append(
-                InteractiveHtmlRenderBlock(
-                    block_id=block.block_id,
-                    type=block.type,
-                    title=block.title,
-                    block_data=block_dict,
-                    metadata={
-                        "citations": [c.model_dump() for c in (getattr(block, "citations", None) or [])],
-                    },
-                )
-            )
-        return InteractiveHtmlRenderSection(
-            section_id=section.section_id,
-            title=section.title,
-            learning_goal=section.learning_goal,
-            render_blocks=blocks,
-        )
-
-    def _assemble(self, spec: InteractiveHtmlSpec, sections: list[InteractiveHtmlRenderSection]) -> InteractiveHtmlRenderModel:
+    def assemble(
+        self,
+        lesson_id: str,
+        title: str,
+        rendered_units: list[InteractiveHtmlRenderedUnit],
+        style_guide: InteractiveHtmlCourseStyleGuide,
+        subtitle: str | None = None,
+        meta: dict | None = None,
+        pedagogy: dict | None = None,
+        citations: list[dict] | None = None,
+    ) -> InteractiveHtmlRenderModel:
         return InteractiveHtmlRenderModel(
-            lesson_id=spec.lesson_id,
-            title=spec.title,
-            subtitle=spec.subtitle,
-            meta=spec.meta.model_dump() if spec.meta else {},
-            pedagogy=spec.pedagogy.model_dump(),
-            sections=sections,
-            citations=[c.model_dump() for c in spec.citations],
+            lesson_id=lesson_id,
+            title=title,
+            subtitle=subtitle,
+            theme=self._theme_from_style(style_guide),
+            navigation=[
+                NavigationItem(section_id=unit.section_id, title=unit.title, anchor=f"#{unit.section_id}")
+                for unit in rendered_units
+            ],
+            interactions=self._collect_interactions(rendered_units),
+            runtime=InteractiveRuntimeConfig(),
+            meta=meta or {},
+            pedagogy=pedagogy or {},
+            sections=rendered_units,
+            style_guide=style_guide.model_dump(),
+            citations=citations or [],
         )
+
+    def _collect_interactions(self, rendered_units: list[InteractiveHtmlRenderedUnit]) -> list[InteractionRenderRef]:
+        refs: list[InteractionRenderRef] = []
+        for unit in rendered_units:
+            refs.extend(unit.interaction_manifest)
+        return refs
+
+    def _theme_from_style(self, style_guide: InteractiveHtmlCourseStyleGuide) -> dict:
+        return {
+            "style_id": style_guide.style_id,
+            "layout_mode": style_guide.layout_mode,
+            "visual_keywords": style_guide.visual_keywords,
+            "color_tokens": style_guide.color_tokens,
+            "spacing_density": style_guide.spacing_density,
+        }

@@ -118,6 +118,7 @@ class ContentGenerationState(SchemaModel):
     elements: list[ContentElement] = Field(default_factory=list)
     element_status: dict[str, ElementStatus] = Field(default_factory=dict)
     render_units: dict[str, RenderUnitSnapshot] = Field(default_factory=dict)
+    style_guide: dict | None = None
     partial_render_model: RenderModel | None = None
     stream_events: list[TaskStreamEvent] = Field(default_factory=list)
     render_model: RenderModel | None = None

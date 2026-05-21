@@ -32,7 +32,9 @@ from app.workflows.nodes.renderer_node import (
     route_renderer_choice,
     slide_renderer,
 )
+from app.workflows.nodes.render_unit_repair_node import fallback_render_unit, repair_render_unit
 from app.workflows.nodes.retriever_node import retrieve_for_planning, retrieve_for_unit
+from app.workflows.nodes.unit_spec_repair_node import fallback_unit_spec, repair_unit_spec
 from app.workflows.nodes.unit_loop_node import (
     initialize_interactive_html_units,
     initialize_section_units,
@@ -44,6 +46,7 @@ from app.workflows.nodes.unit_loop_node import (
 )
 from app.workflows.nodes.unit_spec_generator_node import generate_unit_spec
 from app.workflows.nodes.unit_renderer_node import render_unit
+from app.workflows.nodes.unit_renderer_node import route_after_render_unit
 from app.workflows.nodes.validator_node import (
     route_after_content_validation,
     route_after_outline_validation,
@@ -211,6 +214,8 @@ def build_content_generation_graph():
     workflow.add_node("retrieve_for_unit", retrieve_for_unit)
     workflow.add_node("generate_unit_spec", generate_unit_spec)
     workflow.add_node("validate_unit_spec", validate_unit_spec)
+    workflow.add_node("repair_unit_spec", repair_unit_spec)
+    workflow.add_node("fallback_unit_spec", fallback_unit_spec)
     workflow.add_node("collect_unit_required_elements", collect_unit_required_elements)
     workflow.add_node("dispatch_element_generation", dispatch_element_generation_node)
     workflow.add_node("generate_image_element", generate_image_element)
@@ -218,6 +223,8 @@ def build_content_generation_graph():
     workflow.add_node("merge_unit_elements", merge_unit_elements)
     workflow.add_node("validate_unit", validate_unit)
     workflow.add_node("render_unit", render_unit)
+    workflow.add_node("repair_render_unit", repair_render_unit)
+    workflow.add_node("fallback_render_unit", fallback_render_unit)
     workflow.add_node("publish_unit_render", publish_unit_render)
     workflow.add_node("merge_unit_result", merge_unit_result)
     workflow.add_node("assemble_content_spec", assemble_content_spec)
@@ -263,8 +270,10 @@ def build_content_generation_graph():
     workflow.add_conditional_edges(
         "validate_unit_spec",
         route_after_unit_spec_validation,
-        {"pass": "collect_unit_required_elements", "fail": "fail_task"},
+        {"pass": "collect_unit_required_elements", "repair": "repair_unit_spec", "fallback": "fallback_unit_spec", "fail": "fail_task"},
     )
+    workflow.add_edge("repair_unit_spec", "validate_unit_spec")
+    workflow.add_edge("fallback_unit_spec", "validate_unit_spec")
     workflow.add_edge("collect_unit_required_elements", "dispatch_element_generation")
     workflow.add_conditional_edges(
         "dispatch_element_generation",
@@ -279,7 +288,17 @@ def build_content_generation_graph():
         route_after_unit_validation,
         {"pass": "render_unit", "fail": "fail_task"},
     )
-    workflow.add_edge("render_unit", "publish_unit_render")
+    workflow.add_conditional_edges(
+        "render_unit",
+        route_after_render_unit,
+        {"pass": "publish_unit_render", "retry": "render_unit", "repair": "repair_render_unit", "fallback": "fallback_render_unit", "fail": "fail_task"},
+    )
+    workflow.add_conditional_edges(
+        "repair_render_unit",
+        route_after_render_unit,
+        {"pass": "publish_unit_render", "retry": "render_unit", "repair": "repair_render_unit", "fallback": "fallback_render_unit", "fail": "fail_task"},
+    )
+    workflow.add_edge("fallback_render_unit", "publish_unit_render")
     workflow.add_edge("publish_unit_render", "merge_unit_result")
     workflow.add_conditional_edges(
         "merge_unit_result",

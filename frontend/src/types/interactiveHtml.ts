@@ -1,6 +1,72 @@
-// Interactive HTML Block types — mirrors backend LessonBlock discriminated union.
+// Interactive HTML render types.
+// The active interactive_html path renders sanitized section HTML fragments
+// with per-unit CSS scoping via style_scope_id + css_fragment.
 
-// --- Base ---
+// --- Rendered Unit (matches backend InteractiveHtmlRenderedUnit) ---
+
+export interface InteractiveHtmlRenderBlockRef {
+  block_id: string;
+  type: string;
+  title: string;
+  teaching_role: string;
+  interaction_ids: string[];
+}
+
+export interface InteractionRenderRef {
+  interaction_id: string;
+  section_id: string;
+  type: string;
+  target_concepts: string[];
+  event_type: string;
+}
+
+export interface InteractiveHtmlRenderedUnit {
+  section_id: string;
+  title: string;
+  learning_goal: string;
+  style_scope_id: string;
+  html_fragment: string;
+  css_fragment: string;
+  block_manifest: InteractiveHtmlRenderBlockRef[];
+  interaction_manifest: InteractionRenderRef[];
+  render_notes: Record<string, unknown>;
+}
+
+// --- Navigation & Runtime ---
+
+export interface InteractiveHtmlNavigationItem {
+  section_id: string;
+  title: string;
+  anchor: string;
+}
+
+export interface InteractiveHtmlRuntimeConfig {
+  progress_tracking: boolean;
+  scoring_enabled: boolean;
+  session_required: boolean;
+  event_endpoint_template?: string | null;
+}
+
+// --- Top-level Render Model (matches backend InteractiveHtmlRenderModel) ---
+
+export interface InteractiveHtmlRenderModel {
+  render_type: "interactive_html_page";
+  lesson_id: string;
+  title: string;
+  subtitle?: string | null;
+  layout: "vertical_lesson_with_tutor";
+  theme: Record<string, unknown>;
+  navigation: InteractiveHtmlNavigationItem[];
+  interactions: InteractionRenderRef[];
+  runtime: InteractiveHtmlRuntimeConfig;
+  meta: Record<string, unknown>;
+  pedagogy: Record<string, unknown>;
+  sections: InteractiveHtmlRenderedUnit[];
+  style_guide: Record<string, unknown>;
+  citations: Record<string, unknown>[];
+}
+
+// --- Legacy block types (kept for backward compatibility, not used in active render path) ---
 
 export interface InteractiveHtmlRenderBlock {
   block_id: string;
@@ -15,18 +81,24 @@ export interface InteractiveHtmlRenderSection {
   section_id: string;
   title: string;
   learning_goal: string;
-  render_blocks: InteractiveHtmlRenderBlock[];
+  html_fragment: string;
+  block_refs: InteractiveHtmlRenderBlockRef[];
 }
 
-export interface InteractiveHtmlRenderModel {
-  render_type: "interactive_html_page";
-  lesson_id: string;
+export interface InteractiveHtmlBlockRef {
+  block_id: string;
+  type: string;
   title: string;
-  subtitle?: string | null;
-  meta: Record<string, unknown>;
-  pedagogy: Record<string, unknown>;
-  sections: InteractiveHtmlRenderSection[];
-  citations: Record<string, unknown>[];
+  teaching_role: string;
+  interaction_ids: string[];
+}
+
+export interface InteractiveHtmlInteractionRef {
+  interaction_id: string;
+  section_id: string;
+  type: string;
+  target_concepts: string[];
+  event_type: LearningEventType;
 }
 
 // --- Learning API types ---
@@ -59,7 +131,7 @@ export type LearningEventType =
 
 export interface SubmitEventRequest {
   section_id: string;
-  block_id: string;
+  block_id?: string | null;
   interaction_id?: string | null;
   event_type: LearningEventType;
   payload: LearningEventPayload;
