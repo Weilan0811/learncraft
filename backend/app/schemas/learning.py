@@ -13,9 +13,15 @@ from app.schemas.base import SchemaModel
 
 class LearningEventPayload(SchemaModel):
     selected_option_ids: list[str] = Field(default_factory=list)
+    correct_option_ids: list[str] = Field(default_factory=list)
     ordered_item_ids: list[str] = Field(default_factory=list)
     match_pairs: dict[str, str] = Field(default_factory=dict)
     answer_text: str | None = None
+    is_correct: bool | None = None
+    reference_points: list[str] = Field(default_factory=list)
+    matched_points: list[str] = Field(default_factory=list)
+    heuristic_score: int | None = None
+    client_timestamp: str | None = None
     confidence: Literal["low", "medium", "high"] | None = None
     time_spent_seconds: int | None = None
 
@@ -36,6 +42,7 @@ class SubmitEventRequest(SchemaModel):
         "single_choice_answered",
         "multiple_choice_answered",
         "short_answer_submitted",
+        "scenario_discussion_submitted",
         "drag_match_submitted",
         "sequence_submitted",
         "socratic_round_answered",

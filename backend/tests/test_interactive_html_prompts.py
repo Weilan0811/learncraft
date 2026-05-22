@@ -28,14 +28,15 @@ def test_interactive_html_unit_spec_prompt_focuses_on_teaching_design() -> None:
     assert "禁止输出 CSS" in prompt or "禁止输出 HTML、CSS" in prompt
 
 
-def test_interactive_html_unit_render_prompt_generates_html_and_css() -> None:
+def test_interactive_html_unit_render_prompt_generates_explanation_html_and_css() -> None:
     prompt = (PROMPT_ROOT / "generator" / "interactive_html_unit_render.md").read_text(encoding="utf-8")
 
-    assert "html_fragment" in prompt
+    assert "block_html_map" in prompt
     assert "css_fragment" in prompt
     assert "style_scope_id" in prompt
-    assert "block_manifest" in prompt
-    assert "interaction_manifest" in prompt
+    assert "button、input、textarea、form" in prompt
+    assert "data-ih-action" in prompt
+    assert "data-interaction-id" in prompt
     assert "禁止 html" in prompt or "禁止 <html>" in prompt or "禁止 html、head" in prompt
     assert "禁止 script" in prompt or "禁止 <script>" in prompt
     assert "禁止 onClick" in prompt or "禁止 onclick" in prompt
@@ -64,8 +65,8 @@ def test_interactive_html_unit_render_prompt_can_be_formatted_with_literal_examp
         retrieval_context=[],
     )
 
-    assert '"ih-scope-{section_id}"' in prompt
-    assert '<section id="{section_id}" class="ih-unit {style_scope_id}"' in prompt
+    assert 'style_scope_id：必须为 "ih-scope-unit_01"' in prompt
+    assert "block_html_map" in prompt
     assert '"section_id": "unit_01"' in prompt
 
 

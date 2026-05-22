@@ -1,0 +1,1055 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interactive HTML 四类交互模板 Demo</title>
+  <style>
+    :root {
+      --page-bg: #f7f2ea;
+      --paper: #fffdf8;
+      --ink: #243044;
+      --muted: #6b7280;
+      --primary: #5c6df6;
+      --primary-soft: #eef0ff;
+      --accent: #ffb86b;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --line: rgba(36, 48, 68, 0.12);
+      --shadow: 0 18px 50px rgba(36, 48, 68, 0.10);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --max: 1120px;
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(255, 184, 107, 0.18), transparent 30%),
+        radial-gradient(circle at 90% 0%, rgba(92, 109, 246, 0.16), transparent 35%),
+        var(--page-bg);
+      color: var(--ink);
+      line-height: 1.75;
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    .lesson-shell {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 28px;
+      width: min(var(--max), calc(100% - 32px));
+      margin: 32px auto;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 24px;
+      background: rgba(255, 253, 248, 0.78);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar .brand {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+
+    .nav-link {
+      display: block;
+      text-decoration: none;
+      color: var(--ink);
+      padding: 10px 12px;
+      border-radius: 14px;
+      margin: 6px 0;
+      font-size: 14px;
+    }
+
+    .nav-link:hover {
+      background: var(--primary-soft);
+    }
+
+    .main {
+      min-width: 0;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #ffffff, #fff8ed);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      padding: 34px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -50px;
+      top: -50px;
+      width: 180px;
+      height: 180px;
+      border-radius: 999px;
+      background: rgba(92, 109, 246, 0.12);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--primary);
+      background: var(--primary-soft);
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1.18;
+      margin: 0 0 12px;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      color: var(--muted);
+      max-width: 740px;
+      margin: 0;
+    }
+
+    .ih-unit {
+      display: grid;
+      gap: 20px;
+    }
+
+    .ih-block {
+      background: rgba(255, 253, 248, 0.88);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      padding: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    .ih-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .ih-block-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--primary);
+      background: var(--primary-soft);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .ih-block h2,
+    .ih-block h3 {
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .ih-block h2 {
+      font-size: 26px;
+    }
+
+    .ih-block h3 {
+      font-size: 21px;
+    }
+
+    .concept-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .mini-card {
+      border-radius: 20px;
+      border: 1px dashed rgba(92, 109, 246, 0.32);
+      background: rgba(238, 240, 255, 0.55);
+      padding: 18px;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .flow-step {
+      position: relative;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      min-height: 130px;
+    }
+
+    .flow-step strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .flow-step span {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--primary);
+      color: white;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .ih-interaction {
+      border: 1px solid rgba(92, 109, 246, 0.22);
+      background:
+        linear-gradient(180deg, rgba(238, 240, 255, 0.84), rgba(255, 253, 248, 0.96));
+    }
+
+    .ih-question {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 12px 0 16px;
+    }
+
+    .ih-options {
+      display: grid;
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .ih-option {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      border-radius: 18px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .ih-option::before {
+      content: attr(data-option-label);
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 28px;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .ih-option:hover {
+      transform: translateY(-1px);
+      border-color: rgba(92, 109, 246, 0.46);
+      background: #fcfdff;
+    }
+
+    .ih-option.is-selected {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .ih-option.is-correct {
+      border-color: rgba(22, 163, 74, 0.55);
+      background: rgba(22, 163, 74, 0.08);
+    }
+
+    .ih-option.is-wrong {
+      border-color: rgba(220, 38, 38, 0.46);
+      background: rgba(220, 38, 38, 0.06);
+    }
+
+    .ih-submit {
+      border: none;
+      border-radius: 999px;
+      padding: 11px 18px;
+      background: var(--primary);
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 12px 25px rgba(92, 109, 246, 0.24);
+    }
+
+    .ih-submit:hover {
+      filter: brightness(0.96);
+    }
+
+    .ih-submit.secondary {
+      background: #243044;
+      box-shadow: none;
+    }
+
+    .ih-textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: white;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .ih-textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(92, 109, 246, 0.12);
+    }
+
+    .ih-feedback {
+      display: none;
+      margin-top: 14px;
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+    }
+
+    .ih-feedback.is-visible {
+      display: block;
+    }
+
+    .ih-feedback strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .ih-feedback.success {
+      border-color: rgba(22, 163, 74, 0.35);
+      background: rgba(22, 163, 74, 0.08);
+    }
+
+    .ih-feedback.warn {
+      border-color: rgba(255, 184, 107, 0.55);
+      background: rgba(255, 184, 107, 0.12);
+    }
+
+    .scenario-box {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .scenario-card {
+      border-radius: 22px;
+      padding: 18px;
+      background: #243044;
+      color: white;
+    }
+
+    .scenario-card .tag {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .event-panel {
+      margin-top: 22px;
+      background: #182033;
+      color: #e5e7eb;
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .event-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-weight: 800;
+    }
+
+    .event-panel pre {
+      margin: 0;
+      padding: 18px;
+      overflow: auto;
+      min-height: 160px;
+      max-height: 360px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .clear-log {
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: transparent;
+      color: white;
+      border-radius: 999px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    @media (max-width: 920px) {
+      .lesson-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .concept-grid,
+      .scenario-box,
+      .flow {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .lesson-shell {
+        width: min(100% - 20px, var(--max));
+        margin: 16px auto;
+      }
+
+      .hero,
+      .ih-block {
+        padding: 20px;
+        border-radius: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="lesson-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">IH</div>
+        <div>
+          <div>交互模板 Demo</div>
+          <small style="color: var(--muted);">P0 runtime contract</small>
+        </div>
+      </div>
+      <a class="nav-link" href="#intro">讲解区</a>
+      <a class="nav-link" href="#single-choice">单选题</a>
+      <a class="nav-link" href="#multiple-choice">多选题</a>
+      <a class="nav-link" href="#short-answer">简答题</a>
+      <a class="nav-link" href="#scenario-discussion">情景讨论</a>
+      <a class="nav-link" href="#event-log">事件 Payload</a>
+    </aside>
+
+    <main class="main">
+      <header class="hero">
+        <div class="eyebrow">受控自由渲染 · 交互模板预览</div>
+        <h1>生成式 AI 如何理解你的问题？</h1>
+        <p>
+          这份 HTML 展示四类 P0 交互模板。讲解区域可以由 LLM 自由生成 HTML + CSS；
+          互动区域由后端模板生成，通过统一的 <code>data-ih-action</code> 协议交给前端 runtime 接管。
+        </p>
+      </header>
+
+      <section
+        id="unit_01"
+        class="ih-unit ih-scope-unit-01"
+        data-section-id="unit_01"
+      >
+        <article id="intro" class="ih-block" data-block-id="unit_01_intro" data-block-type="concept_explanation">
+          <div class="ih-block-header">
+            <div>
+              <div class="ih-block-kicker">讲解区 · LLM 自由生成</div>
+              <h2>先把问题拆成“线索”</h2>
+            </div>
+          </div>
+
+          <div class="concept-grid">
+            <div>
+              <p>
+                当用户提出一个问题时，模型并不会像人一样“真正读懂心意”，它会从输入文本中提取语义线索：
+                主题是什么、任务是什么、约束是什么、期望输出是什么。
+              </p>
+              <p>
+                对交互式课件来说，讲解部分可以允许大模型自由设计版面；但交互控件要由模板生成，
+                这样按钮、输入框、事件提交和反馈才能稳定运行。
+              </p>
+            </div>
+            <div class="mini-card">
+              <strong>设计边界</strong>
+              <p style="margin-bottom: 0;">
+                LLM 负责“讲清楚、讲好看”；模板负责“点得动、记得住、传得出去”。
+              </p>
+            </div>
+          </div>
+
+          <div class="flow" aria-label="交互式 HTML 生成流程">
+            <div class="flow-step">
+              <span>1</span>
+              <strong>Outline</strong>
+              <div>规划课程结构和 unit。</div>
+            </div>
+            <div class="flow-step">
+              <span>2</span>
+              <strong>Spec</strong>
+              <div>组织讲解、总结和互动目标。</div>
+            </div>
+            <div class="flow-step">
+              <span>3</span>
+              <strong>Template</strong>
+              <div>稳定生成交互控件。</div>
+            </div>
+            <div class="flow-step">
+              <span>4</span>
+              <strong>Assemble</strong>
+              <div>组合成完整 unit HTML。</div>
+            </div>
+          </div>
+        </article>
+
+        <article
+          id="single-choice"
+          class="ih-block ih-interaction ih-quiz ih-quiz--single"
+          data-block-id="unit_01_sc"
+          data-block-type="single_choice"
+        >
+          <div class="ih-block-header">
+            <div>
+              <div class="ih-block-kicker">单选题 · single_choice</div>
+              <h3>理解诊断</h3>
+            </div>
+          </div>
+
+          <p class="ih-question">在 P0 阶段，为什么建议把互动控件交给模板生成？</p>
+
+          <div class="ih-options" role="group" aria-label="单选题选项">
+            <button
+              type="button"
+              class="ih-option"
+              data-option-label="A"
+              data-ih-action="single-choice"
+              data-interaction-id="unit_01_i_sc"
+              data-option-id="a"
+              data-correct="true"
+              data-feedback="正确。模板能固定 data-ih-action、interaction_id、option_id 等协议，前端 runtime 可以稳定接管。"
+            >
+              因为交互协议需要稳定，不能依赖 LLM 每次自由书写 DOM。
+            </button>
+            <button
+              type="button"
+              class="ih-option"
+              data-option-label="B"
+              data-ih-action="single-choice"
+              data-interaction-id="unit_01_i_sc"
+              data-option-id="b"
+              data-correct="false"
+              data-feedback="这个理由不准确。美观主要由样式决定，交互模板的核心价值是协议稳定。"
+            >
+              因为模板一定比大模型生成的页面更美观。
+            </button>
+            <button
+              type="button"
+              class="ih-option"
+              data-option-label="C"
+              data-ih-action="single-choice"
+              data-interaction-id="unit_01_i_sc"
+              data-option-id="c"
+              data-correct="false"
+              data-feedback="不完全对。后端仍然需要 interaction_specs 和事件记录服务。"
+            >
+              因为模板可以完全替代后端的事件记录接口。
+            </button>
+          </div>
+
+          <div class="ih-feedback" data-ih-feedback-for="unit_01_i_sc" aria-live="polite"></div>
+        </article>
+
+        <article
+          id="multiple-choice"
+          class="ih-block ih-interaction ih-quiz ih-quiz--multiple"
+          data-block-id="unit_01_mc"
+          data-block-type="multiple_choice"
+        >
+          <div class="ih-block-header">
+            <div>
+              <div class="ih-block-kicker">多选题 · multiple_choice</div>
+              <h3>设计原则检查</h3>
+            </div>
+          </div>
+
+          <p class="ih-question">以下哪些属于“受控自由渲染”的硬约束？</p>
+
+          <div class="ih-options" role="group" aria-label="多选题选项">
+            <button
+              type="button"
+              class="ih-option"
+              data-option-label="A"
+              data-ih-action="multiple-choice-toggle"
+              data-interaction-id="unit_01_i_mc"
+              data-option-id="a"
+              data-correct="true"
+              data-feedback="正确。data-* 协议是前端 runtime 接管交互的基础。"
+            >
+              交互元素必须包含统一的 data-* 协议。
+            </button>
+            <button
+              type="button"
+              class="ih-option"
+              data-option-label="B"
+              data-ih-action="multiple-choice-toggle"
+              data-interaction-id="unit_01_i_mc"
+              data-option-id="b"
+              data-correct="true"
+              data-feedback="正确。CSS 需要限定在当前 unit scope 内，避免污染全局页面。"
+            >
+              CSS 需要被当前 unit 的 style_scope_id 限定。
+            </button>
+            <button
+              type="button"
+              class="ih-option"
+              data-option-label="C"
+              data-ih-action="multiple-choice-toggle"
+              data-interaction-id="unit_01_i_mc"
+              data-option-id="c"
+              data-correct="false"
+              data-feedback="不建议。交互控件由模板生成，不应该让 LLM 自由写 onclick 或脚本。"
+            >
+              LLM 可以自由生成 onclick 脚本。
+            </button>
+            <button
+              type="button"
+              class="ih-option"
+              data-option-label="D"
+              data-ih-action="multiple-choice-toggle"
+              data-interaction-id="unit_01_i_mc"
+              data-option-id="d"
+              data-correct="true"
+              data-feedback="正确。manifest 可以让后端、前端和后续学习记录分析保持一致。"
+            >
+              interaction_manifest 需要和 DOM 中的 interaction_id 对齐。
+            </button>
+          </div>
+
+          <button
+            type="button"
+            class="ih-submit"
+            data-ih-action="multiple-choice-submit"
+            data-interaction-id="unit_01_i_mc"
+          >
+            提交多选答案
+          </button>
+
+          <div class="ih-feedback" data-ih-feedback-for="unit_01_i_mc" aria-live="polite"></div>
+        </article>
+
+        <article
+          id="short-answer"
+          class="ih-block ih-interaction ih-short-answer"
+          data-block-id="unit_01_sa"
+          data-block-type="short_answer"
+        >
+          <div class="ih-block-header">
+            <div>
+              <div class="ih-block-kicker">简答题 · short_answer</div>
+              <h3>用自己的话解释</h3>
+            </div>
+          </div>
+
+          <p class="ih-question">请用 1～2 句话解释：为什么讲解 HTML 可以交给 LLM，而互动 HTML 更适合模板化？</p>
+
+          <textarea
+            class="ih-textarea"
+            data-ih-input-for="unit_01_i_sa"
+            placeholder="例如：讲解部分追求表达自然和视觉变化，互动部分追求协议稳定和事件可追踪……"
+          ></textarea>
+
+          <div style="margin-top: 12px;">
+            <button
+              type="button"
+              class="ih-submit"
+              data-ih-action="short-answer-submit"
+              data-interaction-id="unit_01_i_sa"
+              data-min-length="20"
+              data-reference-points="讲解部分需要自然表达|互动部分需要协议稳定|事件需要可记录和可追踪"
+            >
+              提交简答
+            </button>
+          </div>
+
+          <div class="ih-feedback" data-ih-feedback-for="unit_01_i_sa" aria-live="polite"></div>
+        </article>
+
+        <article
+          id="scenario-discussion"
+          class="ih-block ih-interaction ih-scenario"
+          data-block-id="unit_01_sd"
+          data-block-type="scenario_discussion"
+        >
+          <div class="ih-block-header">
+            <div>
+              <div class="ih-block-kicker">情景讨论 · scenario_discussion</div>
+              <h3>作为课程生成系统设计者，你会怎么选？</h3>
+            </div>
+          </div>
+
+          <div class="scenario-box">
+            <div class="scenario-card">
+              <div class="tag">场景任务</div>
+              <p>
+                你正在设计一个 AI 课程生成系统。甲方希望页面好看，开发同学希望交互稳定。
+                现在需要决定：互动题到底由 LLM 直接生成，还是由模板生成。
+              </p>
+              <p style="margin-bottom: 0;">
+                请你给出选择，并说明理由。
+              </p>
+            </div>
+
+            <div>
+              <p class="ih-question">你的设计决策是什么？</p>
+              <textarea
+                class="ih-textarea"
+                data-ih-input-for="unit_01_i_sd"
+                placeholder="我会选择……因为……"
+              ></textarea>
+
+              <div style="margin-top: 12px;">
+                <button
+                  type="button"
+                  class="ih-submit secondary"
+                  data-ih-action="scenario-discussion-submit"
+                  data-interaction-id="unit_01_i_sd"
+                  data-min-length="30"
+                  data-reference-points="讲解由 LLM 生成|互动由模板生成|需要统一通信协议|需要保持风格一致"
+                >
+                  提交讨论
+                </button>
+              </div>
+
+              <div class="ih-feedback" data-ih-feedback-for="unit_01_i_sd" aria-live="polite"></div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section id="event-log" class="event-panel">
+        <div class="event-panel-header">
+          <span>模拟提交到后端的 LearningEvent Payload</span>
+          <button class="clear-log" type="button" id="clearLog">清空</button>
+        </div>
+        <pre id="logOutput">点击或提交上面的互动项后，这里会显示前端 runtime 组装的 payload。</pre>
+      </section>
+    </main>
+  </div>
+
+  <script type="application/json" id="interactionManifest">
+  {
+    "lesson_id": "demo_lesson_001",
+    "section_id": "unit_01",
+    "interactions": [
+      {
+        "interaction_id": "unit_01_i_sc",
+        "block_id": "unit_01_sc",
+        "type": "single_choice",
+        "event_type": "single_choice_answered",
+        "target_concepts": ["interactive_runtime", "template_rendering"]
+      },
+      {
+        "interaction_id": "unit_01_i_mc",
+        "block_id": "unit_01_mc",
+        "type": "multiple_choice",
+        "event_type": "multiple_choice_answered",
+        "target_concepts": ["render_contract", "style_scope", "manifest"]
+      },
+      {
+        "interaction_id": "unit_01_i_sa",
+        "block_id": "unit_01_sa",
+        "type": "short_answer",
+        "event_type": "short_answer_submitted",
+        "target_concepts": ["llm_render", "template_interaction"]
+      },
+      {
+        "interaction_id": "unit_01_i_sd",
+        "block_id": "unit_01_sd",
+        "type": "scenario_discussion",
+        "event_type": "scenario_discussion_submitted",
+        "target_concepts": ["design_decision", "p0_architecture"]
+      }
+    ]
+  }
+  </script>
+
+  <script>
+    (function () {
+      const manifest = JSON.parse(document.getElementById("interactionManifest").textContent);
+      const logOutput = document.getElementById("logOutput");
+      const clearLog = document.getElementById("clearLog");
+      const selectedMap = new Map();
+
+      const eventTypeMap = {
+        "single-choice": "single_choice_answered",
+        "multiple-choice-submit": "multiple_choice_answered",
+        "short-answer-submit": "short_answer_submitted",
+        "scenario-discussion-submit": "scenario_discussion_submitted"
+      };
+
+      function findInteraction(interactionId) {
+        return manifest.interactions.find(item => item.interaction_id === interactionId);
+      }
+
+      function getFeedbackBox(interactionId) {
+        return document.querySelector(`[data-ih-feedback-for="${interactionId}"]`);
+      }
+
+      function showFeedback(interactionId, title, message, variant) {
+        const box = getFeedbackBox(interactionId);
+        if (!box) return;
+        box.classList.remove("success", "warn");
+        box.classList.add("is-visible");
+        if (variant) box.classList.add(variant);
+        box.innerHTML = `<strong>${escapeHTML(title)}</strong><div>${escapeHTML(message)}</div>`;
+      }
+
+      function appendLog(payload) {
+        const current = logOutput.textContent.includes("点击或提交") ? "" : logOutput.textContent + "\n\n";
+        logOutput.textContent = current + JSON.stringify(payload, null, 2);
+      }
+
+      function buildPayload(action, interactionId, extraPayload) {
+        const interaction = findInteraction(interactionId);
+        const section = document.querySelector(".ih-unit[data-section-id]");
+        const eventType = eventTypeMap[action] || interaction?.event_type || "interaction_event";
+
+        return {
+          lesson_id: manifest.lesson_id,
+          session_id: "demo_session_local",
+          section_id: section?.dataset.sectionId || manifest.section_id,
+          block_id: interaction?.block_id || null,
+          interaction_id: interactionId,
+          event_type: eventType,
+          payload: {
+            ...extraPayload,
+            target_concepts: interaction?.target_concepts || [],
+            client_timestamp: new Date().toISOString()
+          }
+        };
+      }
+
+      function handleSingleChoice(button) {
+        const interactionId = button.dataset.interactionId;
+        const block = button.closest("[data-block-id]");
+        const allOptions = block.querySelectorAll(`[data-interaction-id="${interactionId}"][data-option-id]`);
+
+        allOptions.forEach(option => {
+          option.classList.remove("is-selected", "is-correct", "is-wrong");
+        });
+
+        button.classList.add("is-selected");
+        const isCorrect = button.dataset.correct === "true";
+        button.classList.add(isCorrect ? "is-correct" : "is-wrong");
+
+        const feedback = button.dataset.feedback || "已记录你的选择。";
+        showFeedback(
+          interactionId,
+          isCorrect ? "回答正确" : "再想一想",
+          feedback,
+          isCorrect ? "success" : "warn"
+        );
+
+        const payload = buildPayload("single-choice", interactionId, {
+          selected_option_ids: [button.dataset.optionId],
+          is_correct: isCorrect
+        });
+
+        appendLog(payload);
+      }
+
+      function handleMultipleChoiceToggle(button) {
+        const interactionId = button.dataset.interactionId;
+        const optionId = button.dataset.optionId;
+
+        if (!selectedMap.has(interactionId)) {
+          selectedMap.set(interactionId, new Set());
+        }
+
+        const selected = selectedMap.get(interactionId);
+        if (selected.has(optionId)) {
+          selected.delete(optionId);
+          button.classList.remove("is-selected");
+        } else {
+          selected.add(optionId);
+          button.classList.add("is-selected");
+        }
+      }
+
+      function handleMultipleChoiceSubmit(button) {
+        const interactionId = button.dataset.interactionId;
+        const block = button.closest("[data-block-id]");
+        const selected = selectedMap.get(interactionId) || new Set();
+        const options = Array.from(block.querySelectorAll(`[data-interaction-id="${interactionId}"][data-option-id]`));
+        const correctIds = options.filter(option => option.dataset.correct === "true").map(option => option.dataset.optionId);
+        const selectedIds = Array.from(selected);
+
+        options.forEach(option => {
+          option.classList.remove("is-correct", "is-wrong");
+          if (option.dataset.correct === "true") {
+            option.classList.add("is-correct");
+          } else if (selected.has(option.dataset.optionId)) {
+            option.classList.add("is-wrong");
+          }
+        });
+
+        const isFullyCorrect =
+          selectedIds.length === correctIds.length &&
+          correctIds.every(id => selected.has(id));
+
+        const selectedLabels = selectedIds.length ? selectedIds.join(", ") : "尚未选择";
+        showFeedback(
+          interactionId,
+          isFullyCorrect ? "选择完整" : "已提交，看看高亮提示",
+          isFullyCorrect
+            ? "你选中了所有关键约束：协议、样式作用域和 manifest 对齐。"
+            : `你的选择是：${selectedLabels}。绿色为应选择项，红色为不建议项。`,
+          isFullyCorrect ? "success" : "warn"
+        );
+
+        const payload = buildPayload("multiple-choice-submit", interactionId, {
+          selected_option_ids: selectedIds,
+          correct_option_ids: correctIds,
+          is_correct: isFullyCorrect
+        });
+
+        appendLog(payload);
+      }
+
+      function scoreTextAnswer(answer, referencePoints) {
+        const normalized = answer.replace(/\s+/g, "");
+        const hits = referencePoints.filter(point => {
+          const compact = point.replace(/\s+/g, "");
+          return normalized.includes(compact.slice(0, Math.min(4, compact.length)));
+        });
+
+        return {
+          hits,
+          score: Math.min(100, Math.round((hits.length / Math.max(referencePoints.length, 1)) * 100))
+        };
+      }
+
+      function handleTextSubmit(button, action) {
+        const interactionId = button.dataset.interactionId;
+        const input = document.querySelector(`[data-ih-input-for="${interactionId}"]`);
+        const answer = input?.value?.trim() || "";
+        const minLength = Number(button.dataset.minLength || 0);
+        const referencePoints = (button.dataset.referencePoints || "")
+          .split("|")
+          .map(item => item.trim())
+          .filter(Boolean);
+
+        if (answer.length < minLength) {
+          showFeedback(
+            interactionId,
+            "还可以再展开一点",
+            `这类问题建议至少写 ${minLength} 个字。你可以补充“为什么这样设计更稳定”。`,
+            "warn"
+          );
+          return;
+        }
+
+        const result = scoreTextAnswer(answer, referencePoints);
+        const hint = result.hits.length
+          ? `你的回答已经覆盖：${result.hits.join("、")}。`
+          : "你的回答已记录。后续可以从“表达自由”和“交互稳定”两个角度再补充。";
+
+        showFeedback(
+          interactionId,
+          "已记录你的回答",
+          hint,
+          "success"
+        );
+
+        const payload = buildPayload(action, interactionId, {
+          answer_text: answer,
+          reference_points: referencePoints,
+          matched_points: result.hits,
+          heuristic_score: result.score
+        });
+
+        appendLog(payload);
+      }
+
+      function escapeHTML(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      document.addEventListener("click", (event) => {
+        const target = event.target.closest("[data-ih-action]");
+        if (!target) return;
+
+        const action = target.dataset.ihAction;
+        if (action === "single-choice") {
+          handleSingleChoice(target);
+        } else if (action === "multiple-choice-toggle") {
+          handleMultipleChoiceToggle(target);
+        } else if (action === "multiple-choice-submit") {
+          handleMultipleChoiceSubmit(target);
+        } else if (action === "short-answer-submit") {
+          handleTextSubmit(target, "short-answer-submit");
+        } else if (action === "scenario-discussion-submit") {
+          handleTextSubmit(target, "scenario-discussion-submit");
+        }
+      });
+
+      clearLog.addEventListener("click", () => {
+        logOutput.textContent = "点击或提交上面的互动项后，这里会显示前端 runtime 组装的 payload。";
+      });
+    })();
+  </script>
+</body>
+</html>

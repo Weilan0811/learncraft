@@ -52,15 +52,19 @@
 - flow-prev
 - flow-reset
 - single-choice
-- multiple-choice
-- short-answer
+- multiple-choice-toggle
+- multiple-choice-submit
+- short-answer-submit
+- scenario-discussion-submit
 - sequence-select
 - match-select
 
 常见错误替换：
 
-- toggle_selection -> multiple-choice
+- toggle_selection -> multiple-choice-toggle
+- multiple-choice -> multiple-choice-toggle
 - check_answer -> single-choice
+- short-answer -> short-answer-submit
 
 不要发明新的 data-ih-action。修复时必须把校验报告中的 unsupported data-ih-action 替换为上面的允许值。
 
