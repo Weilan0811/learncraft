@@ -52,7 +52,6 @@ const SANITIZE_CONFIG = {
     "data-option-label",
     "data-ih-input-for",
     "data-ih-feedback-for",
-    "data-reference-points",
     "data-min-length",
   ],
   FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "meta", "svg"],
@@ -99,24 +98,7 @@ function showFeedback(root: ParentNode, interactionId: string, title: string, me
   box.append(strong, body);
 }
 
-function referencePointsFor(target: HTMLElement): string[] {
-  return (target.dataset.referencePoints || "")
-    .split("|")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
 
-function scoreTextAnswer(answer: string, referencePoints: string[]) {
-  const normalized = answer.replace(/\s+/g, "");
-  const matched = referencePoints.filter((point) => {
-    const compact = point.replace(/\s+/g, "");
-    return compact.length > 0 && normalized.includes(compact.slice(0, Math.min(4, compact.length)));
-  });
-  return {
-    matched,
-    score: Math.min(100, Math.round((matched.length / Math.max(referencePoints.length, 1)) * 100)),
-  };
-}
 
 function useScopedStyles(sections: InteractiveHtmlRenderedUnit[]) {
   const styleRef = useRef<HTMLStyleElement | null>(null);
@@ -147,7 +129,6 @@ function useScopedStyles(sections: InteractiveHtmlRenderedUnit[]) {
 export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = false }) => {
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
-  const [score, setScore] = useState(0);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(model.sections[0]?.section_id ?? null);
   const selectedOptionsRef = useRef<Map<string, Set<string>>>(new Map());
 
@@ -187,7 +168,6 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
       next.add(sectionId);
       return next;
     });
-    setScore((s) => s + 5);
   }, []);
 
   const submitInteraction = useCallback((params: {
@@ -270,7 +250,7 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
           isCorrect ? "success" : "warn"
         );
       }
-      setScore((s) => s + 1);
+      // setScore((s) => s + 1);
       submitInteraction({
         sectionId,
         interactionId,
@@ -341,17 +321,15 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
       const input = findInteractionInput(interactionBox, interactionId);
       const answer = input?.value?.trim() ?? "";
       const minLength = Number(target.dataset.minLength || 0);
-      const references = referencePointsFor(target);
       if (answer.length < minLength) {
         showFeedback(interactionBox, interactionId, "还可以再展开一点", `这类问题建议至少写 ${minLength} 个字。`, "warn");
         return;
       }
-      const result = scoreTextAnswer(answer, references);
       showFeedback(
         interactionBox,
         interactionId,
         "已记录你的回答",
-        result.matched.length ? `你的回答已经覆盖：${result.matched.join("、")}。` : "你的回答已记录，可以继续学习下一部分。",
+        "你的回答已记录，可以继续学习下一部分。",
         "success"
       );
       target.classList.toggle("answered", answer.length > 0);
@@ -362,9 +340,6 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
         blockId,
         payload: {
           answer_text: answer,
-          reference_points: references,
-          matched_points: result.matched,
-          heuristic_score: result.score,
           client_timestamp: new Date().toISOString(),
         },
       });
@@ -447,7 +422,6 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
           <strong>学习进度</strong>
           <div className="ih-progress-bar"><span style={{ width: `${progressPercent}%` }} /></div>
           <p className="ih-progress-text">已完成 {progressPercent}%</p>
-          <div className="ih-score-pill">互动积分 {score}</div>
         </div>
       </aside>
 
