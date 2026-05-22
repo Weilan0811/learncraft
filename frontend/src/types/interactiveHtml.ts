@@ -116,9 +116,6 @@ export interface LearningEventPayload {
   match_pairs?: Record<string, string>;
   answer_text?: string | null;
   is_correct?: boolean | null;
-  reference_points?: string[];
-  matched_points?: string[];
-  heuristic_score?: number | null;
   client_timestamp?: string | null;
   confidence?: "low" | "medium" | "high" | null;
   time_spent_seconds?: number | null;
