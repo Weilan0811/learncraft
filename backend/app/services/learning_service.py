@@ -83,7 +83,7 @@ class InMemoryLearningService:
     def _build_interaction_summary(self, events: list[dict]) -> dict:
         answered = sum(1 for e in events if e["event_type"] in {
             "single_choice_answered", "multiple_choice_answered",
-            "short_answer_submitted", "drag_match_submitted",
+            "short_answer_submitted", "scenario_discussion_submitted", "drag_match_submitted",
             "sequence_submitted",
         })
         help_requested = sum(1 for e in events if e["event_type"] in {

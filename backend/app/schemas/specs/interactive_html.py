@@ -8,7 +8,7 @@ P0 refactor: Unit Spec focuses on teaching design (no HTML).
 Render stage produces HTML + CSS via LLM Composer.
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -44,6 +44,7 @@ class InteractiveHtmlTeachingBlock(SchemaModel):
         "stepper",
         "socratic_chat",
         "scenario",
+        "scenario_discussion",
         "single_choice",
         "multiple_choice",
         "short_answer",
@@ -61,6 +62,13 @@ class InteractiveHtmlTeachingBlock(SchemaModel):
     source_refs: list[str] = Field(default_factory=list)
 
 
+class InteractiveHtmlInteractionOption(SchemaModel):
+    id: str
+    text: str
+    is_correct: bool | None = None
+    feedback: str | None = None
+
+
 class InteractiveHtmlInteractionSpec(SchemaModel):
     interaction_id: str
     block_id: str
@@ -68,29 +76,29 @@ class InteractiveHtmlInteractionSpec(SchemaModel):
         "single_choice",
         "multiple_choice",
         "short_answer",
-        "drag_match",
-        "sequence",
-        "socratic_chat",
-        "scenario",
-        "complete_section",
-        "tab_select",
-        "flow_control",
+        "scenario_discussion",
     ]
     event_type: Literal[
         "single_choice_answered",
         "multiple_choice_answered",
         "short_answer_submitted",
-        "drag_match_submitted",
-        "sequence_submitted",
-        "socratic_round_answered",
-        "scenario_choice_selected",
-        "hint_requested",
-        "confused_clicked",
+        "scenario_discussion_submitted",
     ]
     target_concepts: list[str] = Field(default_factory=list)
     prompt: str | None = None
-    options: list[dict] = Field(default_factory=list)
-    feedback_policy: Literal["frontend_static", "submit_to_backend"] = "submit_to_backend"
+    options: list[InteractiveHtmlInteractionOption] = Field(default_factory=list)
+    feedback_policy: Literal["local", "submit_to_backend", "local_and_submit"] = "local_and_submit"
+    placeholder: str | None = None
+    reference_points: list[str] = Field(default_factory=list)
+    min_length: int | None = None
+    scenario: dict[str, Any] = Field(default_factory=dict)
+    visual_variant: Literal[
+        "diagnostic_card",
+        "checkpoint",
+        "tutor_question",
+        "challenge_box",
+        "scenario_decision",
+    ] | None = None
     allow_adaptive_followup: bool = True
 
 

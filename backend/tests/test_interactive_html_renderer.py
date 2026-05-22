@@ -1,9 +1,12 @@
 import pytest
 
 from app.renderers.interactive_html_composer import InteractiveHtmlComposer, InteractiveHtmlRenderError
+from app.renderers.interactive_html_explanation_composer import InteractiveHtmlExplanationRender
+from app.renderers.interactive_html_interaction_renderer import InteractionTemplateRenderer
+from app.renderers.interactive_html_unit_assembler import UnitHtmlAssembler
 from app.renderers.interactive_html_renderer import InteractiveHtmlRenderer
 from app.schemas.render.interactive_html import InteractionRenderRef, InteractiveHtmlRenderBlockRef, InteractiveHtmlRenderedUnit
-from app.schemas.specs.interactive_html import InteractiveHtmlSectionSpec, InteractiveHtmlTeachingBlock
+from app.schemas.specs.interactive_html import InteractiveHtmlInteractionOption, InteractiveHtmlInteractionSpec, InteractiveHtmlSectionSpec, InteractiveHtmlTeachingBlock
 from app.schemas.specs.interactive_html_style import DEFAULT_INTERACTIVE_HTML_STYLE_GUIDE
 from app.schemas.state import ContentGenerationState
 from app.validators.interactive_html_validator import sanitize_rendered_unit, validate_rendered_unit
@@ -92,6 +95,123 @@ def test_interactive_html_renderer_assemble_multiple_units() -> None:
     assert model.navigation[0].section_id == "unit_1"
     assert model.navigation[1].section_id == "unit_2"
     assert len(model.interactions) == 2
+
+
+def test_interaction_template_renderer_outputs_four_p0_contracts() -> None:
+    section = InteractiveHtmlSectionSpec(
+        section_id="unit_1",
+        title="模板协议",
+        learning_goal="验证四类互动协议",
+        teaching_flow=[
+            InteractiveHtmlTeachingBlock(block_id="unit_1_sc", block_type="single_choice", title="单选", teaching_role="diagnose", content_goal="单选", interaction_id="i_sc"),
+            InteractiveHtmlTeachingBlock(block_id="unit_1_mc", block_type="multiple_choice", title="多选", teaching_role="diagnose", content_goal="多选", interaction_id="i_mc"),
+            InteractiveHtmlTeachingBlock(block_id="unit_1_sa", block_type="short_answer", title="简答", teaching_role="reflect", content_goal="简答", interaction_id="i_sa"),
+            InteractiveHtmlTeachingBlock(block_id="unit_1_sd", block_type="scenario_discussion", title="情景", teaching_role="transfer", content_goal="情景", interaction_id="i_sd"),
+        ],
+        interaction_specs=[
+            InteractiveHtmlInteractionSpec(
+                interaction_id="i_sc",
+                block_id="unit_1_sc",
+                type="single_choice",
+                event_type="single_choice_answered",
+                prompt="单选题",
+                options=[InteractiveHtmlInteractionOption(id=str(i), text=f"选项 {i}", is_correct=i == 1, feedback="反馈") for i in range(1, 5)],
+            ),
+            InteractiveHtmlInteractionSpec(
+                interaction_id="i_mc",
+                block_id="unit_1_mc",
+                type="multiple_choice",
+                event_type="multiple_choice_answered",
+                prompt="多选题",
+                options=[InteractiveHtmlInteractionOption(id=str(i), text=f"选项 {i}", is_correct=i in {1, 2}, feedback="反馈") for i in range(1, 5)],
+            ),
+            InteractiveHtmlInteractionSpec(
+                interaction_id="i_sa",
+                block_id="unit_1_sa",
+                type="short_answer",
+                event_type="short_answer_submitted",
+                prompt="简答题",
+                placeholder="请输入",
+                reference_points=["协议稳定"],
+                min_length=10,
+            ),
+            InteractiveHtmlInteractionSpec(
+                interaction_id="i_sd",
+                block_id="unit_1_sd",
+                type="scenario_discussion",
+                event_type="scenario_discussion_submitted",
+                prompt="讨论题",
+                placeholder="请输入",
+                reference_points=["模板生成"],
+                min_length=12,
+                scenario={"background": "背景", "task": "任务"},
+            ),
+        ],
+    )
+
+    rendered = InteractionTemplateRenderer().render(section, "ih-scope-unit_1")
+    html = "\n".join(block.html_fragment for block in rendered.values())
+
+    assert 'data-ih-action="single-choice"' in html
+    assert 'data-ih-action="multiple-choice-toggle"' in html
+    assert 'data-ih-action="multiple-choice-submit"' in html
+    assert 'data-ih-action="short-answer-submit"' in html
+    assert 'data-ih-action="scenario-discussion-submit"' in html
+    assert 'data-ih-input-for="i_sa"' in html
+    assert 'data-reference-points="协议稳定"' in html
+
+
+def test_unit_assembler_preserves_teaching_flow_order_and_fallback() -> None:
+    section = _section_spec()
+    explanation = InteractiveHtmlExplanationRender(
+        section_id="unit_1",
+        style_scope_id="ih-scope-unit_1",
+        block_html_map={
+            "unit_1_intro": '<article class="ih-block" data-block-id="unit_1_intro" data-block-type="intro"><h3>导入</h3><p>第一段。</p></article>'
+        },
+        css_fragment=".ih-scope-unit_1 { overflow-wrap: break-word; }",
+    )
+
+    unit = UnitHtmlAssembler().assemble(section, explanation, {}, "ih-scope-unit_1")
+
+    assert unit.html_fragment.index('data-block-id="unit_1_intro"') < unit.html_fragment.index('data-block-id="unit_1_concept"')
+    assert "ih-warning" in unit.html_fragment
+    assert unit.render_notes["missing_blocks"] == ["unit_1_concept", "unit_1_reflection"]
+
+
+def test_unit_assembler_does_not_duplicate_frontend_section_header() -> None:
+    section = _section_spec()
+    explanation = InteractiveHtmlExplanationRender(
+        section_id="unit_1",
+        style_scope_id="ih-scope-unit_1",
+        block_html_map={
+            "unit_1_intro": '<article class="ih-block" data-block-id="unit_1_intro" data-block-type="intro"><h3>导入</h3><p>第一段。</p></article>',
+            "unit_1_concept": '<article class="ih-block" data-block-id="unit_1_concept" data-block-type="concept_explanation"><h3>核心概念</h3><p>第二段。</p></article>',
+            "unit_1_reflection": '<article class="ih-block" data-block-id="unit_1_reflection" data-block-type="reflection"><h3>学习反思</h3><p>第三段。</p></article>',
+        },
+        css_fragment=".ih-scope-unit_1 { overflow-wrap: break-word; }",
+    )
+
+    unit = UnitHtmlAssembler().assemble(section, explanation, {}, "ih-scope-unit_1")
+
+    assert f"<h2>{section.title}</h2>" not in unit.html_fragment
+    assert f"<p>{section.learning_goal}</p>" not in unit.html_fragment
+    assert unit.html_fragment.count('data-block-id="unit_1_intro"') == 1
+
+
+def test_composer_falls_back_when_explanation_llm_times_out() -> None:
+    class TimeoutExplanationComposer:
+        def compose(self, section_spec, style_guide, style_scope_id, retrieval_context=None):
+            raise RuntimeError("LLM request failed after retries: ReadTimeout: The read operation timed out")
+
+    composer = InteractiveHtmlComposer(explanation_composer=TimeoutExplanationComposer())
+
+    unit = composer.compose_unit(_section_spec(), DEFAULT_INTERACTIVE_HTML_STYLE_GUIDE)
+
+    assert unit.section_id == "unit_1"
+    assert unit.render_notes["fallback"] is True
+    assert "LLM request failed after retries" in unit.render_notes["explanation_error"]
+    assert validate_rendered_unit(unit).ok is True
 
 
 def _section_spec(section_id: str = "unit_1") -> InteractiveHtmlSectionSpec:
@@ -229,29 +349,31 @@ def test_sanitize_rendered_unit_normalizes_common_action_aliases() -> None:
     sanitized = sanitize_rendered_unit(unit)
     report = validate_rendered_unit(sanitized)
 
-    assert 'data-ih-action="multiple-choice"' in sanitized.html_fragment
+    assert 'data-ih-action="multiple-choice-toggle"' in sanitized.html_fragment
     assert 'data-ih-action="single-choice"' in sanitized.html_fragment
     assert not [issue.message for issue in report.issues if "unsupported data-ih-action" in issue.message]
 
 
-def test_composer_raises_after_internal_repair_instead_of_hidden_fallback(monkeypatch) -> None:
-    invalid_unit = _rendered_unit().model_copy(update={"html_fragment": "<div>bad</div>"})
+def test_composer_raises_when_assembled_unit_fails_validation(monkeypatch) -> None:
+    from app.renderers.interactive_html_explanation_composer import InteractiveHtmlExplanationRender
 
-    def fake_generate(self, section_spec, style_guide, retrieval_context=None, repair_context=None):
-        return invalid_unit
+    class BadAssembler:
+        def assemble(self, section_spec, explanation_render, interaction_blocks, style_scope_id):
+            return _rendered_unit(section_spec.section_id).model_copy(update={"html_fragment": "<div>bad</div>"})
 
-    def fake_repair(self, rendered_unit, report, section_spec, style_guide):
-        return invalid_unit
+    class StubExplanationComposer:
+        def compose(self, section_spec, style_guide, style_scope_id, retrieval_context=None):
+            return InteractiveHtmlExplanationRender(
+                section_id=section_spec.section_id,
+                style_scope_id=style_scope_id,
+                block_html_map={},
+                css_fragment=f".{style_scope_id} {{ overflow-wrap: break-word; }}",
+            )
 
-    def hidden_fallback(self, section_spec, style_guide):
-        raise AssertionError("fallback should be graph-level, not hidden inside compose_unit")
+    composer = InteractiveHtmlComposer(explanation_composer=StubExplanationComposer(), unit_assembler=BadAssembler())
 
-    monkeypatch.setattr(InteractiveHtmlComposer, "_generate_rendered_unit", fake_generate)
-    monkeypatch.setattr(InteractiveHtmlComposer, "_repair_rendered_unit", fake_repair)
-    monkeypatch.setattr(InteractiveHtmlComposer, "_fallback_rendered_unit", hidden_fallback)
-
-    with pytest.raises(InteractiveHtmlRenderError, match="failed validation after repair"):
-        InteractiveHtmlComposer().compose_unit(_section_spec(), DEFAULT_INTERACTIVE_HTML_STYLE_GUIDE)
+    with pytest.raises(InteractiveHtmlRenderError, match="failed validation"):
+        composer.compose_unit(_section_spec(), DEFAULT_INTERACTIVE_HTML_STYLE_GUIDE)
 
 
 def test_render_repair_prompt_includes_allowed_action_contract() -> None:

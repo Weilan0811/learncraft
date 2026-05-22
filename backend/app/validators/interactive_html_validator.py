@@ -33,12 +33,15 @@ ALLOWED_ATTRS = {
     "data-ih-action", "data-section-id", "data-interaction-id", "data-option-id",
     "data-target-id", "data-item-id", "data-tab-target", "data-flow-id", "data-step",
     "data-block-id", "data-block-type", "data-tab-panel", "data-correct",
-    "data-feedback-for", "data-state", "data-role",
+    "data-feedback", "data-feedback-for", "data-ih-feedback-for", "data-ih-input-for",
+    "data-reference-points", "data-min-length", "data-option-label", "data-state", "data-role",
 }
 INTERACTION_ACTIONS = {
     "single-choice",
-    "multiple-choice",
-    "short-answer",
+    "multiple-choice-toggle",
+    "multiple-choice-submit",
+    "short-answer-submit",
+    "scenario-discussion-submit",
     "sequence-select",
     "match-select",
     "complete-section",
@@ -48,8 +51,16 @@ INTERACTION_ACTIONS = {
     "flow-reset",
 }
 INTERACTION_ACTION_ALIASES = {
-    "toggle_selection": "multiple-choice",
+    "toggle_selection": "multiple-choice-toggle",
     "check_answer": "single-choice",
+    "multiple-choice": "multiple-choice-toggle",
+    "short-answer": "short-answer-submit",
+}
+P0_INTERACTION_EVENT_TYPES = {
+    "single_choice": "single_choice_answered",
+    "multiple_choice": "multiple_choice_answered",
+    "short_answer": "short_answer_submitted",
+    "scenario_discussion": "scenario_discussion_submitted",
 }
 ALLOWED_TEACHING_BLOCK_TYPES = {
     "intro",
@@ -60,6 +71,7 @@ ALLOWED_TEACHING_BLOCK_TYPES = {
     "stepper",
     "socratic_chat",
     "scenario",
+    "scenario_discussion",
     "single_choice",
     "multiple_choice",
     "short_answer",
@@ -83,7 +95,7 @@ ALLOWED_RENDER_BLOCK_TYPES = {
     "reflection",
     "summary",
 }
-INTERACTIVE_BLOCK_TYPES = {"quiz", "practice", "scenario", "dialogue", "single_choice", "multiple_choice", "short_answer", "drag_match", "sequence", "socratic_chat"}
+INTERACTIVE_BLOCK_TYPES = {"quiz", "practice", "scenario", "scenario_discussion", "dialogue", "single_choice", "multiple_choice", "short_answer", "drag_match", "sequence", "socratic_chat"}
 EXPLANATORY_BLOCK_TYPES = {"intro", "concept", "explain", "visual", "case_compare", "flow", "tabs", "concept_explanation", "animated_flow", "context_inspector", "stepper"}
 COURSEWARE_CLASS_MARKERS = {
     "ih-card",
@@ -237,6 +249,7 @@ def validate_unit_spec(section: InteractiveHtmlSectionSpec) -> InteractiveHtmlVa
     for spec in section.interaction_specs:
         if spec.block_id not in spec_block_ids:
             issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}", f"block_id '{spec.block_id}' does not exist in teaching_flow"))
+        _validate_interaction_spec(spec, issues)
 
     interactive_block_ids = {
         block.block_id for block in section.teaching_flow
@@ -245,6 +258,43 @@ def validate_unit_spec(section: InteractiveHtmlSectionSpec) -> InteractiveHtmlVa
     for block in section.teaching_flow:
         if block.interaction_id and block.interaction_id not in interaction_ids:
             issues.append(InteractiveHtmlValidationIssue(f"teaching_flow/{block.block_id}", f"interaction_id '{block.interaction_id}' not found in interaction_specs"))
+
+    return InteractiveHtmlValidationReport(ok=len(issues) == 0, issues=issues)
+
+
+def validate_explanation_render(
+    block_html_map: dict[str, str],
+    css_fragment: str,
+    style_scope_id: str,
+) -> InteractiveHtmlValidationReport:
+    issues: list[InteractiveHtmlValidationIssue] = []
+    forbidden_html = (
+        "<script", "<style", "<input", "<textarea", "<button", "<form",
+        "onclick", "onchange", "oninput", "data-ih-action", "data-interaction-id",
+    )
+    for block_id, html in block_html_map.items():
+        lower = html.lower()
+        for marker in forbidden_html:
+            if marker in lower:
+                issues.append(InteractiveHtmlValidationIssue(f"block_html_map/{block_id}", f"explanation html must not include {marker}"))
+        parser = _parse(html)
+        if parser.root_tags and any(tag in FORBIDDEN_FULL_PAGE_TAGS for tag, _ in parser.root_tags):
+            issues.append(InteractiveHtmlValidationIssue(f"block_html_map/{block_id}", "explanation html must not include full-page tags"))
+
+    if not css_fragment.strip():
+        issues.append(InteractiveHtmlValidationIssue("css_fragment", "css_fragment is missing"))
+    if re.search(r"^(?:body|html|:root)\s*[{,]", css_fragment, re.MULTILINE):
+        issues.append(InteractiveHtmlValidationIssue("css_fragment", "css_fragment must not use global selectors (body, html, :root)"))
+    if "@import" in css_fragment or "url(" in css_fragment:
+        issues.append(InteractiveHtmlValidationIssue("css_fragment", "css_fragment must not include imports or urls"))
+    if "position:" in css_fragment and "fixed" in css_fragment:
+        issues.append(InteractiveHtmlValidationIssue("css_fragment", "css_fragment must not use position: fixed"))
+    scoped_lines = [
+        line.strip() for line in css_fragment.splitlines()
+        if line.strip().endswith("{") and not line.strip().startswith("@")
+    ]
+    if scoped_lines and any(f".{style_scope_id}" not in line for line in scoped_lines):
+        issues.append(InteractiveHtmlValidationIssue("css_fragment", "css selectors must be scoped to style_scope_id"))
 
     return InteractiveHtmlValidationReport(ok=len(issues) == 0, issues=issues)
 
@@ -334,6 +384,54 @@ def _validate_rendered_html(unit: InteractiveHtmlRenderedUnit, issues: list[Inte
             issues.append(InteractiveHtmlValidationIssue("html_fragment", "html_fragment must not include javascript: URLs"))
         if name == "data-ih-action" and value not in INTERACTION_ACTIONS:
             issues.append(InteractiveHtmlValidationIssue("html_fragment", f"unsupported data-ih-action: {value}"))
+
+
+def _validate_interaction_spec(spec, issues: list[InteractiveHtmlValidationIssue]) -> None:
+    expected_event_type = P0_INTERACTION_EVENT_TYPES.get(spec.type)
+    if expected_event_type and spec.event_type != expected_event_type:
+        issues.append(InteractiveHtmlValidationIssue(
+            f"interaction_specs/{spec.interaction_id}/event_type",
+            f"{spec.type} event_type must be {expected_event_type}",
+        ))
+
+    if spec.type == "single_choice":
+        if len(spec.options) < 4:
+            issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}/options", "single_choice requires at least 4 options"))
+        correct = [option for option in spec.options if option.is_correct is True]
+        if len(correct) != 1:
+            issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}/options", "single_choice requires exactly one correct option"))
+        _validate_option_feedback(spec, issues)
+
+    if spec.type == "multiple_choice":
+        if len(spec.options) < 4:
+            issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}/options", "multiple_choice requires at least 4 options"))
+        correct = [option for option in spec.options if option.is_correct is True]
+        if len(correct) < 1:
+            issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}/options", "multiple_choice requires at least one correct option"))
+        _validate_option_feedback(spec, issues)
+
+    if spec.type == "short_answer":
+        if not (spec.prompt or "").strip():
+            issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}/prompt", "short_answer prompt is required"))
+        if not (spec.placeholder or "").strip():
+            issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}/placeholder", "short_answer placeholder is required"))
+
+    if spec.type == "scenario_discussion":
+        if not (spec.prompt or "").strip():
+            issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}/prompt", "scenario_discussion prompt is required"))
+        if not str(spec.scenario.get("background") or "").strip():
+            issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}/scenario.background", "scenario_discussion requires scenario.background"))
+        if not str(spec.scenario.get("task") or "").strip():
+            issues.append(InteractiveHtmlValidationIssue(f"interaction_specs/{spec.interaction_id}/scenario.task", "scenario_discussion requires scenario.task"))
+
+
+def _validate_option_feedback(spec, issues: list[InteractiveHtmlValidationIssue]) -> None:
+    for option in spec.options:
+        if not (option.feedback or "").strip():
+            issues.append(InteractiveHtmlValidationIssue(
+                f"interaction_specs/{spec.interaction_id}/options/{option.id}/feedback",
+                f"{spec.type} option feedback is required",
+            ))
 
 
 def _validate_rendered_css(unit: InteractiveHtmlRenderedUnit, issues: list[InteractiveHtmlValidationIssue]) -> None:

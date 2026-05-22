@@ -1254,7 +1254,11 @@ def build_interactive_html_unit_spec_fallback(
     state: ContentGenerationState, unit: OutlineUnit, chunk_ids: list[str]
 ) -> InteractiveHtmlSectionSpec:
     """Stub fallback producing a valid teaching design spec (no HTML)."""
-    from app.schemas.specs.interactive_html import InteractiveHtmlTeachingBlock, InteractiveHtmlInteractionSpec
+    from app.schemas.specs.interactive_html import (
+        InteractiveHtmlInteractionOption,
+        InteractiveHtmlInteractionSpec,
+        InteractiveHtmlTeachingBlock,
+    )
 
     section_id = unit.id
     title = unit.title
@@ -1313,8 +1317,30 @@ def build_interactive_html_unit_spec_fallback(
                 target_concepts=[first_point],
                 prompt="下面哪一项最能概括本节的关键学习点？",
                 options=[
-                    {"id": "a", "text": first_point},
-                    {"id": "b", "text": "只记住页面样式"},
+                    InteractiveHtmlInteractionOption(
+                        id="a",
+                        text=first_point,
+                        is_correct=True,
+                        feedback="正确。这个选项对应本节需要建立的核心理解。",
+                    ),
+                    InteractiveHtmlInteractionOption(
+                        id="b",
+                        text="只记住页面样式",
+                        is_correct=False,
+                        feedback="页面样式有助于学习体验，但不是本节知识的核心判断。",
+                    ),
+                    InteractiveHtmlInteractionOption(
+                        id="c",
+                        text="忽略学习目标直接完成操作",
+                        is_correct=False,
+                        feedback="互动课件需要围绕学习目标组织，不能只关注操作完成。",
+                    ),
+                    InteractiveHtmlInteractionOption(
+                        id="d",
+                        text="把所有细节平均记忆",
+                        is_correct=False,
+                        feedback="学习时应优先抓住关键概念，再逐步补充细节。",
+                    ),
                 ],
             )
         ],

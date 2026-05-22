@@ -3,6 +3,7 @@ import pytest
 from app.schemas.outline import Outline, OutlineUnit
 from app.schemas.render.interactive_html import InteractiveHtmlRenderedUnit
 from app.schemas.specs.interactive_html import (
+    InteractiveHtmlInteractionOption,
     InteractiveHtmlInteractionSpec,
     InteractiveHtmlMeta,
     InteractiveHtmlSectionSpec,
@@ -44,7 +45,12 @@ def _interaction_spec(interaction_id: str = "unit_1_q1", block_id: str = "unit_1
         event_type="single_choice_answered",
         target_concepts=["引用来源"],
         prompt="引用来源的主要价值是什么？",
-        options=[{"id": "a", "text": "便于追溯依据"}, {"id": "b", "text": "增加页面美观"}],
+        options=[
+            InteractiveHtmlInteractionOption(id="a", text="便于追溯依据", is_correct=True, feedback="正确。引用来源让内容可追溯。"),
+            InteractiveHtmlInteractionOption(id="b", text="增加页面美观", is_correct=False, feedback="不对。美观不是引用来源的主要价值。"),
+            InteractiveHtmlInteractionOption(id="c", text="隐藏生成过程", is_correct=False, feedback="不对。引用来源提升透明度。"),
+            InteractiveHtmlInteractionOption(id="d", text="减少所有交互", is_correct=False, feedback="不对。引用来源与交互数量无关。"),
+        ],
     )
 
 
@@ -224,6 +230,85 @@ def test_validate_unit_spec_rejects_interaction_spec_with_invalid_block_id() -> 
     assert report.ok is False
     messages = [issue.message for issue in report.issues]
     assert any("does not exist in teaching_flow" in m for m in messages)
+
+
+def test_validate_unit_spec_enforces_p0_interaction_contracts() -> None:
+    section = _valid_section().model_copy(update={
+        "interaction_specs": [
+            InteractiveHtmlInteractionSpec(
+                interaction_id="bad_mc",
+                block_id="unit_1_check",
+                type="multiple_choice",
+                event_type="single_choice_answered",
+                prompt="哪些做法正确？",
+                options=[
+                    InteractiveHtmlInteractionOption(id="a", text="A", is_correct=False, feedback="不对"),
+                    InteractiveHtmlInteractionOption(id="b", text="B", is_correct=False, feedback="不对"),
+                    InteractiveHtmlInteractionOption(id="c", text="C", is_correct=False, feedback="不对"),
+                    InteractiveHtmlInteractionOption(id="d", text="D", is_correct=False, feedback="不对"),
+                ],
+            )
+        ]
+    })
+
+    report = validate_unit_spec(section)
+
+    assert report.ok is False
+    messages = [issue.message for issue in report.issues]
+    assert any("multiple_choice event_type must be multiple_choice_answered" in m for m in messages)
+    assert any("multiple_choice requires at least one correct option" in m for m in messages)
+
+
+def test_validate_unit_spec_accepts_short_answer_and_scenario_discussion() -> None:
+    section = _valid_section().model_copy(update={
+        "teaching_flow": [
+            _teaching_block("unit_1_intro", "intro"),
+            _teaching_block("unit_1_concept", "concept_explanation"),
+            InteractiveHtmlTeachingBlock(
+                block_id="unit_1_sa",
+                block_type="short_answer",
+                title="解释协议稳定性",
+                teaching_role="prompt_reflection",
+                content_goal="解释为什么互动模板更稳定",
+                interaction_id="unit_1_i_sa",
+            ),
+            InteractiveHtmlTeachingBlock(
+                block_id="unit_1_sd",
+                block_type="scenario_discussion",
+                title="设计方案讨论",
+                teaching_role="transfer",
+                content_goal="在真实情境中选择渲染策略",
+                interaction_id="unit_1_i_sd",
+            ),
+        ],
+        "interaction_specs": [
+            InteractiveHtmlInteractionSpec(
+                interaction_id="unit_1_i_sa",
+                block_id="unit_1_sa",
+                type="short_answer",
+                event_type="short_answer_submitted",
+                prompt="请解释模板化互动的价值。",
+                placeholder="写下你的解释",
+                reference_points=["协议稳定", "事件可追踪"],
+                min_length=12,
+            ),
+            InteractiveHtmlInteractionSpec(
+                interaction_id="unit_1_i_sd",
+                block_id="unit_1_sd",
+                type="scenario_discussion",
+                event_type="scenario_discussion_submitted",
+                prompt="你会选择哪种方案？",
+                placeholder="我会选择……",
+                reference_points=["讲解由 LLM 生成", "互动由模板生成"],
+                min_length=20,
+                scenario={"background": "需要同时保证美观和稳定。", "task": "选择互动渲染方案并说明理由。"},
+            ),
+        ],
+    })
+
+    report = validate_unit_spec(section)
+
+    assert report.ok is True
 
 
 def test_validate_rendered_unit_accepts_valid_unit() -> None:

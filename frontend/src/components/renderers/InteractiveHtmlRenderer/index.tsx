@@ -18,8 +18,9 @@ interface Props {
 
 const ACTION_EVENT_TYPE: Partial<Record<string, LearningEventType>> = {
   "single-choice": "single_choice_answered",
-  "multiple-choice": "multiple_choice_answered",
-  "short-answer": "short_answer_submitted",
+  "multiple-choice-submit": "multiple_choice_answered",
+  "short-answer-submit": "short_answer_submitted",
+  "scenario-discussion-submit": "scenario_discussion_submitted",
   "sequence-select": "sequence_submitted",
   "match-select": "drag_match_submitted",
 };
@@ -47,6 +48,12 @@ const SANITIZE_CONFIG = {
     "data-flow-id",
     "data-step",
     "data-correct",
+    "data-feedback",
+    "data-option-label",
+    "data-ih-input-for",
+    "data-ih-feedback-for",
+    "data-reference-points",
+    "data-min-length",
   ],
   FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "meta", "svg"],
   FORBID_ATTR: ["onclick", "onchange", "oninput", "onkeydown", "onkeyup", "onmouseover"],
@@ -65,7 +72,50 @@ function sectionIdFor(target: HTMLElement): string {
 function setPressed(el: HTMLElement, pressed: boolean): void {
   el.classList.toggle("selected", pressed);
   el.classList.toggle("active", pressed);
+  el.classList.toggle("is-selected", pressed);
   el.setAttribute("aria-pressed", pressed ? "true" : "false");
+}
+
+function findFeedbackBox(root: ParentNode, interactionId: string): HTMLElement | null {
+  return Array.from(root.querySelectorAll<HTMLElement>("[data-ih-feedback-for]"))
+    .find((el) => el.dataset.ihFeedbackFor === interactionId) ?? null;
+}
+
+function findInteractionInput(root: ParentNode, interactionId: string): HTMLTextAreaElement | HTMLInputElement | null {
+  return Array.from(root.querySelectorAll<HTMLTextAreaElement | HTMLInputElement>("[data-ih-input-for]"))
+    .find((el) => el.dataset.ihInputFor === interactionId) ?? null;
+}
+
+function showFeedback(root: ParentNode, interactionId: string, title: string, message: string, variant: "success" | "warn"): void {
+  const box = findFeedbackBox(root, interactionId);
+  if (!box) return;
+  box.classList.remove("success", "warn");
+  box.classList.add("is-visible", variant);
+  box.textContent = "";
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  const body = document.createElement("div");
+  body.textContent = message;
+  box.append(strong, body);
+}
+
+function referencePointsFor(target: HTMLElement): string[] {
+  return (target.dataset.referencePoints || "")
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function scoreTextAnswer(answer: string, referencePoints: string[]) {
+  const normalized = answer.replace(/\s+/g, "");
+  const matched = referencePoints.filter((point) => {
+    const compact = point.replace(/\s+/g, "");
+    return compact.length > 0 && normalized.includes(compact.slice(0, Math.min(4, compact.length)));
+  });
+  return {
+    matched,
+    score: Math.min(100, Math.round((matched.length / Math.max(referencePoints.length, 1)) * 100)),
+  };
 }
 
 function useScopedStyles(sections: InteractiveHtmlRenderedUnit[]) {
@@ -98,14 +148,18 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
   const [score, setScore] = useState(0);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-  const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(model.sections[0]?.section_id ?? null);
+  const selectedOptionsRef = useRef<Map<string, Set<string>>>(new Map());
 
   useScopedStyles(model.sections);
 
   useEffect(() => {
     createLearningSession(model.lesson_id).then(setSession).catch(console.error);
   }, [model.lesson_id]);
+
+  useEffect(() => {
+    setActiveSectionId(model.sections[0]?.section_id ?? null);
+  }, [model.lesson_id, model.sections]);
 
   const sanitizedSections = useMemo(
     () =>
@@ -139,40 +193,19 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
   const submitInteraction = useCallback((params: {
     sectionId: string;
     interactionId?: string;
+    blockId?: string | null;
     eventType?: LearningEventType;
     payload?: LearningEventPayload;
   }) => {
     if (!params.sectionId || !params.eventType) return;
     void handleSubmitEvent({
       section_id: params.sectionId,
+      block_id: params.blockId || null,
       interaction_id: params.interactionId || null,
       event_type: params.eventType,
       payload: params.payload ?? {},
     });
   }, [handleSubmitEvent]);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
-            setActiveSection(entry.target.id);
-          }
-        }
-      },
-      { threshold: [0.3] }
-    );
-
-    const currentRefs = sectionRefs.current;
-    currentRefs.forEach((el) => observer.observe(el));
-    return () => {
-      currentRefs.forEach((el) => observer.unobserve(el));
-    };
-  }, [sanitizedSections]);
-
-  const scrollToSection = (sectionId: string) => {
-    sectionRefs.current.get(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   const handleRuntimeClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>("[data-ih-action]");
@@ -182,7 +215,9 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     const sectionId = sectionIdFor(target);
     const interactionId = target.dataset.interactionId;
     const eventType = ACTION_EVENT_TYPE[action];
-    const interactionBox = target.closest<HTMLElement>("[data-interaction-id]") || target;
+    const block = target.closest<HTMLElement>("[data-block-id]");
+    const blockId = block?.dataset.blockId || null;
+    const interactionBox = block || target.closest<HTMLElement>("[data-interaction-id]") || target;
 
     if (action === "complete-section") {
       markComplete(sectionId);
@@ -220,37 +255,118 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
 
     if (action === "single-choice") {
       const optionId = target.dataset.optionId;
-      interactionBox.querySelectorAll<HTMLElement>("[data-option-id]").forEach((option) => setPressed(option, option === target));
-      target.classList.add("answered");
+      const isCorrect = target.dataset.correct === "true";
+      interactionBox.querySelectorAll<HTMLElement>(`[data-interaction-id="${interactionId}"][data-option-id]`).forEach((option) => {
+        setPressed(option, option === target);
+        option.classList.remove("is-correct", "is-wrong", "answered");
+      });
+      target.classList.add("answered", isCorrect ? "is-correct" : "is-wrong");
+      if (interactionId) {
+        showFeedback(
+          interactionBox,
+          interactionId,
+          isCorrect ? "回答正确" : "再想一想",
+          target.dataset.feedback || "已记录你的选择。",
+          isCorrect ? "success" : "warn"
+        );
+      }
       setScore((s) => s + 1);
       submitInteraction({
         sectionId,
         interactionId,
+        blockId,
         eventType,
-        payload: { selected_option_ids: optionId ? [optionId] : [] },
+        payload: {
+          selected_option_ids: optionId ? [optionId] : [],
+          is_correct: isCorrect,
+          client_timestamp: new Date().toISOString(),
+        },
       });
       return;
     }
 
-    if (action === "multiple-choice") {
-      setPressed(target, !target.classList.contains("selected"));
+    if (action === "multiple-choice-toggle") {
+      if (!interactionId) return;
+      if (!selectedOptionsRef.current.has(interactionId)) {
+        selectedOptionsRef.current.set(interactionId, new Set());
+      }
+      const selected = selectedOptionsRef.current.get(interactionId)!;
+      const optionId = target.dataset.optionId || "";
+      if (selected.has(optionId)) {
+        selected.delete(optionId);
+        setPressed(target, false);
+      } else {
+        selected.add(optionId);
+        setPressed(target, true);
+      }
+      return;
+    }
+
+    if (action === "multiple-choice-submit") {
+      if (!interactionId) return;
+      const selected = selectedOptionsRef.current.get(interactionId) || new Set<string>();
+      const options = Array.from(interactionBox.querySelectorAll<HTMLElement>(`[data-interaction-id="${interactionId}"][data-option-id]`));
+      const selectedIds = Array.from(selected);
+      const correctIds = options.filter((option) => option.dataset.correct === "true").map((option) => option.dataset.optionId || "");
+      options.forEach((option) => {
+        option.classList.remove("is-correct", "is-wrong");
+        if (option.dataset.correct === "true") option.classList.add("is-correct");
+        else if (selected.has(option.dataset.optionId || "")) option.classList.add("is-wrong");
+      });
+      const isCorrect = selectedIds.length === correctIds.length && correctIds.every((id) => selected.has(id));
+      showFeedback(
+        interactionBox,
+        interactionId,
+        isCorrect ? "选择完整" : "已提交，看看高亮提示",
+        isCorrect ? "你选中了所有关键项。" : "绿色为应选择项，红色为不建议项。",
+        isCorrect ? "success" : "warn"
+      );
       submitInteraction({
         sectionId,
         interactionId,
         eventType,
-        payload: { selected_option_ids: optionIds(interactionBox, "[data-option-id].selected") },
+        blockId,
+        payload: {
+          selected_option_ids: selectedIds,
+          correct_option_ids: correctIds,
+          is_correct: isCorrect,
+          client_timestamp: new Date().toISOString(),
+        },
       });
       return;
     }
 
-    if (action === "short-answer") {
-      const answer = interactionBox.querySelector<HTMLTextAreaElement | HTMLInputElement>("textarea,input[type='text']")?.value ?? "";
-      target.classList.toggle("answered", answer.trim().length > 0);
+    if (action === "short-answer-submit" || action === "scenario-discussion-submit") {
+      if (!interactionId) return;
+      const input = findInteractionInput(interactionBox, interactionId);
+      const answer = input?.value?.trim() ?? "";
+      const minLength = Number(target.dataset.minLength || 0);
+      const references = referencePointsFor(target);
+      if (answer.length < minLength) {
+        showFeedback(interactionBox, interactionId, "还可以再展开一点", `这类问题建议至少写 ${minLength} 个字。`, "warn");
+        return;
+      }
+      const result = scoreTextAnswer(answer, references);
+      showFeedback(
+        interactionBox,
+        interactionId,
+        "已记录你的回答",
+        result.matched.length ? `你的回答已经覆盖：${result.matched.join("、")}。` : "你的回答已记录，可以继续学习下一部分。",
+        "success"
+      );
+      target.classList.toggle("answered", answer.length > 0);
       submitInteraction({
         sectionId,
         interactionId,
         eventType,
-        payload: { answer_text: answer },
+        blockId,
+        payload: {
+          answer_text: answer,
+          reference_points: references,
+          matched_points: result.matched,
+          heuristic_score: result.score,
+          client_timestamp: new Date().toISOString(),
+        },
       });
       return;
     }
@@ -294,6 +410,11 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
         anchor: `#${section.section_id}`,
       }));
 
+  const activeSection = sanitizedSections.find((section) => section.section_id === activeSectionId) ?? sanitizedSections[0];
+  const activeSectionIndex = activeSection
+    ? sanitizedSections.findIndex((section) => section.section_id === activeSection.section_id)
+    : -1;
+
   const progressPercent = sanitizedSections.length > 0
     ? Math.round((completedSections.size / sanitizedSections.length) * 100)
     : 0;
@@ -313,11 +434,11 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
           {navigation.map((item, i) => (
             <button
               key={item.section_id}
-              className={`ih-nav__link ${item.section_id === activeSection ? "active" : ""} ${completedSections.has(item.section_id) ? "done" : ""}`}
-              onClick={() => scrollToSection(item.section_id)}
+              className={`ih-nav__link ${item.section_id === activeSection?.section_id ? "active" : ""} ${completedSections.has(item.section_id) ? "done" : ""}`}
+              onClick={() => setActiveSectionId(item.section_id)}
             >
               <span className="ih-nav__dot" />
-              <span className="ih-nav__label">{i === 0 ? "课程封面" : item.title}</span>
+              <span className="ih-nav__label">{item.title || `单元 ${i + 1}`}</span>
               {completedSections.has(item.section_id) && <span className="ih-nav__check">&#10003;</span>}
             </button>
           ))}
@@ -344,36 +465,33 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
           </div>
         </section>
 
-        {sanitizedSections.map((section, index) => (
+        {activeSection && (
           <article
-            key={section.section_id}
-            id={section.section_id}
-            ref={(el) => {
-              if (el) sectionRefs.current.set(section.section_id, el);
-            }}
-            className={`ih-module-card ${section.style_scope_id}`}
-            data-section-id={section.section_id}
+            key={activeSection.section_id}
+            id={activeSection.section_id}
+            className={`ih-module-card ${activeSection.style_scope_id}`}
+            data-section-id={activeSection.section_id}
           >
             <div className="ih-module-card__header">
-              <div className="ih-eyebrow">单元 {index + 1}</div>
-              <h2 className="ih-module-card__title">{section.title}</h2>
-              <p className="ih-module-card__goal">{section.learning_goal}</p>
+              <div className="ih-eyebrow">单元 {activeSectionIndex + 1}</div>
+              <h2 className="ih-module-card__title">{activeSection.title}</h2>
+              <p className="ih-module-card__goal">{activeSection.learning_goal}</p>
             </div>
             <div
               className="ih-fragment"
-              dangerouslySetInnerHTML={{ __html: section.html_fragment }}
+              dangerouslySetInnerHTML={{ __html: activeSection.html_fragment }}
             />
             <div className="ih-module-card__footer">
               <button
-                className={`ih-btn ih-btn--secondary ${completedSections.has(section.section_id) ? "done" : ""}`}
+                className={`ih-btn ih-btn--secondary ${completedSections.has(activeSection.section_id) ? "done" : ""}`}
                 data-ih-action="complete-section"
-                data-section-id={section.section_id}
+                data-section-id={activeSection.section_id}
               >
-                {completedSections.has(section.section_id) ? "已完成" : "标记完成"}
+                {completedSections.has(activeSection.section_id) ? "已完成" : "标记完成"}
               </button>
             </div>
           </article>
-        ))}
+        )}
 
         {model.citations.length > 0 && (
           <footer className="ih-citations">

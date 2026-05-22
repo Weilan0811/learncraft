@@ -111,9 +111,15 @@ export interface CreateSessionResponse {
 
 export interface LearningEventPayload {
   selected_option_ids?: string[];
+  correct_option_ids?: string[];
   ordered_item_ids?: string[];
   match_pairs?: Record<string, string>;
   answer_text?: string | null;
+  is_correct?: boolean | null;
+  reference_points?: string[];
+  matched_points?: string[];
+  heuristic_score?: number | null;
+  client_timestamp?: string | null;
   confidence?: "low" | "medium" | "high" | null;
   time_spent_seconds?: number | null;
 }
@@ -122,6 +128,7 @@ export type LearningEventType =
   | "single_choice_answered"
   | "multiple_choice_answered"
   | "short_answer_submitted"
+  | "scenario_discussion_submitted"
   | "drag_match_submitted"
   | "sequence_submitted"
   | "socratic_round_answered"
