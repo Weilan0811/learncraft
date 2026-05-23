@@ -126,3 +126,8 @@ $env:CONTENT_GENERATOR_PROVIDER_MODE="real"
 - `trace.json`：按顺序汇总的节点输出。
 - `final_state.json`、`content_spec.json`、`render_model.json`、`elements.json`：最终工作流产物。
 - `assets/`、`generated_assets.json`：真实生成资产及 manifest。
+
+---
+### TODO
+
+现在存在的问题：前端没有办法持久化记录答案，答案可以随意修改，和我的设计想法有冲突，需要调整，但目前优先级不高。

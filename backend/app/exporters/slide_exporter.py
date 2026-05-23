@@ -17,6 +17,7 @@ class SlideExporter:
         render_model: RenderModel,
         request: ExportRequest,
         asset_ids: list[str] | None = None,
+        content_spec: object | None = None,
     ) -> ExportResult:
         payload = render_model.model_dump(mode="json")
         content = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")

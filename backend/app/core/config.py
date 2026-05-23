@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     bailian_api_key: str | None = None
     bailian_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     bailian_tts_base_url: str = "https://dashscope.aliyuncs.com"
+    deepseek_api_key: str | None = None
+    deepseek_base_url: str = "https://api.deepseek.com"
 
     request_timeout_seconds: float = 60.0
     max_retries: int = 2

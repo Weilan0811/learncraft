@@ -3,6 +3,7 @@ from pydantic import TypeAdapter
 from app.core.task import TaskStatus
 from app.schemas.export import ExportFile, ExportRequest, ExportResult
 from app.schemas.render import RenderModel
+from app.schemas.specs import ContentSpec
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, PreviewResponse
 from app.services.task_repository import SQLModelTaskRepository
@@ -13,6 +14,7 @@ from app.content_types.registry import get_content_type_profile
 
 
 render_model_adapter = TypeAdapter(RenderModel)
+content_spec_adapter = TypeAdapter(ContentSpec)
 
 
 class PersistentTaskService:
@@ -116,7 +118,8 @@ class PersistentTaskService:
                 metadata={"error": f"Unsupported export type: {request.export_type}", "task_id": task_id},
             )
         render_model = render_model_adapter.validate_python(task.render_model)
-        result = exporter.export(task_id, render_model, request, asset_ids=task.asset_ids)
+        content_spec = content_spec_adapter.validate_python(task.content_spec) if task.content_spec else None
+        result = exporter.export(task_id, render_model, request, asset_ids=task.asset_ids, content_spec=content_spec)
         export_files = [*self.repository.to_task_result(task).export_files, ExportFile(type=request.export_type, url=result.file_url)]
         self.repository.update_export_files(task_id, export_files)
         return result

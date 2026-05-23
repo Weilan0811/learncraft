@@ -16,6 +16,7 @@ class AudioExporter:
         render_model: RenderModel,
         request: ExportRequest,
         asset_ids: list[str] | None = None,
+        content_spec: object | None = None,
     ) -> ExportResult:
         if not isinstance(render_model, PodcastRenderModel):
             return ExportResult(

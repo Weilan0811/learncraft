@@ -80,6 +80,14 @@ class InMemoryLearningService:
             interaction_summary=summary,
         )
 
+    def list_events(self, lesson_id: str, session_id: str) -> list[dict]:
+        if session_id not in self._sessions:
+            raise ValueError(f"Session not found: {session_id}")
+        session = self._sessions[session_id]
+        if session["lesson_id"] != lesson_id:
+            raise ValueError(f"Session {session_id} does not belong to lesson {lesson_id}")
+        return [dict(event) for event in self._events.get(session_id, [])]
+
     def _build_interaction_summary(self, events: list[dict]) -> dict:
         answered = sum(1 for e in events if e["event_type"] in {
             "single_choice_answered", "multiple_choice_answered",

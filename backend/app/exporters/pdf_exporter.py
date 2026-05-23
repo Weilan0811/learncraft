@@ -15,6 +15,7 @@ class PDFExporter:
         render_model: RenderModel,
         request: ExportRequest,
         asset_ids: list[str] | None = None,
+        content_spec: object | None = None,
     ) -> ExportResult:
         content = self._minimal_pdf(title=getattr(render_model, "title", task_id))
         asset_id = f"export_{task_id}_pdf"

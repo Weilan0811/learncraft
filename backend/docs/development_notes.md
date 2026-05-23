@@ -15,8 +15,9 @@ CONTENT_GENERATOR_STORAGE_ROOT=storage
 stub 模式下：
 
 - RAG 使用 stub 检索结果。
-- LLM 使用 deterministic fallback。
+- LLM 使用 deterministic fallback 或本地 fallback 逻辑。
 - 图片生成本地 SVG 占位图。
+- TTS 生成本地 stub 音频。
 - 资源保存到本地 `storage/`。
 
 ## 2. 真实服务模式
@@ -40,9 +41,9 @@ CONTENT_GENERATOR_KB_API_KEY=...
 |---|---|
 | `CONTENT_GENERATOR_PROVIDER_MODE` | `stub` 或 `real`。 |
 | `CONTENT_GENERATOR_TEXT_PROVIDER` | 文本模型 provider，当前默认 `bailian`。 |
-| `CONTENT_GENERATOR_TEXT_MODEL` | 文本模型名称。 |
+| `CONTENT_GENERATOR_TEXT_MODEL` | 文本模型名称，当前默认 `qwen3.5-flash`。 |
 | `CONTENT_GENERATOR_IMAGE_PROVIDER` | 图片 provider，当前默认 `apimart`。 |
-| `CONTENT_GENERATOR_IMAGE_MODEL` | 图片模型名称。 |
+| `CONTENT_GENERATOR_IMAGE_MODEL` | 图片模型名称，当前默认 `gpt-image-2`。 |
 | `CONTENT_GENERATOR_IMAGE_RESOLUTION` | 图片分辨率，`1k` / `2k` / `4k`。 |
 | `CONTENT_GENERATOR_TTS_PROVIDER` | TTS provider，当前默认 `bailian`。 |
 | `CONTENT_GENERATOR_TTS_MODEL` | TTS 模型名称，当前默认 `qwen3-tts-instruct-flash`。 |
@@ -56,6 +57,7 @@ CONTENT_GENERATOR_KB_API_KEY=...
 | `CONTENT_GENERATOR_MAX_RETRIES` | provider 重试次数。 |
 | `CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K` | 知识库检索 top_k。 |
 | `CONTENT_GENERATOR_KB_MAX_CHARS_PER_ITEM` | 单条检索结果最大字符数。 |
+| `CONTENT_GENERATOR_KB_REQUEST_TIMEOUT_SECONDS` | 知识库检索请求超时。 |
 
 ## 3. 数据库配置
 
@@ -122,7 +124,8 @@ GET /api/assets/{asset_id}/download
 1. 生成文件统一通过 `LocalStorageService` 保存。
 2. 不在业务节点中手写文件路径和下载 URL。
 3. asset metadata 需要包含 `task_id`、`kind`、`content_type` 等必要信息。
-4. 图片、HTML、JSON、ZIP 等文件都应通过 asset 接口访问。
+4. 图片、HTML、JSON、ZIP、音频等文件都应通过 asset 接口访问。
+5. `interactive_html` 离线讲义中的服务端图片资源会在 `InteractiveHtmlStaticHandoutRenderer` 中尝试转成 data URL 内联，便于离线查看。
 
 ## 5. 测试
 
@@ -150,6 +153,9 @@ pytest tests/test_workflow_logs.py -q
 # 单元级流式预览测试
 pytest tests/test_unit_streaming.py -q
 
+# interactive_html prompt / renderer / validator / handout
+pytest tests/test_interactive_html_prompts.py tests/test_interactive_html_renderer.py tests/test_interactive_html_validator.py tests/test_interactive_html_handout.py -q
+
 # social_post schema / prompt / renderer / validator
 pytest tests/test_social_post_schema.py tests/test_social_post_prompts.py tests/test_social_post_renderer.py tests/test_social_post_validator.py -q
 
@@ -176,6 +182,18 @@ schema_exports/
 
 新增或修改 Pydantic schema 后，需要重新导出，并同步前端类型。
 
+当前已在代码中引入但需要确认导出的 interactive_html 相关 schema：
+
+- `InteractiveHtmlSectionSpec`
+- `InteractiveHtmlSpec`
+- `InteractiveHtmlRenderModel`
+- `InteractiveHtmlRenderedUnit`
+- `InteractiveHtmlRenderBlockRef`
+- `InteractionRenderRef`
+- `InteractiveHtmlCourseStyleGuide`
+
+如果 `schema_exports/` 中缺少上述文件，需要更新 `scripts/export_json_schema.py` 的导出列表。
+
 ## 7. Prompt 开发约定
 
 Prompt 路径：
@@ -196,6 +214,15 @@ app/prompts/
 5. fallback 结果也必须满足同一套 schema。
 6. prompt 修改后补充对应测试，避免字段漂移。
 
+`interactive_html` prompt 的职责边界：
+
+| Prompt | 职责 | 禁止事项 |
+|---|---|---|
+| `planner/interactive_html_outline.md` | 生成课程内容大纲，只规划 section 学习目标、核心信息、检索 query。 | 不指定 block 类型、互动位置、图片、流程动画、练习题。 |
+| `generator/interactive_html_unit_spec.md` | 生成 `InteractiveHtmlSectionSpec`，规划 teaching_flow 和 interaction_specs。 | 禁止输出 HTML、CSS、Markdown 代码块和解释文字。 |
+| `generator/interactive_html_unit_render.md` | 生成非互动教学块的 `block_html_map` 和 `css_fragment`。 | 禁止 button、input、textarea、form、data-ih-action、data-interaction-id、script、外链资源和全局 CSS。 |
+| `reviewer/interactive_html_render_repair.md` | 修复未通过校验的 `InteractiveHtmlRenderedUnit`。 | 不大幅重写未报错部分，不发明新的 data-ih-action。 |
+
 ## 8. Validator 开发约定
 
 Validator 需要覆盖：
@@ -208,8 +235,21 @@ Validator 需要覆盖：
 | 元素闭合 | required elements 均已生成或有明确失败状态。 |
 | renderer 契约 | spec 字段满足 renderer 的布局和字段要求。 |
 | 内容质量 | 标题、正文、摘要、speaker notes、图片说明等不为空。 |
+| HTML 安全 | interactive_html 的 HTML fragment 禁止脚本、外链、内联事件和完整页面标签。 |
+| CSS 作用域 | interactive_html 的 CSS 必须限制在 `style_scope_id` 下。 |
+| Manifest 一致性 | interactive_html 的 DOM 中 `data-block-id`、`data-interaction-id` 必须和 manifest 对齐。 |
 
 Validator 的职责是保护后续 renderer，不把明显不可渲染或质量过低的内容继续向后传递。
+
+`interactive_html_validator.py` 当前拆为三类核心校验：
+
+| 函数 | 输入 | 用途 |
+|---|---|---|
+| `validate_unit_spec` | `InteractiveHtmlSectionSpec` | 校验教学块、互动规格、题型硬约束。 |
+| `validate_explanation_render` | `block_html_map`、`css_fragment` | 校验 LLM 生成的非互动讲解 HTML/CSS。 |
+| `validate_rendered_unit` | `InteractiveHtmlRenderedUnit` | 校验最终单元 fragment、CSS、block manifest、interaction manifest。 |
+| `sanitize_rendered_unit` | `InteractiveHtmlRenderedUnit` | 清洗 HTML/CSS 后再进入最终校验。 |
+| `validate_content` | `InteractiveHtmlSpec` | 校验完整互动课程 spec。 |
 
 ## 9. Renderer 开发约定
 
@@ -221,13 +261,35 @@ ContentSpec -> RenderModel
 
 约定：
 
-1. renderer 不调用 LLM。
-2. renderer 不改变内容语义。
-3. renderer 可以做布局、安全区、截断和格式转换。
-4. renderer 输出必须符合 `app/schemas/render/` 中的 typed schema。
-5. slide renderer 输出必须符合前端 `scenekit.slide/v1` 契约。
-6. social_post renderer 输出必须包含 HTML、article JSON 和 preview assets。
-7. podcast renderer 输出必须包含分段音频、audio manifest 和完整音频 URL。
+1. 常规 renderer 不调用 LLM，不改变内容语义。
+2. `interactive_html` 当前有单元级 composer 例外：`ExplanationHtmlComposer` 会调用 LLM 生成非互动讲解 HTML/CSS。
+3. `interactive_html` 的互动控件由 `InteractionTemplateRenderer` 模板生成，不交给 LLM 自由发挥。
+4. renderer 可以做布局、安全区、截断和格式转换。
+5. renderer 输出必须符合 `app/schemas/render/` 中的 typed schema。
+6. slide renderer 输出必须符合前端 `scenekit.slide/v1` 契约。
+7. interactive_html renderer 输出必须符合前端 `interactive_html_page` 契约。
+8. social_post renderer 输出必须包含 HTML、article JSON 和 preview assets。
+9. podcast renderer 输出必须包含分段音频、audio manifest 和完整音频 URL。
+
+`interactive_html` 渲染链路：
+
+```text
+InteractiveHtmlSectionSpec
+  ↓
+InteractionTemplateRenderer.render
+  ↓
+ExplanationHtmlComposer.compose
+  ↓
+UnitHtmlAssembler.assemble
+  ↓
+sanitize_rendered_unit / validate_rendered_unit
+  ↓
+InteractiveHtmlRenderedUnit
+  ↓
+InteractiveHtmlRenderer.assemble
+  ↓
+InteractiveHtmlRenderModel
+```
 
 ## 10. Exporter 开发约定
 
@@ -251,21 +313,63 @@ RenderModel -> downloadable asset
 |---|---|
 | `lecture` | `pdf`、`image_assets` |
 | `slide_deck` | `slide_json`、`image_assets` |
+| `interactive_html` | `html` |
 | `social_post` | `html`、`image_assets` |
 | `podcast_script` | `markdown`、`audio` |
 
-## 11. 前后端联调注意事项
+`interactive_html` 的 `html` 导出行为：
+
+1. 请求必须包含 `export_options.session_id`。
+2. `HTMLExporter` 读取任务的 `InteractiveHtmlRenderModel` 和 `InteractiveHtmlSpec`。
+3. `get_learning_service().list_events(render_model.lesson_id, session_id)` 获取学习记录。
+4. `InteractiveHtmlStaticHandoutRenderer` 把在线课件静态化为离线复习讲义。
+5. 输出文件名形如 `{task_id}-offline-handout.html`。
+
+当前注意：`interactive_html` profile 中声明了 `zip`，但 `ExportType` 未包含 `zip`，`get_exporter(...)` 也未接入 ZIP exporter。API 层不能直接提交 `export_type = "zip"`。
+
+## 11. Learning Session 开发约定
+
+互动学习接口位于：
+
+```text
+app/api/learning.py
+app/schemas/learning.py
+app/services/learning_service.py
+```
+
+当前接口：
+
+| 接口 | 用途 |
+|---|---|
+| `POST /api/interactive-lessons/{lesson_id}/sessions` | 创建学习 session。 |
+| `POST /api/interactive-lessons/{lesson_id}/sessions/{session_id}/events` | 提交互动学习事件。 |
+| `GET /api/interactive-lessons/{lesson_id}/sessions/{session_id}/state` | 查询 session 状态和简单统计。 |
+
+当前实现为 `InMemoryLearningService`：
+
+- session 和 events 保存在进程内字典。
+- 服务重启后数据丢失。
+- 暂不支持跨实例共享。
+- 离线讲义导出依赖 session 仍存在于内存中。
+
+后续生产化需要将 session 和 event 持久化到数据库，并与用户身份、课程任务、班级上下文建立关联。
+
+## 12. 前后端联调注意事项
 
 1. 请求字段必须使用 `generation_options`，旧字段 `options` 会触发 422。
 2. slide 页数使用 `generation_options.slide_count`。
 3. lecture 章节数使用 `generation_options.section_count`。
-4. 前端展示进度优先读取 `progress.percent` 和 `progress.display_stage`。
-5. 生成中预览优先读取 `preview/partial` 或 `units/{unit_id}/preview`。
-6. 生成完成后再读取完整 `preview`。
-7. 导出文件通过 `export_files` 或 `ExportResult.file_url` 下载。
-8. 资源 URL 使用 `/api/assets/{asset_id}/download`。
+4. interactive_html 可以使用 `generation_options.section_count` 表达期望章节数，但当前 request validator 只对 lecture 做强校验；最终 section 数主要由 outline prompt 控制在 4-8 个。
+5. 前端展示进度优先读取 `progress.percent` 和 `progress.display_stage`。
+6. 生成中预览优先读取 `preview/partial` 或 `units/{unit_id}/preview`。
+7. interactive_html 前端渲染需要消费 `html_fragment`、`css_fragment`、`navigation`、`interactions`、`runtime.event_endpoint_template`。
+8. interactive_html 在线互动提交到 `/api/interactive-lessons/{lesson_id}/sessions/{session_id}/events`。
+9. interactive_html 离线讲义导出前必须先创建 session，并至少确保后端内存中存在该 session。
+10. 生成完成后再读取完整 `preview`。
+11. 导出文件通过 `export_files` 或 `ExportResult.file_url` 下载。
+12. 资源 URL 使用 `/api/assets/{asset_id}/download`。
 
-## 12. PowerShell API 调用
+## 13. PowerShell API 调用
 
 PowerShell 中不要直接复制 Linux curl 写法：
 
@@ -277,14 +381,16 @@ curl -X POST http://127.0.0.1:8000/api/content-generation/tasks -H "Content-Type
 
 ```powershell
 $body = @{
-  content_type = "slide_deck"
-  topic = "人工智能基础"
-  user_prompt = "为初学者生成一份课程导入 slides"
+  content_type = "interactive_html"
+  topic = "生成式 AI 如何理解你的问题？"
+  user_prompt = "生成一份互动 HTML 课件"
   knowledge_base_ids = @("default")
   generation_options = @{
     language = "zh-CN"
+    audience = "AI 初学者"
     difficulty = "introductory"
-    include_images = $true
+    section_count = 5
+    allow_fallback = $true
   }
 } | ConvertTo-Json -Depth 10
 
@@ -295,15 +401,16 @@ Invoke-RestMethod `
   -Body $body
 ```
 
-## 13. 常见问题
+## 14. 常见问题
 
-### 13.1 422 Unprocessable Entity
+### 14.1 422 Unprocessable Entity
 
 常见原因：
 
 - 请求体字段名错误，例如使用了旧字段 `options`。
 - `slide_count`、`section_count` 超出范围。
 - `content_type` 不在当前 schema 枚举内。
+- `export_type` 不在 `ExportType` 枚举内，例如当前提交 `zip` 会失败。
 - JSON 嵌套层级或布尔值格式错误。
 
 处理方式：
@@ -312,7 +419,7 @@ Invoke-RestMethod `
 2. 对照 `ContentGenerationRequest.schema.json`。
 3. 确认前端请求体字段与后端 Pydantic schema 一致。
 
-### 13.2 Vite proxy ECONNREFUSED
+### 14.2 Vite proxy ECONNREFUSED
 
 现象：
 
@@ -334,17 +441,40 @@ cd backend
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### 13.3 任务一直 running
+### 14.3 任务一直 running
 
 检查项：
 
 1. provider 是否超时。
 2. 图片生成任务是否轮询过久。
-3. 数据库是否写入失败。
-4. workflow 是否在某个节点抛出未捕获异常。
-5. `storage/debug_workflow/{task_id}` 是否保存了最近 state。
+3. interactive_html 的 `ExplanationHtmlComposer` 是否在单元渲染阶段调用 LLM 超时。
+4. 数据库是否写入失败。
+5. workflow 是否在某个节点抛出未捕获异常。
+6. `storage/debug_workflow/{task_id}` 是否保存了最近 state。
 
-### 13.4 导出失败
+### 14.4 interactive_html 单元渲染失败
+
+检查项：
+
+1. `InteractiveHtmlSectionSpec` 是否包含 3-7 个 teaching blocks。
+2. 互动 block 的 `interaction_id` 是否能在 `interaction_specs` 中找到。
+3. 选择题是否满足正确答案数量和 feedback 约束。
+4. LLM 生成的讲解 HTML 是否包含了禁止标签、按钮、输入框或 `data-ih-action`。
+5. CSS 是否全部带有 `style_scope_id` 作用域。
+6. DOM 中的 `data-block-id`、`data-interaction-id` 是否和 manifest 对齐。
+7. `generation_options.allow_fallback` 是否开启。
+
+### 14.5 interactive_html 离线讲义导出失败
+
+检查项：
+
+1. 任务是否已有 `render_model` 和 `content_spec`。
+2. `export_type` 是否为 `html`。
+3. `export_options.session_id` 是否存在且属于 `render_model.lesson_id`。
+4. 后端服务是否重启过；当前 learning session 为 in-memory。
+5. `LocalStorageService` 是否有写入权限。
+
+### 14.6 导出失败
 
 检查项：
 
@@ -353,7 +483,7 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 3. `get_exporter(...)` 是否支持该 export type。
 4. `LocalStorageService` 是否有写入权限。
 
-### 13.5 图片资源无法访问
+### 14.7 图片资源无法访问
 
 检查项：
 
@@ -362,7 +492,7 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 3. `asset_public_base_url` 是否为 `/api/assets`。
 4. 前端是否访问了 `/download` 路径。
 
-## 14. 后续优先事项
+## 15. 后续优先事项
 
 1. 完成真实 PDF exporter。
 2. 完成 slide PPTX exporter 或明确交由前端导出。
@@ -372,3 +502,6 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 6. 将 provider 错误、retry、token usage 进一步结构化。
 7. 增加 podcast 真实 TTS 任务的慢任务回归测试。
 8. 完善前端类型自动生成和 schema drift 检测。
+9. 将 interactive_html learning session / event 从 in-memory 迁移到数据库。
+10. 补齐 interactive_html ZIP exporter 或移除 profile 中尚未可用的 `zip` 声明。
+11. 为 interactive_html 的 render repair prompt 接入真实 LLM 修复链路，并补充失败样例回归测试。

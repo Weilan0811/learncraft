@@ -27,3 +27,26 @@ def test_learning_service_counts_scenario_discussion_as_answered() -> None:
 
     assert state.total_events == 1
     assert state.interaction_summary["total_answered"] == 1
+
+
+def test_learning_service_lists_events_for_offline_handout() -> None:
+    service = InMemoryLearningService()
+    session = service.create_session("lesson_1", CreateSessionRequest())
+
+    service.submit_event(
+        "lesson_1",
+        session.session_id,
+        SubmitEventRequest(
+            section_id="unit_1",
+            block_id="unit_1_q1",
+            interaction_id="i_q1",
+            event_type="single_choice_answered",
+            payload=LearningEventPayload(selected_option_ids=["a"], correct_option_ids=["a"], is_correct=True),
+        ),
+    )
+
+    events = service.list_events("lesson_1", session.session_id)
+
+    assert len(events) == 1
+    assert events[0]["interaction_id"] == "i_q1"
+    assert events[0]["payload"]["selected_option_ids"] == ["a"]
