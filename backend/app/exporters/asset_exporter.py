@@ -19,6 +19,7 @@ class AssetExporter:
         render_model: RenderModel,
         request: ExportRequest,
         asset_ids: list[str] | None = None,
+        content_spec: object | None = None,
     ) -> ExportResult:
         asset_ids = sorted(set([*(asset_ids or []), *self._collect_asset_ids(render_model)]))
         manifest_assets: list[dict[str, object]] = []

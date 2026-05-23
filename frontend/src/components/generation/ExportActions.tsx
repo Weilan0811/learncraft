@@ -15,6 +15,10 @@ function defaultExportType(contentType?: MvpContentType): ExportType {
     return "markdown";
   }
 
+  if (contentType === "interactive_html") {
+    return "html";
+  }
+
   return "pdf";
 }
 
@@ -52,10 +56,16 @@ export function ExportActions() {
   const exportResult = useContentGenerationStore((state) => state.exportResult);
   const exportTask = useContentGenerationStore((state) => state.exportTask);
   const loading = useContentGenerationStore((state) => state.loading);
+  const interactiveSessionId = useContentGenerationStore((state) => state.interactiveSessionId);
 
   const exportType = defaultExportType(task?.content_type);
   const exportName = exportLabel(exportType);
-  const canExport = Boolean(task && task.status === "completed" && !loading);
+  const canExport = Boolean(
+    task &&
+      task.status === "completed" &&
+      !loading &&
+      (task.content_type !== "interactive_html" || Boolean(interactiveSessionId))
+  );
   const jsonUrl = articleJsonUrl(exportResult);
   const podcastExportTypes: ExportType[] = ["markdown", "audio"];
 
@@ -90,7 +100,12 @@ export function ExportActions() {
         <p className="error-text">Export failed: {String(exportResult.metadata?.error ?? "unsupported")}</p>
       ) : null}
       {exportResult?.status === "success" && exportResult.file_url ? (
-        <a href={exportResult.file_url}>Download {exportLabel(exportResult.export_type)}</a>
+        <>
+          {task?.content_type === "interactive_html" ? (
+            <a href={exportResult.file_url} target="_blank" rel="noreferrer">Preview Offline Handout</a>
+          ) : null}
+          <a href={exportResult.file_url}>Download {exportLabel(exportResult.export_type)}</a>
+        </>
       ) : null}
       {jsonUrl ? <a href={jsonUrl}>Download Article JSON</a> : null}
     </section>

@@ -8,7 +8,8 @@ import type {
   LearningEventType,
   SubmitEventRequest,
 } from "../../../types/interactiveHtml";
-import { createLearningSession, submitLearningEvent } from "../../../api/learningApi";
+import { createLearningSession, getSessionState, submitLearningEvent } from "../../../api/learningApi";
+import { useContentGenerationStore } from "../../../stores/contentGenerationStore";
 import "./styles.css";
 
 interface Props {
@@ -57,6 +58,32 @@ const SANITIZE_CONFIG = {
   FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "meta", "svg"],
   FORBID_ATTR: ["onclick", "onchange", "oninput", "onkeydown", "onkeyup", "onmouseover"],
 };
+
+function sessionStorageKey(lessonId: string): string {
+  return `interactive-html-session:${lessonId}`;
+}
+
+function readStoredSession(lessonId: string): CreateSessionResponse | null {
+  try {
+    const raw = window.localStorage.getItem(sessionStorageKey(lessonId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CreateSessionResponse>;
+    if (parsed.session_id && parsed.lesson_id === lessonId) {
+      return { session_id: parsed.session_id, lesson_id: parsed.lesson_id, state: parsed.state ?? {} };
+    }
+  } catch {
+    window.localStorage.removeItem(sessionStorageKey(lessonId));
+  }
+  return null;
+}
+
+function storeSession(session: CreateSessionResponse): void {
+  window.localStorage.setItem(sessionStorageKey(session.lesson_id), JSON.stringify(session));
+}
+
+function clearStoredSession(lessonId: string): void {
+  window.localStorage.removeItem(sessionStorageKey(lessonId));
+}
 
 function optionIds(container: Element, selector = ".selected,[aria-pressed='true']"): string[] {
   return Array.from(container.querySelectorAll<HTMLElement>(selector))
@@ -128,6 +155,7 @@ function useScopedStyles(sections: InteractiveHtmlRenderedUnit[]) {
 
 export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = false }) => {
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
+  const setInteractiveSessionId = useContentGenerationStore((state) => state.setInteractiveSessionId);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
   const [activeSectionId, setActiveSectionId] = useState<string | null>(model.sections[0]?.section_id ?? null);
   const selectedOptionsRef = useRef<Map<string, Set<string>>>(new Map());
@@ -135,8 +163,40 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
   useScopedStyles(model.sections);
 
   useEffect(() => {
-    createLearningSession(model.lesson_id).then(setSession).catch(console.error);
-  }, [model.lesson_id]);
+    let cancelled = false;
+
+    const useSession = (nextSession: CreateSessionResponse) => {
+      if (cancelled) return;
+      setSession(nextSession);
+      setInteractiveSessionId(nextSession.session_id);
+      storeSession(nextSession);
+    };
+
+    const createAndUseSession = async () => {
+      const createdSession = await createLearningSession(model.lesson_id);
+      useSession(createdSession);
+    };
+
+    const storedSession = readStoredSession(model.lesson_id);
+    if (storedSession) {
+      getSessionState(model.lesson_id, storedSession.session_id)
+        .then(() => useSession(storedSession))
+        .catch(() => {
+          clearStoredSession(model.lesson_id);
+          void createAndUseSession();
+        });
+    } else {
+      void createAndUseSession();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [model.lesson_id, setInteractiveSessionId]);
+
+  useEffect(() => {
+    return () => setInteractiveSessionId(undefined);
+  }, [setInteractiveSessionId]);
 
   useEffect(() => {
     setActiveSectionId(model.sections[0]?.section_id ?? null);

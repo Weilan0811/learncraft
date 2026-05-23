@@ -16,6 +16,7 @@ class MarkdownExporter:
         render_model: RenderModel,
         request: ExportRequest,
         asset_ids: list[str] | None = None,
+        content_spec: object | None = None,
     ) -> ExportResult:
         if isinstance(render_model, PodcastRenderModel):
             content = f"# {render_model.title}\n\n{render_model.script_text}\n"

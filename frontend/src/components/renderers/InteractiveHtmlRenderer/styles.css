@@ -292,6 +292,11 @@
   background: rgba(255,255,255,0.70);
 }
 
+.ih-unit .scenario-card,
+.ih-unit .scenario-card * {
+  color: #fff !important;
+}
+
 /* Sub-card: a viewport-sized mini-card within a module */
 .ih-sub-card {
   padding: 28px 32px;

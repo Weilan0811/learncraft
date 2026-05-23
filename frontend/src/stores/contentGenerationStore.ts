@@ -26,12 +26,14 @@ interface ContentGenerationState {
   streamEvents: TaskStreamEvent[];
   renderUnits: RenderUnitSnapshot[];
   exportResult?: ExportResult;
+  interactiveSessionId?: string;
   loading: boolean;
   previewLookupLoading: boolean;
   error?: string;
   submitTask: (request: ContentGenerationRequest) => Promise<void>;
   loadPreviewByTaskId: (taskId: string) => Promise<void>;
   exportTask: (exportType: ExportType) => Promise<void>;
+  setInteractiveSessionId: (sessionId?: string) => void;
 }
 
 const POLL_INTERVAL_MS = 1200;
@@ -60,8 +62,12 @@ async function waitForCompletedTask(
 export const useContentGenerationStore = create<ContentGenerationState>((set, get) => ({
   streamEvents: [],
   renderUnits: [],
+  interactiveSessionId: undefined,
   loading: false,
   previewLookupLoading: false,
+  setInteractiveSessionId(sessionId) {
+    set({ interactiveSessionId: sessionId });
+  },
   async submitTask(request) {
     set({
       loading: true,
@@ -70,6 +76,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       partialPreview: undefined,
       streamEvents: [],
       renderUnits: [],
+      interactiveSessionId: undefined,
       exportResult: undefined
     });
     try {
@@ -126,6 +133,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       partialPreview: undefined,
       streamEvents: [],
       renderUnits: [],
+      interactiveSessionId: undefined,
       exportResult: undefined
     });
 
@@ -165,7 +173,15 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
     }
     set({ loading: true, error: undefined });
     try {
-      const exportResult = await exportContentGenerationTask(taskId, { export_type: exportType });
+      const task = get().task;
+      const interactiveSessionId = get().interactiveSessionId;
+      const exportResult = await exportContentGenerationTask(taskId, {
+        export_type: exportType,
+        export_options:
+          task?.content_type === "interactive_html" && exportType === "html" && interactiveSessionId
+            ? { session_id: interactiveSessionId }
+            : undefined
+      });
       set({ exportResult, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unknown export error", loading: false });
