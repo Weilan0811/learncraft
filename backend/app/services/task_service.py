@@ -5,8 +5,9 @@ from app.schemas.export import ExportFile, ExportRequest, ExportResult
 from app.schemas.render import RenderModel
 from app.schemas.specs import ContentSpec
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, PreviewResponse
+from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
 from app.services.task_repository import SQLModelTaskRepository
+from app.services.unit_text_service import build_unit_text_response
 from app.schemas.state import ContentGenerationState
 from app.workflows.content_generation_graph import run_content_generation, stream_content_generation
 from app.workflows.routers import get_exporter
@@ -95,6 +96,15 @@ class PersistentTaskService:
         if snapshot is None:
             return None
         return UnitPreviewResponse.model_validate(snapshot)
+
+    def get_unit_text(self, task_id: str, unit_id: str) -> UnitTextResponse | None:
+        task = self.repository.get_task(task_id)
+        if task is None:
+            return None
+        snapshot = task.render_units.get(unit_id)
+        if snapshot is None:
+            return None
+        return build_unit_text_response(task_id, snapshot)
 
     def export_task(self, task_id: str, request: ExportRequest) -> ExportResult | None:
         task = self.repository.get_task(task_id)
