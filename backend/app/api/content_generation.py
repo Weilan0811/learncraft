@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 
 from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, PreviewResponse
+from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
 from app.services.task_service import InMemoryTaskService
 
 
@@ -69,6 +69,14 @@ def get_content_generation_unit_preview(task_id: str, unit_id: str) -> UnitPrevi
     if preview is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task unit preview not found")
     return preview
+
+
+@router.get("/tasks/{task_id}/units/{unit_id}/text", response_model=UnitTextResponse)
+def get_content_generation_unit_text(task_id: str, unit_id: str) -> UnitTextResponse:
+    unit_text = task_service.get_unit_text(task_id, unit_id)
+    if unit_text is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task unit text not found")
+    return unit_text
 
 
 @router.post("/tasks/{task_id}/export", response_model=ExportResult)

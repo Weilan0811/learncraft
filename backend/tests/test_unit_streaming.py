@@ -2,6 +2,7 @@ import pytest
 
 from app.core.config import get_settings
 from app.schemas.request import ContentGenerationRequest, GenerationOptions
+from app.api.content_generation import task_service
 from app.services.task_repository import SQLModelTaskRepository
 from app.services.task_service import PersistentTaskService
 from app.workflows.content_generation_graph import run_content_generation
@@ -113,3 +114,72 @@ def test_api_exposes_events_partial_preview_and_unit_previews() -> None:
     unit_preview_response = client.get(f"/api/content-generation/tasks/{task_id}/units/{unit_id}/preview")
     assert unit_preview_response.status_code == 200
     assert unit_preview_response.json()["unit_id"] == unit_id
+
+
+def test_api_exposes_plain_text_for_unit_chunks() -> None:
+    created = task_service.create_task(
+        ContentGenerationRequest(
+            content_type="interactive_html",
+            topic="Prompt understanding",
+            user_prompt="Generate an interactive lesson",
+            generation_options={"include_images": False, "include_mindmap": False, "max_section_count": 1},
+        )
+    )
+    task_service.repository.update_task(
+        created.task_id,
+        render_units={
+            "unit-01-intro": {
+                "unit_id": "unit-01-intro",
+                "order": 1,
+                "content_type": "interactive_html",
+                "status": "rendered",
+                "render_fragment": {
+                    "section_id": "unit-01-intro",
+                    "title": "Prompt journey",
+                    "learning_goal": "Understand how prompts become model input",
+                    "style_scope_id": "ih-scope-unit-01",
+                    "html_fragment": (
+                        '<section id="unit-01-intro">'
+                        '<article data-block-id="intro-block"><h2>Prompt <em>journey</em></h2><p>Hello&nbsp;AI.</p></article>'
+                        '<article data-block-id="practice-block"><h3>Practice</h3><p>Choose &amp; explain.</p></article>'
+                        "</section>"
+                    ),
+                    "css_fragment": "",
+                    "block_manifest": [
+                        {
+                            "block_id": "intro-block",
+                            "type": "intro",
+                            "title": "Prompt journey",
+                            "teaching_role": "set_context",
+                            "interaction_ids": [],
+                        },
+                        {
+                            "block_id": "practice-block",
+                            "type": "practice",
+                            "title": "Practice",
+                            "teaching_role": "check_understanding",
+                            "interaction_ids": [],
+                        },
+                    ],
+                    "interaction_manifest": [],
+                    "render_notes": {},
+                },
+                "updated_at": "2026-06-11T00:00:00Z",
+                "errors": [],
+            }
+        },
+    )
+
+    response = client.get(f"/api/content-generation/tasks/{created.task_id}/units/unit-01-intro/text")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["task_id"] == created.task_id
+    assert payload["unit_id"] == "unit-01-intro"
+    assert payload["content_type"] == "interactive_html"
+    assert payload["title"] == "Prompt journey"
+    assert payload["full_text"] == "Prompt journey Hello AI. Practice Choose & explain."
+    assert payload["chunks"] == [
+        {"chunk_id": "chunk-01", "text": "Prompt journey Hello AI."},
+        {"chunk_id": "chunk-02", "text": "Practice Choose & explain."},
+    ]

@@ -44,6 +44,20 @@ class UnitPreviewResponse(RenderUnitSnapshot):
     pass
 
 
+class UnitTextChunk(SchemaModel):
+    chunk_id: str
+    text: str
+
+
+class UnitTextResponse(SchemaModel):
+    task_id: str
+    unit_id: str
+    content_type: str
+    title: str | None = None
+    full_text: str
+    chunks: list[UnitTextChunk] = Field(default_factory=list)
+
+
 class StoredTask(SchemaModel):
     result: TaskResult
     preview: PreviewResponse | None = None

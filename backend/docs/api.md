@@ -260,7 +260,41 @@ GET /api/content-generation/tasks/{task_id}/units/{unit_id}/preview
 
 返回 `UnitPreviewResponse`，用于前端按页、按章节或按互动 HTML section 展示生成结果。
 
-### 2.8 导出任务结果
+### 2.8 获取单元纯文本
+
+```http
+GET /api/content-generation/tasks/{task_id}/units/{unit_id}/text
+```
+
+返回 `UnitTextResponse`，用于获取某个已渲染单元清洗 HTML 标签后的纯文本内容。
+
+```json
+{
+  "task_id": "task_xxxxxxxxxxxx",
+  "unit_id": "unit-01-intro",
+  "content_type": "interactive_html",
+  "title": "当 AI “听懂”你的话——什么是理解？",
+  "full_text": "清洗后的单元全文...",
+  "chunks": [
+    {
+      "chunk_id": "chunk-01",
+      "text": "第一个 block 清洗后的纯文本..."
+    },
+    {
+      "chunk_id": "chunk-02",
+      "text": "第二个 block 清洗后的纯文本..."
+    }
+  ]
+}
+```
+
+说明：
+
+- `full_text` 来自整个 `html_fragment` 的纯文本。
+- `chunks` 按 `block_manifest` 对应的 block 顺序切分。
+- `chunks` 中每项只包含 `chunk_id` 和 `text`，`chunk_id` 使用 `chunk-01`、`chunk-02` 这样的顺序编号。
+
+### 2.9 导出任务结果
 
 ```http
 POST /api/content-generation/tasks/{task_id}/export
