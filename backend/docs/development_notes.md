@@ -19,6 +19,7 @@ stub 模式下：
 - 图片生成本地 SVG 占位图。
 - TTS 生成本地 stub 音频。
 - 资源保存到本地 `storage/`。
+- `CONTENT_GENERATOR_ALLOW_FALLBACK` 可设为 `true` 方便 demo；真实质量评估建议保持 `false`，让 provider 和 schema 错误暴露出来。
 
 ## 2. 真实服务模式
 
@@ -53,6 +54,11 @@ CONTENT_GENERATOR_KB_API_KEY=...
 | `CONTENT_GENERATOR_BAILIAN_TTS_BASE_URL` | 百炼 TTS DashScope base URL。 |
 | `CONTENT_GENERATOR_PODCAST_SEGMENT_MAX_RETRIES` | 播客单段 TTS 失败后的重试次数。 |
 | `CONTENT_GENERATOR_PODCAST_SEGMENT_RETRY_DELAY_SECONDS` | 播客单段 TTS retry 前等待秒数。 |
+| `CONTENT_GENERATOR_ALLOW_FALLBACK` | 请求未显式设置 `generation_options.allow_fallback` 时的默认 fallback 策略。 |
+| `CONTENT_GENERATOR_GENERATION_UNIT_CONCURRENCY` | unit-loop 中单元批处理并发数，默认 `3`。 |
+| `CONTENT_GENERATOR_IMAGE_GENERATION_CONCURRENCY` | social post 图片 slot 并发数，默认 `3`。 |
+| `CONTENT_GENERATOR_TTS_GENERATION_CONCURRENCY` | podcast TTS segment 并发数，默认 `4`。 |
+| `CONTENT_GENERATOR_PROVIDER_RATE_LIMIT_BACKOFF_SECONDS` | provider rate limit 场景预留 backoff 秒数。 |
 | `CONTENT_GENERATOR_REQUEST_TIMEOUT_SECONDS` | provider 请求超时。 |
 | `CONTENT_GENERATOR_MAX_RETRIES` | provider 重试次数。 |
 | `CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K` | 知识库检索 top_k。 |
@@ -97,8 +103,22 @@ alembic upgrade head
 | `20260508_0001` | 创建 `content_generation_task` 表。 |
 | `20260511_0002` | 增加 task logs。 |
 | `20260511_0003` | 增加 outline、partial render model、unit results、render units、stream events。 |
+| `20260624_0004` | 增加 artifact/reference/asset 表和平台关联字段，并迁移历史大 JSON 产物。 |
+| `20260624_0005` | 增加 event/metric 观测表。 |
 
 SQLite 本地开发会自动建表，并补齐部分缺失列；生产数据库建议使用 Alembic。
+
+当前产品态可信数据源：
+
+| 表 | 用途 |
+|---|---|
+| `content_generation_task` | 轻量任务状态、平台关联、进度、preview URL 和错误摘要。 |
+| `content_generation_artifact` | outline、unit spec、content spec、unit render、partial/final render。 |
+| `content_generation_reference` | planning 和 unit spec 阶段引用的知识库 chunks。 |
+| `content_generation_event` | 前端事件流，append-only。 |
+| `content_generation_metric` | 节点耗时、provider token、retry、fallback 原因。 |
+
+旧字段仍保留兼容读取，但新增产品接口优先读取 artifact/reference/event/metric 表。
 
 ## 4. 资源存储
 
@@ -126,6 +146,7 @@ GET /api/assets/{asset_id}/download
 3. asset metadata 需要包含 `task_id`、`kind`、`content_type` 等必要信息。
 4. 图片、HTML、JSON、ZIP、音频等文件都应通过 asset 接口访问。
 5. `interactive_html` 离线讲义中的服务端图片资源会在 `InteractiveHtmlStaticHandoutRenderer` 中尝试转成 data URL 内联，便于离线查看。
+6. 并发生成时多个 service 实例可能同时写入 `manifest.json`，`LocalStorageService` 已按 manifest 路径加进程内锁；跨进程部署时建议迁移到对象存储或数据库 asset 表。
 
 ## 5. 测试
 
@@ -153,6 +174,9 @@ pytest tests/test_workflow_logs.py -q
 # 单元级流式预览测试
 pytest tests/test_unit_streaming.py -q
 
+# Task 7 并发策略与 graph 并发接入测试
+pytest tests/test_parallel_units.py tests/test_social_post_renderer.py tests/test_podcast_renderer.py -q
+
 # interactive_html prompt / renderer / validator / handout
 pytest tests/test_interactive_html_prompts.py tests/test_interactive_html_renderer.py tests/test_interactive_html_validator.py tests/test_interactive_html_handout.py -q
 
@@ -165,6 +189,17 @@ pytest tests/test_tts_service.py tests/test_podcast_renderer.py tests/test_podca
 # 调试 slide workflow，打印节点日志
 pytest tests/test_workflow_debug.py::test_slides -q -s -p no:cacheprovider
 ```
+
+并发脚本验证：
+
+```bash
+python scripts/test_parallel_image_generation.py
+python scripts/test_parallel_tts_generation.py
+python scripts/test_unit_batching.py
+python scripts/test_parallel_unit_pipeline.py
+```
+
+脚本输出 JSON 到 `backend/scripts/concurrency_test_outputs/`，用于确认图片 slot、TTS segment、unit batching 和 graph 级 unit pipeline 是否有限并发且顺序稳定。
 
 ## 6. Schema 导出
 
@@ -368,6 +403,11 @@ app/services/learning_service.py
 10. 生成完成后再读取完整 `preview`。
 11. 导出文件通过 `export_files` 或 `ExportResult.file_url` 下载。
 12. 资源 URL 使用 `/api/assets/{asset_id}/download`。
+13. 大纲引用读取 `/api/content-generation/tasks/{task_id}/references`。
+14. unit 引用读取 `/api/content-generation/tasks/{task_id}/units/{unit_id}/references`。
+15. 阶段产物读取 `/api/content-generation/tasks/{task_id}/artifacts` 或 `/outline`。
+16. 观测指标读取 `/api/content-generation/tasks/{task_id}/metrics`。
+17. 平台侧继续保持一会话一主产物，生成模块通过 `X-Platform-Log-Id`、`X-Platform-User-Id`、`X-Platform-Session-Id` 保存关联 ID。
 
 ## 13. PowerShell API 调用
 
@@ -492,6 +532,24 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 3. `asset_public_base_url` 是否为 `/api/assets`。
 4. 前端是否访问了 `/download` 路径。
 
+### 14.8 fallback 行为和预期不一致
+
+检查项：
+
+1. 请求体是否显式传了 `generation_options.allow_fallback`。
+2. `.env` 中 `CONTENT_GENERATOR_ALLOW_FALLBACK` 的值。
+3. stub 模式下 fallback 总是允许，用于本地闭环。
+4. real 模式下默认不 fallback，除非 `.env` 默认开启或请求显式开启。
+
+### 14.9 并发生成速度没有变化
+
+检查项：
+
+1. `.env` 中 `CONTENT_GENERATOR_GENERATION_UNIT_CONCURRENCY`、`CONTENT_GENERATOR_IMAGE_GENERATION_CONCURRENCY`、`CONTENT_GENERATOR_TTS_GENERATION_CONCURRENCY` 是否大于 1。
+2. provider 是否有更严格的限流，导致并发请求被排队或重试。
+3. 任务是否只有一个 unit、一个图片 slot 或一个 TTS segment。
+4. `GET /metrics` 中节点耗时和 provider retry 是否异常升高。
+
 ## 15. 后续优先事项
 
 1. 完成真实 PDF exporter。
@@ -499,7 +557,7 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 3. 强化 slide renderer 的稳定布局与文本安全区。
 4. 将 social_post reviewer / repair 流程接入 direct workflow。
 5. 增加真实 KB 检索的端到端测试。
-6. 将 provider 错误、retry、token usage 进一步结构化。
+6. 根据线上 provider 限流情况调整默认并发和 backoff 策略。
 7. 增加 podcast 真实 TTS 任务的慢任务回归测试。
 8. 完善前端类型自动生成和 schema drift 检测。
 9. 将 interactive_html learning session / event 从 in-memory 迁移到数据库。

@@ -6,9 +6,12 @@
 content_request -> outline -> content_spec -> elements -> renderer -> exporter
 ```
 
-当前阶段已提供框架、统一 schema、接口、抽象服务、stub workflow、Local 资源存储、基础导出链路，以及可配置的外部 provider service。默认运行仍使用 stub，避免开发和测试时误调用付费 API；切换到真实 provider 后，文本生成使用百炼兼容 OpenAI 接口，图片生成默认使用 APIMart GPT-Image-2，检索调用外部知识库 HTTP API。
+当前阶段已提供框架、统一 schema、接口、抽象服务、stub workflow、Local 资源存储、基础导出链路，以及可配置的外部 provider service。默认运行仍使用 stub，避免开发和测试时误调用付费 API；切换到真实 provider 后，文本生成使用 OpenAI-compatible provider，图片生成默认使用 APIMart GPT-Image-2，TTS 使用百炼，检索调用外部知识库 HTTP API。
+
+生成过程已拆分为任务主表、artifact、reference、event、metric 等产品态数据表。开发期仍保留 `storage/debug_workflow/<task_id>/` JSON 快照用于排障，但产品接口优先读取数据库中的 artifact/reference/metric。
 
 ---
+
 ### Backend
 
 ```powershell
@@ -30,9 +33,20 @@ CONTENT_GENERATOR_IMAGE_RESOLUTION=1k
 CONTENT_GENERATOR_KB_API_BASE_URL=
 CONTENT_GENERATOR_KB_API_KEY=
 CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K=5
+CONTENT_GENERATOR_ALLOW_FALLBACK=false
+CONTENT_GENERATOR_GENERATION_UNIT_CONCURRENCY=3
+CONTENT_GENERATOR_IMAGE_GENERATION_CONCURRENCY=3
+CONTENT_GENERATOR_TTS_GENERATION_CONCURRENCY=4
 ```
 
+fallback 优先级：
+
+1. 请求体显式传 `generation_options.allow_fallback` 时，以请求体为准。
+2. 请求体未显式传时，使用 `.env` 中的 `CONTENT_GENERATOR_ALLOW_FALLBACK`。
+3. `CONTENT_GENERATOR_PROVIDER_MODE=stub` 时 fallback 总是允许，用于本地闭环。
+
 ---
+
 ### 检索服务配置
 
 真实检索依赖外部知识库 HTTP API，需要配置以下环境变量：
@@ -44,17 +58,42 @@ CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K=5
 CONTENT_GENERATOR_KB_MAX_CHARS_PER_ITEM=8000
 ```
 
-将 `CONTENT_GENERATOR_PROVIDER_MODE` 设置为 `real` 后，后端 service factory 会按 provider 配置创建真实服务。默认图片 provider 为 APIMart `gpt-image-2`，会轮询任务结果并把图片转存到 Local storage；百炼图片 provider 仍可通过 `CONTENT_GENERATOR_IMAGE_PROVIDER=bailian` 切换。当前 workflow 仍显式使用 stub 节点，真实 service 已就绪但尚未贯穿完整生成流程。
+将 `CONTENT_GENERATOR_PROVIDER_MODE` 设置为 `real` 后，后端 service factory 会按 provider 配置创建真实服务。默认图片 provider 为 APIMart `gpt-image-2`，会轮询任务结果并把图片转存到 Local storage；百炼图片 provider 仍可通过 `CONTENT_GENERATOR_IMAGE_PROVIDER=bailian` 切换。真实模式默认不静默 fallback，便于暴露 provider、schema 和渲染错误；demo 场景可设置 `CONTENT_GENERATOR_ALLOW_FALLBACK=true`。
 
 核心入口：
 
 - `POST /api/content-generation/tasks`
 - `GET /api/content-generation/tasks/{task_id}`
 - `GET /api/content-generation/tasks/{task_id}/preview`
+- `GET /api/content-generation/tasks/{task_id}/artifacts`
+- `GET /api/content-generation/tasks/{task_id}/references`
+- `GET /api/content-generation/tasks/{task_id}/metrics`
 - `POST /api/content-generation/tasks/{task_id}/export`
 - `GET /api/assets/{asset_id}`
 
 ---
+
+### 数据库迁移
+
+本地 SQLite 会在测试和开发时自动建表；生产 MySQL 建议使用 Alembic：
+
+```powershell
+uv run alembic -c backend/alembic.ini upgrade head
+```
+
+当前产品态核心表：
+
+- `content_generation_task`
+- `content_generation_artifact`
+- `content_generation_reference`
+- `content_generation_asset`
+- `content_generation_event`
+- `content_generation_metric`
+
+平台后端继续保持“一会话一主产物”规则，生成模块通过 `platform_log_id`、`platform_user_id`、`platform_session_id` 与平台侧记录关联，不建立跨库外键。
+
+---
+
 ### Frontend
 
 ```powershell
@@ -67,6 +106,7 @@ npm run build
 Vite dev server 默认代理 `/api` 到 `http://127.0.0.1:8000`。
 
 ---
+
 ### Schema
 
 Pydantic v2 是当前 schema 单一真源。后端 schema 位于 `backend/app/schemas/`，可用下面命令导出 JSON Schema：
@@ -76,6 +116,7 @@ uv run python backend/scripts/export_json_schema.py
 ```
 
 ---
+
 ### Tests
 
 后端测试默认使用 mock 或 stub，不会调用 APIMart、百炼或真实 Qdrant 服务：
@@ -91,6 +132,7 @@ uv run pytest backend/tests
 ```
 
 ---
+
 ### Workflow debug test
 
 `backend/tests/test_workflow_debug.py` 是手动真实生成调试测试，不属于默认稳定测试入口。运行前请确认：
@@ -128,6 +170,7 @@ $env:CONTENT_GENERATOR_PROVIDER_MODE="real"
 - `assets/`、`generated_assets.json`：真实生成资产及 manifest。
 
 ---
+
 ### TODO
 
 现在存在的问题：前端没有办法持久化记录答案，答案可以随意修改，和我的设计想法有冲突，需要调整，但目前优先级不高。

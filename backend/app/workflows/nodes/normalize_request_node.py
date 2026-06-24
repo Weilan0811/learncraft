@@ -1,10 +1,18 @@
 from app.core.task import TaskStatus
+from app.core.config import get_settings
 from app.schemas.state import ContentGenerationState
 from app.workflows.nodes.helpers import build_progress
 
 
 def normalize_request(state: ContentGenerationState) -> dict[str, object]:
     options = state.raw_request.get("generation_options", {}) if state.raw_request else {}
+    explicit_option_fields = set(state.raw_request.get("generation_options_fields_set", []) if state.raw_request else [])
+    settings = get_settings()
+    allow_fallback = (
+        bool(options.get("allow_fallback", settings.allow_fallback))
+        if isinstance(options, dict) and "allow_fallback" in explicit_option_fields
+        else settings.allow_fallback
+    )
     
     normalized = {
         "content_type": state.content_type,
@@ -25,7 +33,7 @@ def normalize_request(state: ContentGenerationState) -> dict[str, object]:
         "include_mindmap": bool(options.get("include_mindmap", False)) if isinstance(options, dict) else False,
         "image_style": options.get("image_style") if isinstance(options, dict) else None,
         "citation_policy": str(options.get("citation_policy", "light")) if isinstance(options, dict) else "light",
-        "allow_fallback": bool(options.get("allow_fallback", False)) if isinstance(options, dict) else False,
+        "allow_fallback": allow_fallback,
         "slide_theme": options.get("slide_theme") if isinstance(options, dict) else None,
         "speaker_notes": bool(options.get("speaker_notes", True)) if isinstance(options, dict) else True,
     }

@@ -39,6 +39,14 @@ POST /api/content-generation/tasks
 
 请求体为 `ContentGenerationRequest`。
 
+平台接入时可选传入以下 header，生成模块只保存关联 ID，不做跨库外键：
+
+```http
+X-Platform-Log-Id: platform_log_001
+X-Platform-User-Id: platform_user_001
+X-Platform-Session-Id: platform_session_001
+```
+
 #### slide_deck 请求示例
 
 ```json
@@ -110,6 +118,7 @@ POST /api/content-generation/tasks
 - API 创建任务后通过 FastAPI `BackgroundTasks` 执行生成流程。
 - 任务状态由数据库持久化保存。
 - 前端应通过轮询任务状态、事件和局部预览来展示进度。
+- 请求中的 `generation_options.allow_fallback` 会覆盖 `.env` 中的 `CONTENT_GENERATOR_ALLOW_FALLBACK` 默认值。生产质量评估建议关闭 fallback，demo 或本地调试可开启。
 
 ### 2.2 查询任务状态
 
@@ -294,7 +303,63 @@ GET /api/content-generation/tasks/{task_id}/units/{unit_id}/text
 - `chunks` 按 `block_manifest` 对应的 block 顺序切分。
 - `chunks` 中每项只包含 `chunk_id` 和 `text`，`chunk_id` 使用 `chunk-01`、`chunk-02` 这样的顺序编号。
 
-### 2.9 导出任务结果
+### 2.9 查询阶段产物
+
+```http
+GET /api/content-generation/tasks/{task_id}/artifacts
+GET /api/content-generation/tasks/{task_id}/artifacts/{artifact_id}
+GET /api/content-generation/tasks/{task_id}/outline
+```
+
+`artifacts` 返回大纲、unit spec、content spec、unit render、partial render 和 final render 等阶段产物摘要。`outline` 是读取最新 `artifact_type=outline` 的便捷接口。
+
+常见 `artifact_type`：
+
+| artifact_type | 说明 |
+|---|---|
+| `outline` | 大纲。 |
+| `unit_spec` | 单元 spec，带 `unit_id`。 |
+| `content_spec` | 完整内容 spec。 |
+| `unit_render` | 单元渲染片段，带 `unit_id` 和 `unit_order`。 |
+| `partial_render` | 局部预览 render model。 |
+| `final_render` | 完整预览 render model。 |
+
+### 2.10 查询检索引用
+
+```http
+GET /api/content-generation/tasks/{task_id}/references
+GET /api/content-generation/tasks/{task_id}/units/{unit_id}/references
+```
+
+第一个接口返回 task 大纲 planning 阶段使用的 reference chunks；第二个接口返回某个 unit spec 阶段使用的 reference chunks。返回格式与 unit text 接口相近：
+
+```json
+{
+  "task_id": "task_xxxxxxxxxxxx",
+  "unit_id": "unit-01-intro",
+  "content_type": "interactive_html",
+  "title": "当 AI “听懂”你的话——什么是理解？",
+  "chunks": [
+    {
+      "chunk_id": "source_id",
+      "title": "source_title",
+      "text": "content"
+    }
+  ]
+}
+```
+
+task 级 references 的 `unit_id` 为 `null`。`chunk_id` 优先使用 `source_id`，`text` 当前使用 DB 中保存的 `content_excerpt`。
+
+### 2.11 查询观测指标
+
+```http
+GET /api/content-generation/tasks/{task_id}/metrics
+```
+
+返回 `GenerationMetricListResponse`。指标包括节点耗时、provider、model、prompt/completion/total token、retry 次数、fallback 是否使用和 fallback 原因。不同 provider 的 token usage 字段可能缺失，前端展示时需要容忍 `null`。
+
+### 2.12 导出任务结果
 
 ```http
 POST /api/content-generation/tasks/{task_id}/export
@@ -532,6 +597,8 @@ GET /api/assets/{asset_id}/download
 | `speaker_notes` | true | slide 是否生成讲稿备注。 |
 | `pdf_options` | `{}` | PDF 导出配置预留。 |
 
+说明：如果请求体没有显式传 `allow_fallback`，后端使用环境变量 `CONTENT_GENERATOR_ALLOW_FALLBACK` 作为默认值；请求体显式传入时，以请求体为准。
+
 ## 6. 前端轮询建议
 
 创建任务后，前端建议按以下顺序轮询：
@@ -556,6 +623,8 @@ GET /api/content-generation/tasks/{task_id}/preview
 4. `interactive_html` 可以优先使用 `preview/partial.render_model.sections` 做 section 级增量展示。
 5. `status=completed` 后请求完整 `preview`。
 6. 用户点击导出后再调用 `POST /export`。
+7. 需要展示引用来源时读取 `/references` 或 `/units/{unit_id}/references`。
+8. 需要性能面板或排障信息时读取 `/metrics`。
 
 ## 7. 常见错误
 

@@ -109,7 +109,7 @@ podcast_script  -> direct
 - `slide_deck`
 - `interactive_html`
 
-流程：
+当前主线流程：
 
 ```text
 normalize_request
@@ -126,42 +126,7 @@ route_content_type
   ↓
 initialize_section_units / initialize_slide_units / initialize_interactive_html_units
   ↓
-retrieve_for_unit
-  ↓
-generate_unit_spec
-  ↓
-validate_unit_spec
-  ├─ pass -> collect_unit_required_elements
-  ├─ repair -> repair_unit_spec -> validate_unit_spec
-  ├─ fallback -> fallback_unit_spec -> validate_unit_spec
-  └─ fail -> fail_task
-  ↓
-collect_unit_required_elements
-  ↓
-dispatch_element_generation
-  ├─ generate_image_element
-  ├─ generate_mindmap_element
-  └─ merge when no elements are required
-  ↓
-merge_unit_elements
-  ↓
-validate_unit
-  ↓
-render_unit
-  ├─ pass -> publish_unit_render
-  ├─ retry -> render_unit
-  ├─ repair -> repair_render_unit -> route_after_render_unit
-  ├─ fallback -> fallback_render_unit -> publish_unit_render
-  └─ fail -> fail_task
-  ↓
-publish_unit_render
-  ↓
-merge_unit_result
-  ↓
-should_continue_units
-  ├─ continue -> retrieve_for_unit
-  ├─ done -> assemble_content_spec
-  └─ failed -> fail_task
+generate_units_parallel
   ↓
 assemble_content_spec
   ↓
@@ -174,6 +139,41 @@ lecture_renderer / slide_renderer / interactive_html_renderer
 finalize_task
 ```
 
+`generate_units_parallel` 是 unit-loop 的并发执行节点。它按 `CONTENT_GENERATOR_GENERATION_UNIT_CONCURRENCY` 将 `pending_unit_ids` 分批，每个 worker 使用隔离的 `ContentGenerationState` 副本执行单元内 pipeline：
+
+```text
+retrieve_for_unit
+  ↓
+generate_unit_spec
+  ↓
+validate_unit_spec
+  ├─ pass
+  ├─ repair -> repair_unit_spec -> validate_unit_spec
+  ├─ fallback -> fallback_unit_spec -> validate_unit_spec
+  └─ fail
+  ↓
+collect_unit_required_elements
+  ↓
+generate_image_element / generate_mindmap_element
+  ↓
+merge_unit_elements
+  ↓
+validate_unit
+  ↓
+render_unit
+  ├─ pass
+  ├─ retry
+  ├─ repair -> repair_render_unit
+  ├─ fallback -> fallback_render_unit
+  └─ fail
+  ↓
+publish_unit_render
+  ↓
+merge_unit_result
+```
+
+并发节点不会让多个 worker 直接写主 state 的 `current_unit_id`、`current_unit_spec` 或 `current_unit_context`。每个单元完成后返回 `UnitPipelineResult`，主节点按 outline 顺序合并 `unit_results`、`render_units`、`unit_context_map`、`elements`、`stream_events` 和 `partial_render_model`。
+
 ### 4.1 主要节点职责
 
 | 节点 | 职责 |
@@ -185,13 +185,14 @@ finalize_task
 | `initialize_section_units` | 初始化 lecture section 队列。 |
 | `initialize_slide_units` | 初始化 slide page 队列。 |
 | `initialize_interactive_html_units` | 初始化 interactive_html section 队列，并写入默认 `style_guide`。 |
+| `generate_units_parallel` | 以有限并发执行单元内检索、spec、元素、渲染和发布事件，并按 outline 顺序合并结果。 |
 | `retrieve_for_unit` | 为当前单元检索更聚焦的上下文。 |
 | `generate_unit_spec` | 根据 profile 调用对应 generator，生成 `LectureSection`、`SlideSpecPage` 或 `InteractiveHtmlSectionSpec`。 |
 | `validate_unit_spec` | 校验单元 spec 的结构、引用和 renderer 契约。 |
 | `repair_unit_spec` | 单元 spec 校验失败后，最多执行一次 LLM repair。 |
 | `fallback_unit_spec` | `allow_fallback=true` 时生成 deterministic fallback spec。 |
 | `collect_unit_required_elements` | 收集当前单元声明的图片或 mindmap 需求；`interactive_html` 当前为空。 |
-| `dispatch_element_generation` | 使用 LangGraph Send 机制分发元素生成；无元素时直接 merge。 |
+| `dispatch_element_generation` | 旧串行路径中的 LangGraph Send 分发节点，当前主线已由 `generate_units_parallel` 在 worker 内直接生成元素。 |
 | `generate_image_element` | 调用图片服务生成 `ImageElement`。 |
 | `generate_mindmap_element` | 生成 `MindmapElement`。 |
 | `merge_unit_elements` | 合并元素生成结果。 |
@@ -199,7 +200,7 @@ finalize_task
 | `render_unit` | 生成单元级 render fragment。`interactive_html` 在此阶段生成 `InteractiveHtmlRenderedUnit`。 |
 | `repair_render_unit` | 当前只支持 `interactive_html` 的单元渲染修复。 |
 | `fallback_render_unit` | 当前只支持 `interactive_html` 的 fallback 单元渲染。 |
-| `publish_unit_render` | 写入 `unit_render_ready` stream event。 |
+| `publish_unit_render` | 写入 `unit_render_ready` stream event；并发主线会按 outline 顺序合并事件，接口返回仍可按 unit order 展示。 |
 | `merge_unit_result` | 将当前单元结果写入 `unit_results`，推进到下一个单元。 |
 | `assemble_content_spec` | 汇总所有单元，组装 `LectureSpec`、`SlideDeckSpec` 或 `InteractiveHtmlSpec`。 |
 | `validate_content` | 校验最终内容 spec。 |
@@ -346,6 +347,8 @@ finalize_task
 
 `podcast_script` 渲染时还会写入 `audio_segment_ready` 事件，payload 包含 segment id、speaker、voice、audio URL、状态和 retry count。
 
+`social_post` 图片 slot 使用 `CONTENT_GENERATOR_IMAGE_GENERATION_CONCURRENCY` 做有限并发生成，输出的 `image_assets` 按 slot 顺序保持稳定。`podcast_script` TTS segment 使用 `CONTENT_GENERATOR_TTS_GENERATION_CONCURRENCY` 做有限并发合成，最终 `segments` 和 `audio_assets` 按 segment order 排序。
+
 ## 7. 状态模型
 
 workflow 全局状态为 `ContentGenerationState`，关键字段如下：
@@ -373,6 +376,7 @@ workflow 全局状态为 `ContentGenerationState`，关键字段如下：
 | `render_model` | 最终完整渲染模型。 |
 | `stream_events` | 前端可消费的流式事件。 |
 | `logs` | workflow 结构化日志。 |
+| `metrics` | 节点耗时、provider token、retry 和 fallback 观测数据。 |
 | `retry_counts` | unit spec / render unit 等节点的 retry 计数。 |
 | `progress` | 当前进度。 |
 | `status` | `queued` / `running` / `completed` / `failed`。 |
@@ -397,26 +401,31 @@ workflow 全局状态为 `ContentGenerationState`，关键字段如下：
 
 说明：`repairing_render_unit`、`fallback_render_unit` 等细分 stage 当前未在 `_percent_for_stage` 中单独分配百分比，实际进度会通过 `ensure_monotonic_progress(...)` 保持不回退。
 
-## 9. 持久化与预览
+## 9. 持久化、引用与观测
 
-`SQLModelTaskRepository.save_state(...)` 会将 state 中的重要字段保存到 `content_generation_task` 表：
+`SQLModelTaskRepository.save_state(...)` 仍会保留旧字段兼容读取，但产品态主要数据源已经拆到多张表：
 
-| 数据 | 存储字段 |
+| 数据 | 产品态存储 |
 |---|---|
-| 任务状态 | `status` |
-| 当前节点 | `current_node` |
-| 进度 | `progress` |
-| 大纲 | `outline` |
-| 完整 render model | `render_model` |
-| 局部 render model | `partial_render_model` |
-| 内容 spec | `content_spec` |
-| 单元结果 | `unit_results` |
-| 单元预览 | `render_units` |
-| 事件流 | `stream_events` |
-| 元素 | `elements` |
-| 日志 | `logs` |
-| 资源 ID | `asset_ids` |
-| 错误 | `errors` |
+| 任务摘要、平台关联、状态、进度 | `content_generation_task` |
+| 大纲、content spec、unit spec、unit render、partial/final render | `content_generation_artifact` |
+| planning 和 unit spec 阶段检索引用 | `content_generation_reference` |
+| stream events | `content_generation_event` |
+| 节点耗时、LLM token、provider retry、fallback 原因 | `content_generation_metric` |
+| 图片、音频、导出文件 | 本地 asset storage，后续可迁移对象存储 |
+
+写入时机：
+
+| 阶段 | artifact/reference/metric |
+|---|---|
+| `plan_outline` 后 | 写入 `outline` artifact；planning chunks 写入 `reference(stage=planning)`。 |
+| `generate_units_parallel` 合并后 | 每个 unit 写入 `unit_spec`、`unit_render` artifact；unit 检索 chunks 写入 `reference(stage=unit_spec, unit_id=...)`。 |
+| unit render 完成后 | 写入 `unit_render_ready` event；更新 `partial_render` artifact。 |
+| `assemble_content_spec` 后 | 写入 `content_spec` artifact。 |
+| 最终 renderer 后 | 写入 `final_render` artifact，并更新任务 `preview_url`。 |
+| 每个 graph update | 写入 node metric；provider 调用会附带 token / retry metric。 |
+
+本地 `storage/debug_workflow/{task_id}` 仍会保存 JSON 调试快照，只用于开发排障；产品查询应以 DB artifact/reference/metric 为准。
 
 前端可以通过以下接口读取这些状态：
 
@@ -427,7 +436,14 @@ GET /api/content-generation/tasks/{task_id}/preview/partial
 GET /api/content-generation/tasks/{task_id}/units
 GET /api/content-generation/tasks/{task_id}/units/{unit_id}/preview
 GET /api/content-generation/tasks/{task_id}/preview
+GET /api/content-generation/tasks/{task_id}/artifacts
+GET /api/content-generation/tasks/{task_id}/outline
+GET /api/content-generation/tasks/{task_id}/references
+GET /api/content-generation/tasks/{task_id}/units/{unit_id}/references
+GET /api/content-generation/tasks/{task_id}/metrics
 ```
+
+平台后端保持“一会话一主产物”规则。生成模块不建立跨库外键，只保存 `platform_log_id`、`platform_user_id`、`platform_session_id`，平台可用 `content_generation_log.external_content_id = task_id` 关联生成结果。
 
 ## 10. 扩展新内容类型的步骤
 
@@ -455,4 +471,5 @@ GET /api/content-generation/tasks/{task_id}/preview
 - 常规 renderer 不调用 LLM；`interactive_html` 的 `ExplanationHtmlComposer` 是当前例外，调用 LLM 生成受限的讲解片段。
 - exporter 不重新生成内容，只负责将 render model 落盘。
 - 任务进度、事件和日志应在关键节点持续更新。
+- 并发节点必须使用单元隔离 state，再按 `unit_order` 合并主 state；不要在 worker 间共享 `current_unit_*` 游标。
 - 新增字段后同步更新 Pydantic schema、JSON Schema、API 文档和前端类型。

@@ -5,6 +5,7 @@ from app.schemas.render import SlidePageModel
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.state import ContentGenerationState
 from app.schemas.specs import LectureSection, LectureSpec, RequiredElementSpec, SlideSpecElement, SlideSpecPage, TextBlock
+from app.core.config import get_settings
 from app.workflows.nodes.normalize_request_node import normalize_request
 from pydantic import ValidationError
 
@@ -60,6 +61,41 @@ def test_normalize_request_maps_legacy_counts_to_maximums() -> None:
 
     assert normalized["slide_count"] == 5
     assert normalized["max_slide_count"] == 5
+
+
+def test_normalize_request_uses_env_fallback_default_unless_request_overrides(monkeypatch) -> None:
+    monkeypatch.setenv("CONTENT_GENERATOR_ALLOW_FALLBACK", "true")
+    get_settings.cache_clear()
+    request = ContentGenerationRequest(
+        content_type="lecture",
+        topic="AI basics",
+        user_prompt="Generate a lecture",
+    )
+    state = ContentGenerationState(
+        request_id="test_env_fallback",
+        content_type=request.content_type,
+        topic=request.topic,
+        user_prompt=request.user_prompt,
+        raw_request=request.model_dump(mode="json"),
+        status=TaskStatus.running,
+    )
+
+    normalized = normalize_request(state)["normalized_request"]
+
+    assert normalized["allow_fallback"] is True
+
+    override_request = ContentGenerationRequest(
+        content_type="lecture",
+        topic="AI basics",
+        user_prompt="Generate a lecture",
+        generation_options={"allow_fallback": False},
+    )
+    override_state = state.model_copy(update={"raw_request": override_request.model_dump(mode="json")})
+
+    override_normalized = normalize_request(override_state)["normalized_request"]
+
+    assert override_normalized["allow_fallback"] is False
+    get_settings.cache_clear()
 
 
 def test_outline_units_reject_recommended_elements() -> None:

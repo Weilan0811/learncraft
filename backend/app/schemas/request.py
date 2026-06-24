@@ -37,6 +37,7 @@ class ContentGenerationRequest(SchemaModel):
     system_prompt: str | None = None
     knowledge_base_ids: list[str] = Field(default_factory=list)
     generation_options: GenerationOptions = Field(default_factory=GenerationOptions)
+    generation_options_fields_set: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_generation_options(self):
@@ -57,4 +58,6 @@ class ContentGenerationRequest(SchemaModel):
                 raise ValueError("max_section_count must be between 1 and 30")
             if options.section_count is not None:
                 options.max_section_count = options.section_count
+        if not self.generation_options_fields_set:
+            self.generation_options_fields_set = sorted(options.model_fields_set)
         return self

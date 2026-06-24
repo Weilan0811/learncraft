@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     debug_root: str = Field(default="storage/debug_workflow", validation_alias=AliasChoices("DEBUG_ROOT", "CONTENT_GENERATOR_DEBUG_ROOT"))
 
     provider_mode: Literal["stub", "real"] = "stub"
+    allow_fallback: bool = False
 
     text_provider: str = "bailian"
     text_model: str = "qwen3.5-flash"
