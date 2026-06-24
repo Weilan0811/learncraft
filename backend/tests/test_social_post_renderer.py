@@ -1,7 +1,10 @@
 from pathlib import Path
+import threading
+import time
 
 from app.generators.social_post_generator import SocialPostGenerator
 from app.renderers.social_post_renderer import SocialPostRenderer, to_wechat_claw_article
+from app.schemas.elements import ImageElement
 from app.schemas.state import ContentGenerationState, RetrievedChunk
 from app.services.wechat_claw_renderer import WechatClawRenderer
 
@@ -71,3 +74,46 @@ def test_social_post_renderer_returns_preview_assets(tmp_path: Path) -> None:
     assert render_model.render_type == "social_post"
     assert render_model.article_json["template"] == spec.draft.template
     assert render_model.preview_assets
+
+
+def test_social_post_image_slots_generate_concurrently_and_keep_slot_order(monkeypatch) -> None:
+    class SlowImageService:
+        def __init__(self) -> None:
+            self.active = 0
+            self.max_active = 0
+            self.lock = threading.Lock()
+
+        def generate_image(
+            self,
+            title: str,
+            description: str,
+            aspect_ratio: str = "16:9",
+            asset_id: str | None = None,
+            layout: str = "image_text",
+        ) -> ImageElement:
+            with self.lock:
+                self.active += 1
+                self.max_active = max(self.max_active, self.active)
+            try:
+                time.sleep(0.05)
+                return ImageElement(
+                    id=asset_id or title,
+                    title=title,
+                    prompt=description,
+                    asset_url=f"/api/assets/{asset_id}/download",
+                    alt_text=title,
+                    width=1024,
+                    height=576,
+                    format="png",
+                )
+            finally:
+                with self.lock:
+                    self.active -= 1
+
+    image_service = SlowImageService()
+    monkeypatch.setattr("app.generators.social_post_generator.get_image_generation_service", lambda: image_service)
+
+    spec = SocialPostGenerator().generate(build_state())
+
+    assert image_service.max_active > 1
+    assert [asset.slot_id for asset in spec.image_assets] == [slot.slot_id for slot in spec.image_slots]

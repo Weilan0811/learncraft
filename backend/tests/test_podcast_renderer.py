@@ -1,6 +1,8 @@
 import wave
 from io import BytesIO
 from pathlib import Path
+import threading
+import time
 from uuid import uuid4
 
 from app.renderers.podcast_renderer import PodcastRenderer
@@ -151,6 +153,61 @@ def test_podcast_renderer_waits_before_retrying_failed_segment() -> None:
     renderer._synthesize_with_retries(text="欢迎回来。", voice="Ethan", asset_id="podcast_task_999_001")
 
     assert waits == [10.0]
+
+
+def test_podcast_renderer_synthesizes_segments_concurrently_and_keeps_order() -> None:
+    class SlowTTSService:
+        def __init__(self) -> None:
+            self.active = 0
+            self.max_active = 0
+            self.lock = threading.Lock()
+
+        def synthesize(self, *, text: str, voice: str, asset_id: str) -> AudioFileElement:
+            with self.lock:
+                self.active += 1
+                self.max_active = max(self.max_active, self.active)
+            try:
+                time.sleep(0.05)
+                speaker = "Person1" if voice == "Ethan" else "Person2"
+                order = int(asset_id.rsplit("_", 1)[1])
+                return AudioFileElement(
+                    id=asset_id,
+                    speaker=speaker,
+                    voice=voice,
+                    audio_url=f"/api/assets/{asset_id}/download",
+                    order=order,
+                    title=f"{speaker} audio",
+                    metadata={"text": text},
+                )
+            finally:
+                with self.lock:
+                    self.active -= 1
+
+    tts_service = SlowTTSService()
+    spec = PodcastSpec(
+        id="podcast_task_concurrent",
+        title="Direct workflow podcast",
+        podcast_name="未来学习电台",
+        podcast_tagline="把复杂问题讲清楚",
+        raw_dialogue="\n".join(
+            [
+                "<Person1>第一段。</Person1>",
+                "<Person2>第二段。</Person2>",
+                "<Person1>第三段。</Person1>",
+            ]
+        ),
+        segments=[
+            PodcastSegmentSpec(segment_id="seg-001", order=1, speaker="Person1", voice="Ethan", text="第一段。"),
+            PodcastSegmentSpec(segment_id="seg-002", order=2, speaker="Person2", voice="Cherry", text="第二段。"),
+            PodcastSegmentSpec(segment_id="seg-003", order=3, speaker="Person1", voice="Ethan", text="第三段。"),
+        ],
+    )
+
+    render_model = PodcastRenderer(tts_service=tts_service).render(spec, [])
+
+    assert tts_service.max_active > 1
+    assert [segment.order for segment in render_model.segments] == [1, 2, 3]
+    assert [asset.order for asset in render_model.audio_assets] == [1, 2, 3]
 
 
 def _wav_bytes() -> bytes:

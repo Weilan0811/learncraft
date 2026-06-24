@@ -1,5 +1,6 @@
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import cast
 
 from app.core.fallback import allow_generation_fallback
@@ -220,8 +221,14 @@ class SocialPostGenerator:
         if not bool((state.normalized_request or {}).get("include_images", True)):
             return spec
         service = get_image_generation_service()
-        assets: list[ImageAsset] = []
-        for slot in spec.image_slots:
+        if not spec.image_slots:
+            return spec
+        settings = get_settings()
+        configured_concurrency = int(getattr(settings, "image_generation_concurrency", 3))
+        max_workers = max(1, min(configured_concurrency, len(spec.image_slots)))
+        assets_by_index: dict[int, ImageAsset] = {}
+
+        def generate_slot(index: int, slot: ImageSlot) -> tuple[int, ImageAsset]:
             try:
                 image = service.generate_image(
                     title=slot.caption,
@@ -229,11 +236,16 @@ class SocialPostGenerator:
                     aspect_ratio=self._provider_aspect_ratio(slot.aspect_ratio),
                     asset_id=f"social_{state.request_id}_{slot.slot_id}",
                 )
-                assets.append(_asset_from_image(slot.slot_id, image))
+                return index, _asset_from_image(slot.slot_id, image)
             except Exception as exc:
-                assets.append(ImageAsset(slot_id=slot.slot_id, status="failed", error_message=str(exc)))
-                if slot.required:
-                    break
+                return index, ImageAsset(slot_id=slot.slot_id, status="failed", error_message=str(exc))
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(generate_slot, index, slot) for index, slot in enumerate(spec.image_slots)]
+            for future in as_completed(futures):
+                index, asset = future.result()
+                assets_by_index[index] = asset
+        assets = [assets_by_index[index] for index in range(len(spec.image_slots))]
         return spec.model_copy(update={"image_assets": assets})
 
     def _normalize_citation_refs(self, state: ContentGenerationState, spec: SocialPostSpec) -> SocialPostSpec:

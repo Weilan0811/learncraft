@@ -1,6 +1,7 @@
 import json
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.core.config import get_settings
 from app.schemas.elements import ContentElement
@@ -20,6 +21,7 @@ class PodcastRenderer:
         audio_assembler: AudioAssemblerService | None = None,
         segment_max_retries: int | None = None,
         retry_delay_seconds: float | None = None,
+        tts_concurrency: int | None = None,
         sleeper: Callable[[float], object] | None = None,
     ) -> None:
         settings = get_settings()
@@ -28,21 +30,22 @@ class PodcastRenderer:
         self.audio_assembler = audio_assembler or AudioAssemblerService()
         self.segment_max_retries = settings.podcast_segment_max_retries if segment_max_retries is None else segment_max_retries
         self.retry_delay_seconds = settings.podcast_segment_retry_delay_seconds if retry_delay_seconds is None else retry_delay_seconds
+        self.tts_concurrency = settings.tts_generation_concurrency if tts_concurrency is None else tts_concurrency
         self.sleeper = sleeper or time.sleep
 
     def render(self, spec: PodcastSpec, elements: list[ContentElement]) -> PodcastRenderModel:
-        audio_segments: list[PodcastAudioSegment] = []
-        audio_assets: list[AudioFileElement] = []
         warnings: list[str] = []
+        segment_results: dict[int, PodcastAudioSegment] = {}
+        asset_results: dict[int, AudioFileElement] = {}
 
-        for segment in spec.segments:
+        def synthesize_segment(index: int) -> tuple[int, PodcastAudioSegment, AudioFileElement | None, str | None]:
+            segment = spec.segments[index]
             asset_id = f"{spec.id}_{segment.order:03d}"
-            retry_count = 0
             try:
                 audio = self._synthesize_with_retries(text=segment.text, voice=segment.voice, asset_id=asset_id)
                 retry_count = int(audio.metadata.get("retry_count", 0)) if audio.metadata else 0
-                audio_assets.append(audio)
-                audio_segments.append(
+                return (
+                    index,
                     PodcastAudioSegment(
                         segment_id=segment.segment_id,
                         order=segment.order,
@@ -52,10 +55,13 @@ class PodcastRenderer:
                         audio_url=audio.audio_url,
                         status="generated",
                         retry_count=retry_count,
-                    )
+                    ),
+                    audio,
+                    None,
                 )
             except Exception as exc:
-                audio_segments.append(
+                return (
+                    index,
                     PodcastAudioSegment(
                         segment_id=segment.segment_id,
                         order=segment.order,
@@ -65,9 +71,25 @@ class PodcastRenderer:
                         status="failed",
                         error_message=str(exc),
                         retry_count=self.segment_max_retries,
-                    )
+                    ),
+                    None,
+                    f"{segment.segment_id} TTS failed: {exc}",
                 )
-                warnings.append(f"{segment.segment_id} TTS failed: {exc}")
+
+        if spec.segments:
+            max_workers = max(1, min(self.tts_concurrency, len(spec.segments)))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = [executor.submit(synthesize_segment, index) for index in range(len(spec.segments))]
+                for future in as_completed(futures):
+                    index, audio_segment, audio_asset, warning = future.result()
+                    segment_results[index] = audio_segment
+                    if audio_asset is not None:
+                        asset_results[index] = audio_asset
+                    if warning is not None:
+                        warnings.append(warning)
+
+        audio_segments = [segment_results[index] for index in sorted(segment_results)]
+        audio_assets = [asset_results[index] for index in sorted(asset_results)]
 
         final_audio_url: str | None = None
         export_files: list[PodcastExportFile] = []

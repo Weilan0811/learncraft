@@ -47,6 +47,10 @@ class Settings(BaseSettings):
 
     request_timeout_seconds: float = 60.0
     max_retries: int = 2
+    generation_unit_concurrency: int = 3
+    image_generation_concurrency: int = 3
+    tts_generation_concurrency: int = 4
+    provider_rate_limit_backoff_seconds: float = 2.0
 
     apimart_image_poll_interval_seconds: float = 2.0
     apimart_image_poll_timeout_seconds: float = 180.0
