@@ -1,9 +1,10 @@
 import hashlib
 import json
 import re
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol
+from typing import ClassVar, Protocol
 
 from app.core.config import get_settings
 from app.schemas.assets import AssetKind, AssetRecord
@@ -36,12 +37,16 @@ class StorageService(Protocol):
 
 
 class LocalStorageService:
+    _locks_guard: ClassVar[threading.Lock] = threading.Lock()
+    _manifest_locks: ClassVar[dict[Path, threading.RLock]] = {}
+
     def __init__(self, storage_root: str | Path | None = None, public_base_url: str | None = None) -> None:
         settings = get_settings()
         self.storage_root = Path(storage_root or settings.storage_root)
         self.public_base_url = (public_base_url or settings.asset_public_base_url).rstrip("/")
         self.files_dir = self.storage_root / "files"
         self.manifest_path = self.storage_root / "manifest.json"
+        self._manifest_lock = self._lock_for_manifest(self.manifest_path)
 
     def save_bytes(
         self,
@@ -74,14 +79,16 @@ class LocalStorageService:
             url=self.get_public_url(safe_asset_id),
             metadata=metadata or {},
         )
-        manifest = self._load_manifest()
-        manifest["assets"][safe_asset_id] = record.model_dump()
-        self._write_manifest(manifest)
+        with self._manifest_lock:
+            manifest = self._load_manifest()
+            manifest["assets"][safe_asset_id] = record.model_dump()
+            self._write_manifest(manifest)
         return record
 
     def get_record(self, asset_id: str) -> AssetRecord | None:
         safe_asset_id = self._safe_identifier(asset_id)
-        asset_data = self._load_manifest()["assets"].get(safe_asset_id)
+        with self._manifest_lock:
+            asset_data = self._load_manifest()["assets"].get(safe_asset_id)
         return AssetRecord.model_validate(asset_data) if asset_data else None
 
     def get_file_path(self, asset_id: str) -> Path | None:
@@ -111,6 +118,14 @@ class LocalStorageService:
     def _write_manifest(self, manifest: dict[str, dict[str, object]]) -> None:
         self.storage_root.mkdir(parents=True, exist_ok=True)
         self.manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    @classmethod
+    def _lock_for_manifest(cls, manifest_path: Path) -> threading.RLock:
+        key = manifest_path.resolve()
+        with cls._locks_guard:
+            if key not in cls._manifest_locks:
+                cls._manifest_locks[key] = threading.RLock()
+            return cls._manifest_locks[key]
 
     @staticmethod
     def _safe_identifier(value: str) -> str:

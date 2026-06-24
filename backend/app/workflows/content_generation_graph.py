@@ -48,6 +48,7 @@ from app.workflows.nodes.unit_loop_node import (
 from app.workflows.nodes.unit_spec_generator_node import generate_unit_spec
 from app.workflows.nodes.unit_renderer_node import render_unit
 from app.workflows.nodes.unit_renderer_node import route_after_render_unit
+from app.workflows.parallel_units import generate_units_parallel
 from app.workflows.nodes.validator_node import (
     route_after_content_validation,
     route_after_outline_validation,
@@ -246,6 +247,7 @@ def build_content_generation_graph():
     workflow.add_node("initialize_section_units", initialize_section_units)
     workflow.add_node("initialize_slide_units", initialize_slide_units)
     workflow.add_node("initialize_interactive_html_units", initialize_interactive_html_units)
+    workflow.add_node("generate_units_parallel", generate_units_parallel)
     workflow.add_node("retrieve_for_unit", retrieve_for_unit)
     workflow.add_node("generate_unit_spec", generate_unit_spec)
     workflow.add_node("validate_unit_spec", validate_unit_spec)
@@ -297,9 +299,10 @@ def build_content_generation_graph():
         route_content_type_choice,
         {"lecture": "initialize_section_units", "slide_deck": "initialize_slide_units", "interactive_html": "initialize_interactive_html_units"},
     )
-    workflow.add_edge("initialize_section_units", "retrieve_for_unit")
-    workflow.add_edge("initialize_slide_units", "retrieve_for_unit")
-    workflow.add_edge("initialize_interactive_html_units", "retrieve_for_unit")
+    workflow.add_edge("initialize_section_units", "generate_units_parallel")
+    workflow.add_edge("initialize_slide_units", "generate_units_parallel")
+    workflow.add_edge("initialize_interactive_html_units", "generate_units_parallel")
+    workflow.add_edge("generate_units_parallel", "assemble_content_spec")
     workflow.add_edge("retrieve_for_unit", "generate_unit_spec")
     workflow.add_edge("generate_unit_spec", "validate_unit_spec")
     workflow.add_conditional_edges(

@@ -1,5 +1,6 @@
 import json
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
@@ -60,6 +61,27 @@ def test_local_storage_preserves_distinct_manifest_records() -> None:
 
     manifest = json.loads((storage_root / "manifest.json").read_text(encoding="utf-8"))
     assert sorted(manifest["assets"]) == ["asset_one", "asset_two"]
+
+
+def test_local_storage_preserves_manifest_records_across_concurrent_instances() -> None:
+    storage_root = storage_test_root()
+
+    def save_asset(index: int) -> str:
+        asset_id = f"asset_{index}"
+        LocalStorageService(storage_root=storage_root, public_base_url="/api/assets").save_bytes(
+            asset_id,
+            f"{asset_id}.txt",
+            f"content {index}".encode("utf-8"),
+            "text/plain",
+            "image",
+        )
+        return asset_id
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        asset_ids = list(executor.map(save_asset, range(8)))
+
+    verifier = LocalStorageService(storage_root=storage_root, public_base_url="/api/assets")
+    assert [verifier.get_record(asset_id).asset_id for asset_id in asset_ids] == asset_ids
 
 
 def test_unknown_asset_returns_404() -> None:
