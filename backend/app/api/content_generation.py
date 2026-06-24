@@ -1,5 +1,11 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, status
 
+from app.schemas.artifacts import (
+    ContentArtifactDetailResponse,
+    ContentArtifactListResponse,
+    GenerationMetricListResponse,
+    ReferenceChunksResponse,
+)
 from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
@@ -11,10 +17,23 @@ task_service = InMemoryTaskService()
 
 
 @router.post("/tasks", response_model=TaskResult, status_code=status.HTTP_201_CREATED)
-def create_content_generation_task(request: ContentGenerationRequest, background_tasks: BackgroundTasks) -> TaskResult:
+def create_content_generation_task(
+    request: ContentGenerationRequest,
+    background_tasks: BackgroundTasks,
+    x_platform_log_id: str | None = Header(default=None, alias="X-Platform-Log-Id"),
+    x_platform_user_id: str | None = Header(default=None, alias="X-Platform-User-Id"),
+    x_platform_session_id: str | None = Header(default=None, alias="X-Platform-Session-Id"),
+) -> TaskResult:
     # TODO(MVP-task): Replace the synchronous in-memory task execution with an
     # async task runner so queued/running/completed states reflect real progress.
-    task = task_service.create_task(request)
+    task = task_service.create_task(
+        request,
+        platform_context={
+            "platform_log_id": x_platform_log_id,
+            "platform_user_id": x_platform_user_id,
+            "platform_session_id": x_platform_session_id,
+        },
+    )
     background_tasks.add_task(task_service.run_task, task.task_id)
     return task
 
@@ -61,6 +80,57 @@ def get_content_generation_units(task_id: str) -> TaskUnitsResponse:
     if units is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return units
+
+
+@router.get("/tasks/{task_id}/artifacts", response_model=ContentArtifactListResponse)
+def list_content_generation_artifacts(task_id: str) -> ContentArtifactListResponse:
+    artifacts = task_service.list_artifacts(task_id)
+    if artifacts is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return artifacts
+
+
+@router.get("/tasks/{task_id}/artifacts/{artifact_id}", response_model=ContentArtifactDetailResponse)
+def get_content_generation_artifact(task_id: str, artifact_id: str) -> ContentArtifactDetailResponse:
+    artifact = task_service.get_artifact(task_id, artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task artifact not found")
+    return artifact
+
+
+@router.get("/tasks/{task_id}/outline", response_model=ContentArtifactDetailResponse)
+def get_content_generation_outline(task_id: str) -> ContentArtifactDetailResponse:
+    outline = task_service.get_outline_artifact(task_id)
+    if outline is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task outline not found")
+    return outline
+
+
+@router.get("/tasks/{task_id}/references", response_model=ReferenceChunksResponse)
+def list_content_generation_references(
+    task_id: str,
+    stage: str | None = Query(default="planning"),
+) -> ReferenceChunksResponse:
+    references = task_service.list_references(task_id, stage=stage, unit_id=None)
+    if references is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return references
+
+
+@router.get("/tasks/{task_id}/units/{unit_id}/references", response_model=ReferenceChunksResponse)
+def list_content_generation_unit_references(task_id: str, unit_id: str) -> ReferenceChunksResponse:
+    references = task_service.list_references(task_id, stage="unit_spec", unit_id=unit_id)
+    if references is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task unit references not found")
+    return references
+
+
+@router.get("/tasks/{task_id}/metrics", response_model=GenerationMetricListResponse)
+def list_content_generation_metrics(task_id: str) -> GenerationMetricListResponse:
+    metrics = task_service.list_metrics(task_id)
+    if metrics is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return metrics
 
 
 @router.get("/tasks/{task_id}/units/{unit_id}/preview", response_model=UnitPreviewResponse)

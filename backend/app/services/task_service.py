@@ -1,6 +1,17 @@
 from pydantic import TypeAdapter
 
 from app.core.task import TaskStatus
+from app.schemas.artifacts import (
+    ContentArtifactDetailResponse,
+    ContentArtifactListResponse,
+    ContentArtifactRecord,
+    ContentReferenceListResponse,
+    ContentReferenceRecord,
+    GenerationMetricListResponse,
+    GenerationMetricRecord,
+    ReferenceChunk,
+    ReferenceChunksResponse,
+)
 from app.schemas.export import ExportFile, ExportRequest, ExportResult
 from app.schemas.render import RenderModel
 from app.schemas.specs import ContentSpec
@@ -22,8 +33,12 @@ class PersistentTaskService:
     def __init__(self, repository: SQLModelTaskRepository | None = None) -> None:
         self.repository = repository or SQLModelTaskRepository()
 
-    def create_task(self, request: ContentGenerationRequest) -> TaskResult:
-        task = self.repository.create_task(request)
+    def create_task(
+        self,
+        request: ContentGenerationRequest,
+        platform_context: dict[str, str | None] | None = None,
+    ) -> TaskResult:
+        task = self.repository.create_task(request, platform_context=platform_context)
         return self.repository.to_task_result(task)
 
     def run_task(self, task_id: str) -> None:
@@ -128,6 +143,57 @@ class PersistentTaskService:
             return None
         return build_unit_text_response(task_id, snapshot)
 
+    def list_artifacts(self, task_id: str) -> ContentArtifactListResponse | None:
+        if self.repository.get_task(task_id) is None:
+            return None
+        return ContentArtifactListResponse(
+            task_id=task_id,
+            artifacts=[_artifact_record(artifact) for artifact in self.repository.list_artifacts(task_id)],
+        )
+
+    def get_artifact(self, task_id: str, artifact_id: str) -> ContentArtifactDetailResponse | None:
+        if self.repository.get_task(task_id) is None:
+            return None
+        artifact = self.repository.get_artifact(task_id, artifact_id)
+        if artifact is None:
+            return None
+        return ContentArtifactDetailResponse(task_id=task_id, artifact=_artifact_record(artifact))
+
+    def get_outline_artifact(self, task_id: str) -> ContentArtifactDetailResponse | None:
+        if self.repository.get_task(task_id) is None:
+            return None
+        artifact = self.repository.get_latest_artifact(task_id, "outline")
+        if artifact is None:
+            return None
+        return ContentArtifactDetailResponse(task_id=task_id, artifact=_artifact_record(artifact))
+
+    def list_references(
+        self,
+        task_id: str,
+        *,
+        stage: str | None = None,
+        unit_id: str | None = None,
+    ) -> ReferenceChunksResponse | None:
+        task = self.repository.get_task(task_id)
+        if task is None:
+            return None
+        references = self.repository.list_references(task_id, stage=stage, unit_id=unit_id)
+        return ReferenceChunksResponse(
+            task_id=task_id,
+            unit_id=unit_id,
+            content_type=task.content_type,
+            title=_reference_response_title(task, unit_id),
+            chunks=[_reference_chunk(reference) for reference in references],
+        )
+
+    def list_metrics(self, task_id: str) -> GenerationMetricListResponse | None:
+        if self.repository.get_task(task_id) is None:
+            return None
+        return GenerationMetricListResponse(
+            task_id=task_id,
+            metrics=[_metric_record(metric) for metric in self.repository.list_metrics(task_id)],
+        )
+
     def export_task(self, task_id: str, request: ExportRequest) -> ExportResult | None:
         task = self.repository.get_task(task_id)
         if task is None or task.render_model is None:
@@ -158,3 +224,90 @@ class PersistentTaskService:
 
 
 InMemoryTaskService = PersistentTaskService
+
+
+def _artifact_record(artifact) -> ContentArtifactRecord:
+    return ContentArtifactRecord(
+        id=artifact.id,
+        task_id=artifact.task_id,
+        artifact_type=artifact.artifact_type,
+        unit_id=artifact.unit_id,
+        unit_order=artifact.unit_order,
+        version=artifact.version,
+        status=artifact.status,
+        schema_name=artifact.schema_name,
+        schema_version=artifact.schema_version,
+        payload=artifact.payload,
+        payload_hash=artifact.payload_hash,
+        source_node=artifact.source_node,
+        created_at=artifact.created_at,
+        updated_at=artifact.updated_at,
+    )
+
+
+def _reference_record(reference) -> ContentReferenceRecord:
+    return ContentReferenceRecord(
+        id=reference.id,
+        task_id=reference.task_id,
+        artifact_id=reference.artifact_id,
+        stage=reference.stage,
+        unit_id=reference.unit_id,
+        knowledge_base_id=reference.knowledge_base_id,
+        chunk_id=reference.chunk_id,
+        source_id=reference.source_id,
+        source_title=reference.source_title,
+        score=reference.score,
+        retrieval_query=reference.retrieval_query,
+        content_excerpt=reference.content_excerpt,
+        content_hash=reference.content_hash,
+        metadata=reference.metadata_json,
+        created_at=reference.created_at,
+    )
+
+
+def _reference_chunk(reference) -> ReferenceChunk:
+    return ReferenceChunk(
+        chunk_id=reference.source_id or reference.chunk_id,
+        title=reference.source_title or reference.source_id or reference.chunk_id,
+        text=reference.content_excerpt or "",
+    )
+
+
+def _reference_response_title(task, unit_id: str | None) -> str | None:
+    if unit_id is None:
+        if isinstance(task.outline, dict) and isinstance(task.outline.get("title"), str):
+            return task.outline["title"]
+        return task.topic
+    snapshot = task.render_units.get(unit_id) if isinstance(task.render_units, dict) else None
+    if isinstance(snapshot, dict):
+        render_fragment = snapshot.get("render_fragment")
+        if isinstance(render_fragment, dict) and isinstance(render_fragment.get("title"), str):
+            return render_fragment["title"]
+    if isinstance(task.outline, dict):
+        units = task.outline.get("units")
+        if isinstance(units, list):
+            for unit in units:
+                if isinstance(unit, dict) and unit.get("id") == unit_id and isinstance(unit.get("title"), str):
+                    return unit["title"]
+    return None
+
+
+def _metric_record(metric) -> GenerationMetricRecord:
+    return GenerationMetricRecord(
+        id=metric.id,
+        task_id=metric.task_id,
+        node=metric.node,
+        unit_id=metric.unit_id,
+        provider=metric.provider,
+        model=metric.model,
+        duration_ms=metric.duration_ms,
+        prompt_tokens=metric.prompt_tokens,
+        completion_tokens=metric.completion_tokens,
+        total_tokens=metric.total_tokens,
+        retry_count=metric.retry_count,
+        fallback_used=metric.fallback_used,
+        fallback_reason=metric.fallback_reason,
+        error_type=metric.error_type,
+        metadata=metric.metadata_json,
+        created_at=metric.created_at,
+    )

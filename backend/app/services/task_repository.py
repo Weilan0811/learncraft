@@ -201,9 +201,31 @@ class SQLModelTaskRepository:
                 session.expunge(row)
             return list(rows)
 
-    def list_references(self, task_id: str) -> list[ContentGenerationReference]:
+    def get_artifact(self, task_id: str, artifact_id: str) -> ContentGenerationArtifact | None:
         with Session(self.engine) as session:
-            rows = session.exec(select(ContentGenerationReference).where(ContentGenerationReference.task_id == task_id)).all()
+            artifact = session.exec(
+                select(ContentGenerationArtifact)
+                .where(ContentGenerationArtifact.task_id == task_id)
+                .where(ContentGenerationArtifact.id == artifact_id)
+            ).first()
+            if artifact is not None:
+                session.expunge(artifact)
+            return artifact
+
+    def list_references(
+        self,
+        task_id: str,
+        *,
+        stage: str | None = None,
+        unit_id: str | None = None,
+    ) -> list[ContentGenerationReference]:
+        with Session(self.engine) as session:
+            statement = select(ContentGenerationReference).where(ContentGenerationReference.task_id == task_id)
+            if stage is not None:
+                statement = statement.where(ContentGenerationReference.stage == stage)
+            if unit_id is not None:
+                statement = statement.where(ContentGenerationReference.unit_id == unit_id)
+            rows = session.exec(statement).all()
             for row in rows:
                 session.expunge(row)
             return list(rows)
