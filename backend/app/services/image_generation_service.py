@@ -36,6 +36,8 @@ class ImageGenerationService(Protocol):
 class StubImageGenerationService:
     def __init__(self, storage_service: StorageService | None = None) -> None:
         self.storage_service = storage_service or LocalStorageService()
+        self.last_retry_count = 0
+        self.last_metadata: dict[str, object] = {"provider": "stub"}
 
     def generate_image(
         self,
@@ -63,6 +65,8 @@ class StubImageGenerationService:
                 "format": "svg",
             },
         )
+        self.last_retry_count = 0
+        self.last_metadata = dict(record.metadata)
         return ImageElement(
             id=record.asset_id,
             title=title,
@@ -116,6 +120,8 @@ class APIMartImageGenerationService:
         self.timeout_seconds = timeout_seconds
         self.poll_interval_seconds = poll_interval_seconds
         self.poll_timeout_seconds = poll_timeout_seconds
+        self.last_retry_count = 0
+        self.last_metadata: dict[str, object] = {"provider": "apimart", "model": model}
 
     def generate_image(
         self,
@@ -167,6 +173,7 @@ class APIMartImageGenerationService:
                 **self._dimensions_for_aspect_ratio(aspect_ratio),
             },
         )
+        self.last_metadata = dict(record.metadata)
         return ImageElement(
             id=record.asset_id,
             title=title,
@@ -347,6 +354,8 @@ class BailianImageGenerationService:
         self.storage_service = storage_service or LocalStorageService()
         self.client = client or httpx.Client(timeout=timeout_seconds)
         self.timeout_seconds = timeout_seconds
+        self.last_retry_count = 0
+        self.last_metadata: dict[str, object] = {"provider": "bailian", "model": model}
 
     def generate_image(
         self,
@@ -387,6 +396,8 @@ class BailianImageGenerationService:
                 **APIMartImageGenerationService._dimensions_for_aspect_ratio(aspect_ratio),
             },
         )
+        self.last_retry_count = 0
+        self.last_metadata = dict(record.metadata)
         return ImageElement(
             id=record.asset_id,
             title=title,

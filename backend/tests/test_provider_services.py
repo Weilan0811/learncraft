@@ -64,6 +64,7 @@ def test_settings_load_provider_defaults_and_env_overrides(monkeypatch: pytest.M
 
 
 def test_llm_service_parses_mocked_structured_json() -> None:
+    from app.core.telemetry import drain_provider_metrics
     from app.services.llm_service import BailianLLMService
 
     class FakeClient:
@@ -82,6 +83,10 @@ def test_llm_service_parses_mocked_structured_json() -> None:
 
     assert result == DemoSchema(title="人工智能基础", points=["定义", "应用"])
     assert service.last_usage == {"total_tokens": 42}
+    metrics = drain_provider_metrics(task_id="task_llm", node="plan_outline")
+    assert metrics[0].provider == "Bailian"
+    assert metrics[0].model == "qwen3.5-flash"
+    assert metrics[0].total_tokens == 42
 
 
 def test_llm_service_repairs_invalid_structured_json_once() -> None:

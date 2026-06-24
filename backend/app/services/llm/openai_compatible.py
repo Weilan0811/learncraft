@@ -5,6 +5,7 @@ from collections.abc import Callable
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from app.core.telemetry import record_provider_call
 from app.services.llm.base import LLMGenerationError, StructuredModel
 from app.services.llm.schema_contract import build_schema_instruction, format_parse_error
 
@@ -140,6 +141,13 @@ class OpenAICompatibleLLMService:
     def _extract_content(self, response: object) -> str:
         data = response.json()
         self.last_usage = data.get("usage", {}) if isinstance(data, dict) else {}
+        record_provider_call(
+            provider=self.provider_name,
+            model=self.model,
+            usage=self.last_usage,
+            retry_count=self.last_retry_count,
+            metadata={"service": "llm"},
+        )
         choices = data.get("choices", []) if isinstance(data, dict) else []
         if not choices:
             raise LLMGenerationError("LLM response did not include choices.")

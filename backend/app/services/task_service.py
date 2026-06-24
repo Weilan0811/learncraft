@@ -63,29 +63,51 @@ class PersistentTaskService:
 
     def get_preview(self, task_id: str) -> PreviewResponse | None:
         task = self.repository.get_task(task_id)
-        if task is None or task.render_model is None:
+        artifact = self.repository.get_latest_artifact(task_id, "final_render") if task else None
+        payload = artifact.payload if artifact is not None else (task.render_model if task else None)
+        if task is None or payload is None:
             return None
-        render_model = render_model_adapter.validate_python(task.render_model)
+        render_model = render_model_adapter.validate_python(payload)
         return PreviewResponse(content_type=task.content_type, render_model=render_model)
 
     def get_partial_preview(self, task_id: str) -> PartialPreviewResponse | None:
         task = self.repository.get_task(task_id)
-        if task is None or task.partial_render_model is None:
+        artifact = self.repository.get_latest_artifact(task_id, "partial_render") if task else None
+        payload = artifact.payload if artifact is not None else (task.partial_render_model if task else None)
+        if task is None or payload is None:
             return None
-        render_model = render_model_adapter.validate_python(task.partial_render_model)
+        render_model = render_model_adapter.validate_python(payload)
         return PartialPreviewResponse(content_type=task.content_type, render_model=render_model)
 
     def get_events(self, task_id: str) -> TaskEventsResponse | None:
         task = self.repository.get_task(task_id)
         if task is None:
             return None
+        events = self.repository.list_events(task_id)
+        if events:
+            return TaskEventsResponse(
+                task_id=task_id,
+                events=[
+                    {
+                        "event_id": event.id,
+                        "task_id": event.task_id,
+                        "type": event.event_type,
+                        "unit_id": event.unit_id,
+                        "payload": event.payload,
+                        "created_at": event.created_at.isoformat(),
+                    }
+                    for event in events
+                ],
+            )
         return TaskEventsResponse(task_id=task_id, events=task.stream_events)
 
     def get_units(self, task_id: str) -> TaskUnitsResponse | None:
         task = self.repository.get_task(task_id)
         if task is None:
             return None
-        units = sorted(task.render_units.values(), key=lambda item: int(item.get("order", 0)))
+        artifacts = [artifact for artifact in self.repository.list_artifacts(task_id) if artifact.artifact_type == "unit_render"]
+        units = [artifact.payload for artifact in artifacts] if artifacts else list(task.render_units.values())
+        units = sorted(units, key=lambda item: int(item.get("order", 0)))
         return TaskUnitsResponse(task_id=task_id, units=units)
 
     def get_unit_preview(self, task_id: str, unit_id: str) -> UnitPreviewResponse | None:
