@@ -45,9 +45,10 @@ def test_settings_load_provider_defaults_and_env_overrides(monkeypatch: pytest.M
     monkeypatch.setenv("CONTENT_GENERATOR_TEXT_MODEL", "custom-chat")
     monkeypatch.setenv("CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K", "3")
     monkeypatch.setenv("CONTENT_GENERATOR_KB_API_BASE_URL", "")
+    monkeypatch.delenv("CONTENT_GENERATOR_TEXT_PROVIDER", raising=False)
     monkeypatch.delenv("KB_API_BASE_URL", raising=False)
 
-    settings = Settings()
+    settings = Settings(_env_file=None)
 
     assert settings.provider_mode == "stub"
     assert settings.text_provider == "bailian"
@@ -102,6 +103,47 @@ def test_llm_service_repairs_invalid_structured_json_once() -> None:
 
     assert result.title == "修复后"
     assert client.calls == 2
+
+
+def test_openai_compatible_llm_service_tracks_retry_count() -> None:
+    from app.services.llm import OpenAICompatibleLLMService
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def post(self, url: str, **kwargs: object) -> FakeResponse:
+            self.calls += 1
+            if self.calls == 1:
+                raise httpx.ConnectError("temporary outage")
+            return FakeResponse(
+                {"choices": [{"message": {"content": '{"title": "重试后", "points": ["成功"]}'}}]}
+            )
+
+    client = FakeClient()
+    service = OpenAICompatibleLLMService(
+        provider_name="bailian",
+        api_key="sk-test",
+        model="qwen3.5-flash",
+        base_url="https://example.test/v1",
+        client=client,
+        max_retries=1,
+        sleep=lambda _seconds: None,
+    )
+
+    result = service.generate_structured("生成大纲", DemoSchema)
+
+    assert result.title == "重试后"
+    assert client.calls == 2
+    assert service.last_retry_count == 1
+
+
+def test_deepseek_service_uses_openai_compatible_base_class() -> None:
+    from app.services.llm import DeepseekLLMService, OpenAICompatibleLLMService
+
+    service = DeepseekLLMService(api_key="sk-test", model="deepseek-chat", client=object())
+
+    assert isinstance(service, OpenAICompatibleLLMService)
 
 
 def test_apimart_image_service_polls_downloads_and_persists_image() -> None:

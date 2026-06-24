@@ -4,6 +4,7 @@ import re
 from html import escape, unescape
 from typing import cast
 
+from app.core.fallback import allow_generation_fallback
 from app.core.config import get_settings
 from app.schemas.specs import PodcastDialogueDraft, PodcastSegmentSpec, PodcastSpec
 from app.schemas.state import ContentGenerationState
@@ -28,7 +29,7 @@ class PodcastGenerator:
             try:
                 spec = self._generate_with_llm(state)
             except Exception as exc:
-                if not bool((state.normalized_request or {}).get("allow_fallback", False)):
+                if not allow_generation_fallback(state, provider_mode=settings.provider_mode):
                     raise
                 spec = self._generate_fallback(state).model_copy(
                     update={"metadata": {"generation_mode": "fallback", "fallback_reason": str(exc)}}

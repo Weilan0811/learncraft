@@ -65,3 +65,14 @@ def test_legacy_node_shims_are_removed() -> None:
     ]
 
     assert all(importlib.util.find_spec(module_name) is None for module_name in removed_modules)
+
+
+def test_unit_spec_legacy_transition_layer_is_removed() -> None:
+    import importlib.util
+    from pathlib import Path
+
+    assert importlib.util.find_spec("app.generators.unit_specs._legacy") is None
+
+    unit_specs_dir = Path("backend/app/generators/unit_specs")
+    for path in unit_specs_dir.glob("*.py"):
+        assert "_legacy" not in path.read_text(encoding="utf-8")

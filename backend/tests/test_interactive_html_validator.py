@@ -159,6 +159,22 @@ def test_unit_spec_schema_accepts_teaching_flow_and_interaction_specs() -> None:
     assert section.interaction_specs[0].prompt is not None
 
 
+def test_interaction_spec_normalizes_null_scenario_to_empty_dict() -> None:
+    interaction = InteractiveHtmlInteractionSpec.model_validate(
+        {
+            "interaction_id": "unit_1_q1",
+            "block_id": "unit_1_check",
+            "type": "single_choice",
+            "event_type": "single_choice_answered",
+            "target_concepts": ["引用来源"],
+            "prompt": "引用来源的主要价值是什么？",
+            "scenario": None,
+        }
+    )
+
+    assert interaction.scenario == {}
+
+
 def test_validate_unit_spec_accepts_valid_section() -> None:
     report = validate_unit_spec(_valid_section())
 
