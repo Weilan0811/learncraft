@@ -2,6 +2,7 @@ import json
 import os
 from typing import cast
 
+from app.core.fallback import allow_generation_fallback
 from app.core.config import get_settings
 from app.schemas.elements import ImageElement
 from app.schemas.specs import (
@@ -38,7 +39,7 @@ class SocialPostGenerator:
             try:
                 spec = self._generate_with_llm(state)
             except Exception as exc:
-                if not bool((state.normalized_request or {}).get("allow_fallback", False)):
+                if not allow_generation_fallback(state, provider_mode=settings.provider_mode):
                     raise
                 spec = self._generate_fallback(state)
                 spec = spec.model_copy(

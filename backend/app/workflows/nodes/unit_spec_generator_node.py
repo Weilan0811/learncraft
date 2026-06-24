@@ -1,5 +1,5 @@
 from app.content_types.registry import get_content_type_profile
-from app.generators.unit_spec_generators import (
+from app.generators.unit_specs import (
     build_interactive_html_unit_spec,
     build_lecture_unit_spec,
     build_slide_unit_spec,

@@ -10,7 +10,7 @@ Render stage produces HTML + CSS via LLM Composer.
 
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.schemas.base import SchemaModel
 
@@ -100,6 +100,11 @@ class InteractiveHtmlInteractionSpec(SchemaModel):
         "scenario_decision",
     ] | None = None
     allow_adaptive_followup: bool = True
+
+    @field_validator("scenario", mode="before")
+    @classmethod
+    def normalize_null_scenario(cls, value: object) -> object:
+        return {} if value is None else value
 
 
 class InteractiveHtmlInteractionRef(SchemaModel):

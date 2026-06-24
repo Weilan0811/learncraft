@@ -2,7 +2,9 @@ import pytest
 
 from app.core.config import get_settings
 from app.schemas.request import ContentGenerationRequest, GenerationOptions
-from app.schemas.specs import LectureSpec, SlideDeckSpec
+from app.schemas.outline import Outline, OutlineUnit
+from app.schemas.specs import InteractiveHtmlSectionSpec, InteractiveHtmlTeachingBlock, LectureSpec, SlideDeckSpec
+from app.schemas.state import ContentGenerationState
 from app.workflows.content_generation_graph import run_content_generation
 
 
@@ -119,4 +121,148 @@ def test_workflow_image_specs_request_local_illustration_assets(monkeypatch: pyt
     assert image_specs
     assert all("local illustration asset" in item.instruction for item in image_specs)
     assert all("Do not create a full presentation slide" in item.instruction for item in image_specs)
+    get_settings.cache_clear()
+
+
+def test_real_provider_unit_spec_error_is_not_silently_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CONTENT_GENERATOR_PROVIDER_MODE", "real")
+    monkeypatch.delenv("CONTENT_GENERATOR_ALLOW_FALLBACK", raising=False)
+    get_settings.cache_clear()
+
+    from app.generators.unit_specs import lecture
+
+    def fail_generation(*args: object, **kwargs: object) -> object:
+        raise RuntimeError("provider exploded")
+
+    monkeypatch.setattr(lecture, "generate_lecture_unit_spec_with_llm", fail_generation)
+    state = ContentGenerationState(
+        request_id="task_no_fallback",
+        content_type="lecture",
+        topic="AI basics",
+        user_prompt="Generate a lecture",
+        normalized_request={"allow_fallback": False},
+    )
+    unit = OutlineUnit(
+        id="unit_001",
+        order=1,
+        unit_type="section",
+        title="Foundations",
+        goal="Understand the basics.",
+        core_message="AI systems turn inputs into useful outputs.",
+    )
+
+    with pytest.raises(RuntimeError, match="provider exploded"):
+        lecture.build_lecture_unit_spec(state, unit, [])
+
+    get_settings.cache_clear()
+
+
+def test_real_provider_unit_spec_can_use_explicit_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CONTENT_GENERATOR_PROVIDER_MODE", "real")
+    get_settings.cache_clear()
+
+    from app.generators.unit_specs import lecture
+
+    def fail_generation(*args: object, **kwargs: object) -> object:
+        raise RuntimeError("provider exploded")
+
+    monkeypatch.setattr(lecture, "generate_lecture_unit_spec_with_llm", fail_generation)
+    state = ContentGenerationState(
+        request_id="task_allow_fallback",
+        content_type="lecture",
+        topic="AI basics",
+        user_prompt="Generate a lecture",
+        normalized_request={"allow_fallback": True},
+    )
+    unit = OutlineUnit(
+        id="unit_001",
+        order=1,
+        unit_type="section",
+        title="Foundations",
+        goal="Understand the basics.",
+        core_message="AI systems turn inputs into useful outputs.",
+    )
+
+    spec = lecture.build_lecture_unit_spec(state, unit, [])
+
+    assert spec.outline_unit_id == "unit_001"
+    get_settings.cache_clear()
+
+
+def test_interactive_html_llm_unit_spec_uses_current_unit_section_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CONTENT_GENERATOR_PROVIDER_MODE", "real")
+    get_settings.cache_clear()
+
+    from app.generators.unit_specs.interactive_html import build_interactive_html_unit_spec
+    from app.workflows.nodes.validator_node import validate_unit_spec
+
+    unit = OutlineUnit(
+        id="unit_001",
+        order=1,
+        unit_type="interactive_section",
+        title="智能体基础",
+        goal="理解智能体的基本组成。",
+        core_message="智能体通过感知、推理和行动完成任务。",
+    )
+    state = ContentGenerationState(
+        request_id="task_interactive_id",
+        content_type="interactive_html",
+        topic="智能体基础",
+        user_prompt="生成互动课件",
+        normalized_request={"allow_fallback": False},
+        outline=Outline(
+            id="outline_task_interactive_id",
+            content_type="interactive_html",
+            title="智能体基础",
+            units=[unit],
+        ),
+        current_unit_id=unit.id,
+        pending_unit_ids=[unit.id],
+    )
+
+    class PromptFollowingLLM:
+        def generate_structured(self, prompt: str, schema):
+            marker = "- unit_spec_id: "
+            section_id = prompt.split(marker, 1)[1].splitlines()[0].strip()
+            assert schema is InteractiveHtmlSectionSpec
+            return InteractiveHtmlSectionSpec(
+                section_id=section_id,
+                title=unit.title,
+                learning_goal=unit.goal,
+                narrative_goal="帮助学习者理解智能体的基本组成。",
+                teaching_flow=[
+                    InteractiveHtmlTeachingBlock(
+                        block_id=f"{section_id}_intro",
+                        block_type="intro",
+                        title="建立学习背景",
+                        teaching_role="set_context",
+                        content_goal="说明为什么要理解智能体。",
+                        must_cover=["智能体"],
+                    ),
+                    InteractiveHtmlTeachingBlock(
+                        block_id=f"{section_id}_concept",
+                        block_type="concept_explanation",
+                        title="解释核心组成",
+                        teaching_role="explain_core",
+                        content_goal="解释感知、推理和行动的关系。",
+                        must_cover=["感知", "推理", "行动"],
+                    ),
+                    InteractiveHtmlTeachingBlock(
+                        block_id=f"{section_id}_summary",
+                        block_type="summary",
+                        title="收束关键理解",
+                        teaching_role="wrap_up",
+                        content_goal="总结智能体完成任务的闭环。",
+                        must_cover=["任务闭环"],
+                    ),
+                ],
+            )
+
+    monkeypatch.setattr("app.generators.unit_specs.interactive_html.get_llm_service", lambda: PromptFollowingLLM())
+
+    unit_spec = build_interactive_html_unit_spec(state, unit, [])
+    result = validate_unit_spec(state.model_copy(update={"current_unit_spec": unit_spec}))
+
+    assert unit_spec.section_id == unit.id
+    assert result["spec_validation_report"]["passed"] is True
     get_settings.cache_clear()

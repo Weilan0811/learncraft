@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from app.content_types.registry import get_content_type_profile
 from app.core.config import get_settings
+from app.core.fallback import allow_generation_fallback, fallback_detail
 from app.schemas.outline import Outline, OutlineSection, OutlineUnit
 from app.schemas.state import ContentGenerationState, TaskStreamEvent
 from app.services.llm_service import get_llm_service
@@ -23,6 +24,8 @@ def plan_outline(state: ContentGenerationState) -> dict[str, object]:
         outline = _generate_outline_with_llm(state)
         return _planner_success(state, outline, source="llm")
     except Exception as exc:
+        if not allow_generation_fallback(state, provider_mode=settings.provider_mode):
+            raise
         outline = _build_fallback_outline(state, reason=str(exc))
         return _planner_success_with_warning(state, outline, exc)
 
@@ -164,13 +167,7 @@ def _planner_success_with_warning(state: ContentGenerationState, outline: Outlin
     if "workflow_errors" not in result:
         result["workflow_errors"] = []
     result["workflow_errors"].append(
-        {
-            "stage": "plan_outline",
-            "code": type(exc).__name__,
-            "message": str(exc),
-            "detail": {"recovery": "used fallback outline"},
-            "recoverable": True,
-        }
+        fallback_detail("plan_outline", exc)
     )
     return result
 
