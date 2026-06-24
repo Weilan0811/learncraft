@@ -7,6 +7,7 @@ from app.core.task import TaskStatus
 from app.schemas.base import ContentType, SchemaModel
 from app.schemas.elements import ContentElement
 from app.schemas.outline import Outline
+from app.schemas.observability import GenerationMetric
 from app.schemas.render import RenderModel
 from app.schemas.specs import ContentSpec, ElementRequest, InteractiveHtmlSectionSpec, LectureSection, SlideSpecPage
 
@@ -130,6 +131,7 @@ class ContentGenerationState(SchemaModel):
     errors: list[str] = Field(default_factory=list)
     workflow_errors: list[WorkflowError] = Field(default_factory=list)
     token_usage: dict[str, object] = Field(default_factory=dict)
+    metrics: Annotated[list[GenerationMetric], operator.add] = Field(default_factory=list)
     logs: list[WorkflowLogEntry] = Field(default_factory=list)
     current_node: str | None = None
     progress: dict[str, object] | None = Field(default_factory=dict)

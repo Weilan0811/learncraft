@@ -6,10 +6,10 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent))
 
 from app.core.config import get_settings
-from app.models.content_generation_task import ContentGenerationTask
+from app import models
 
 
 config = context.config

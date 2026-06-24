@@ -13,6 +13,8 @@ class TTSGenerationError(RuntimeError):
 
 
 class TTSService(Protocol):
+    last_retry_count: int
+
     def synthesize(self, *, text: str, voice: str, asset_id: str) -> AudioFileElement:
         ...
 
@@ -21,6 +23,8 @@ class StubTTSService:
     def __init__(self, storage_service: StorageService | None = None, output_format: str = "mp3") -> None:
         self.storage_service = storage_service or LocalStorageService()
         self.output_format = output_format
+        self.last_retry_count = 0
+        self.last_metadata: dict[str, object] = {"provider": "stub", "format": output_format}
 
     def synthesize(self, *, text: str, voice: str, asset_id: str) -> AudioFileElement:
         if not text.strip():
@@ -34,6 +38,8 @@ class StubTTSService:
             kind="audio",
             metadata={"provider": "stub", "voice": voice, "format": self.output_format},
         )
+        self.last_retry_count = 0
+        self.last_metadata = dict(record.metadata)
         return AudioFileElement(
             id=record.asset_id,
             title=f"{voice} audio",
@@ -69,6 +75,8 @@ class BailianTTSService:
         self.output_format = output_format
         self.storage_service = storage_service or LocalStorageService()
         self.client = client or httpx.Client(timeout=timeout_seconds)
+        self.last_retry_count = 0
+        self.last_metadata: dict[str, object] = {"provider": "bailian", "model": model}
 
     def synthesize(self, *, text: str, voice: str, asset_id: str) -> AudioFileElement:
         clean_text = text.strip()
@@ -103,6 +111,7 @@ class BailianTTSService:
             kind="audio",
             metadata={"provider": "bailian", "model": self.model, "voice": voice, "format": output_format},
         )
+        self.last_metadata = dict(record.metadata)
         return AudioFileElement(
             id=record.asset_id,
             title=f"{voice} audio",
@@ -117,6 +126,7 @@ class BailianTTSService:
 
     def _post_with_retries(self, url: str, payload: dict[str, object]) -> object:
         last_error: Exception | None = None
+        self.last_retry_count = 0
         for attempt in range(self.max_retries + 1):
             try:
                 response = self.client.post(url, json=payload, headers=self._headers(), timeout=self.timeout_seconds)
@@ -126,6 +136,7 @@ class BailianTTSService:
                 last_error = exc
                 if attempt >= self.max_retries:
                     break
+                self.last_retry_count += 1
                 time.sleep(min(2**attempt, 5))
         raise TTSGenerationError(f"TTS request failed after retries: {last_error}") from last_error
 
@@ -140,6 +151,7 @@ class BailianTTSService:
                 last_error = exc
                 if attempt >= self.max_retries:
                     break
+                self.last_retry_count += 1
                 time.sleep(min(2**attempt, 5))
         raise TTSGenerationError(f"TTS audio download failed after retries: {last_error}") from last_error
 

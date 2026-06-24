@@ -7,6 +7,7 @@ from langgraph.graph import END, START, StateGraph
 from app.core.debug_artifacts import WorkflowDebugArtifacts
 from app.core.logging import append_workflow_log
 from app.core.task import TaskStatus
+from app.core.telemetry import build_node_metric, drain_provider_metrics, monotonic_ms
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.state import ContentGenerationState, TaskStreamEvent
 from app.workflows.nodes.helpers import build_progress
@@ -111,8 +112,11 @@ def stream_content_generation(
         node="run_content_generation",
         detail={"topic": state.topic, "knowledge_base_ids": state.knowledge_base_ids},
     )
+    current["metrics"] = []
     yield current
 
+    previous_node_started_at = monotonic_ms()
+    metric_sequence = 0
     for event_type, payload in graph.stream(state, stream_mode=["updates", "values"]):
         if event_type == "updates":
             for node_name, node_output in payload.items():
@@ -135,6 +139,37 @@ def stream_content_generation(
                 stage=str(current.get("status", TaskStatus.running)),
                 current_node=current.get("current_node"),
             )
+        now_ms = monotonic_ms()
+        node_name = str(current.get("current_node") or "unknown")
+        metric_sequence += 1
+        provider_metrics = []
+        for provider_index, metric in enumerate(
+            drain_provider_metrics(
+                task_id=str(current.get("request_id")),
+                node=node_name,
+                unit_id=str(current.get("current_unit_id")) if current.get("current_unit_id") else None,
+            ),
+            start=1,
+        ):
+            metadata = dict(metric.metadata)
+            metadata["stream_index"] = f"{metric_sequence}.{provider_index}"
+            provider_metrics.append(metric.model_copy(update={"metadata": metadata}))
+        current.setdefault("metrics", [])
+        current["metrics"] = [
+            *list(current.get("metrics") or []),
+            build_node_metric(
+                task_id=str(current.get("request_id")),
+                node=node_name,
+                unit_id=str(current.get("current_unit_id")) if current.get("current_unit_id") else None,
+                duration_ms=max(0, now_ms - previous_node_started_at),
+                metadata={
+                    "status": str(getattr(current.get("status"), "value", current.get("status"))),
+                    "stream_index": metric_sequence,
+                },
+            ).model_dump(mode="python"),
+            *[metric.model_dump(mode="python") for metric in provider_metrics],
+        ]
+        previous_node_started_at = now_ms
         current = _append_stream_log(current, debug_artifact_path=debug_step_paths.get(str(current.get("current_node"))))
         debug_artifacts.write_state_artifacts(current)
         yield current
