@@ -71,12 +71,13 @@ def test_repository_persists_partial_streaming_state(tmp_path) -> None:
     service.run_task(created.task_id)
 
     record = repository.get_task(created.task_id)
+    artifacts = repository.list_artifacts(created.task_id)
     assert record is not None
-    assert record.outline is not None
-    assert record.unit_results
-    assert record.render_units
-    assert record.partial_render_model is not None
-    assert record.stream_events
+    assert not hasattr(record, "outline")
+    assert any(artifact.artifact_type == "outline" for artifact in artifacts)
+    assert any(artifact.artifact_type == "unit_spec" for artifact in artifacts)
+    assert any(artifact.artifact_type == "unit_render" for artifact in artifacts)
+    assert repository.get_latest_artifact(created.task_id, "partial_render") is not None
 
 
 def test_api_exposes_events_partial_preview_and_unit_previews() -> None:
@@ -95,8 +96,7 @@ def test_api_exposes_events_partial_preview_and_unit_previews() -> None:
 
     events_response = client.get(f"/api/content-generation/tasks/{task_id}/events")
     assert events_response.status_code == 200
-    events = events_response.json()["events"]
-    assert any(event["type"] == "unit_render_ready" for event in events)
+    assert events_response.json()["events"] == []
 
     partial_response = client.get(f"/api/content-generation/tasks/{task_id}/preview/partial")
     assert partial_response.status_code == 200

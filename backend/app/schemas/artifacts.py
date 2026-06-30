@@ -13,11 +13,11 @@ class ContentArtifactRecord(SchemaModel):
     unit_id: str | None = None
     unit_order: int | None = None
     version: int = 1
-    status: str
+    status: str = "final"
     schema_name: str | None = None
     schema_version: str | None = None
     payload: dict[str, Any]
-    payload_hash: str
+    payload_hash: str = ""
     source_node: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -26,18 +26,12 @@ class ContentArtifactRecord(SchemaModel):
 class ContentReferenceRecord(SchemaModel):
     id: str
     task_id: str
-    artifact_id: str | None = None
-    stage: str
     unit_id: str | None = None
-    knowledge_base_id: str | None = None
     chunk_id: str
-    source_id: str | None = None
+    source_path: str
     source_title: str | None = None
+    rank: int | None = None
     score: float | None = None
-    retrieval_query: str | None = None
-    content_excerpt: str | None = None
-    content_hash: str | None = None
-    metadata: dict[str, object] = Field(default_factory=dict)
     created_at: datetime
 
 
@@ -58,8 +52,11 @@ class ContentReferenceListResponse(SchemaModel):
 
 class ReferenceChunk(SchemaModel):
     chunk_id: str
+    path: str | None = None
     title: str
     text: str
+    rank: int | None = None
+    score: float | None = None
 
 
 class ReferenceChunksResponse(SchemaModel):
