@@ -5,10 +5,7 @@ from app.schemas.artifacts import (
     ContentArtifactDetailResponse,
     ContentArtifactListResponse,
     ContentArtifactRecord,
-    ContentReferenceListResponse,
-    ContentReferenceRecord,
     GenerationMetricListResponse,
-    GenerationMetricRecord,
     ReferenceChunk,
     ReferenceChunksResponse,
 )
@@ -79,7 +76,7 @@ class PersistentTaskService:
     def get_preview(self, task_id: str) -> PreviewResponse | None:
         task = self.repository.get_task(task_id)
         artifact = self.repository.get_latest_artifact(task_id, "final_render") if task else None
-        payload = artifact.payload if artifact is not None else (task.render_model if task else None)
+        payload = _render_payload(artifact.payload if artifact is not None else None)
         if task is None or payload is None:
             return None
         render_model = render_model_adapter.validate_python(payload)
@@ -88,7 +85,7 @@ class PersistentTaskService:
     def get_partial_preview(self, task_id: str) -> PartialPreviewResponse | None:
         task = self.repository.get_task(task_id)
         artifact = self.repository.get_latest_artifact(task_id, "partial_render") if task else None
-        payload = artifact.payload if artifact is not None else (task.partial_render_model if task else None)
+        payload = _render_payload(artifact.payload if artifact is not None else None)
         if task is None or payload is None:
             return None
         render_model = render_model_adapter.validate_python(payload)
@@ -98,30 +95,14 @@ class PersistentTaskService:
         task = self.repository.get_task(task_id)
         if task is None:
             return None
-        events = self.repository.list_events(task_id)
-        if events:
-            return TaskEventsResponse(
-                task_id=task_id,
-                events=[
-                    {
-                        "event_id": event.id,
-                        "task_id": event.task_id,
-                        "type": event.event_type,
-                        "unit_id": event.unit_id,
-                        "payload": event.payload,
-                        "created_at": event.created_at.isoformat(),
-                    }
-                    for event in events
-                ],
-            )
-        return TaskEventsResponse(task_id=task_id, events=task.stream_events)
+        return TaskEventsResponse(task_id=task_id, events=[])
 
     def get_units(self, task_id: str) -> TaskUnitsResponse | None:
         task = self.repository.get_task(task_id)
         if task is None:
             return None
         artifacts = [artifact for artifact in self.repository.list_artifacts(task_id) if artifact.artifact_type == "unit_render"]
-        units = [artifact.payload for artifact in artifacts] if artifacts else list(task.render_units.values())
+        units = [artifact.payload for artifact in artifacts]
         units = sorted(units, key=lambda item: int(item.get("order", 0)))
         return TaskUnitsResponse(task_id=task_id, units=units)
 
@@ -129,7 +110,8 @@ class PersistentTaskService:
         task = self.repository.get_task(task_id)
         if task is None:
             return None
-        snapshot = task.render_units.get(unit_id)
+        artifact = self.repository.get_latest_artifact(task_id, "unit_render", unit_id)
+        snapshot = artifact.payload if artifact else None
         if snapshot is None:
             return None
         return UnitPreviewResponse.model_validate(snapshot)
@@ -138,7 +120,8 @@ class PersistentTaskService:
         task = self.repository.get_task(task_id)
         if task is None:
             return None
-        snapshot = task.render_units.get(unit_id)
+        artifact = self.repository.get_latest_artifact(task_id, "unit_render", unit_id)
+        snapshot = artifact.payload if artifact else None
         if snapshot is None:
             return None
         return build_unit_text_response(task_id, snapshot)
@@ -182,21 +165,20 @@ class PersistentTaskService:
             task_id=task_id,
             unit_id=unit_id,
             content_type=task.content_type,
-            title=_reference_response_title(task, unit_id),
-            chunks=[_reference_chunk(reference) for reference in references],
+            title=_reference_response_title(task, unit_id, self.repository),
+            chunks=[_reference_chunk(reference, self.repository.get_reference_text(reference.chunk_id)) for reference in references],
         )
 
     def list_metrics(self, task_id: str) -> GenerationMetricListResponse | None:
         if self.repository.get_task(task_id) is None:
             return None
-        return GenerationMetricListResponse(
-            task_id=task_id,
-            metrics=[_metric_record(metric) for metric in self.repository.list_metrics(task_id)],
-        )
+        return GenerationMetricListResponse(task_id=task_id, metrics=[])
 
     def export_task(self, task_id: str, request: ExportRequest) -> ExportResult | None:
         task = self.repository.get_task(task_id)
-        if task is None or task.render_model is None:
+        final_render = self.repository.get_latest_artifact(task_id, "final_render") if task else None
+        render_payload = _render_payload(final_render.payload if final_render else None)
+        if task is None or render_payload is None:
             return None
         profile = get_content_type_profile(task.content_type)
         if request.export_type not in profile.exporter_types:
@@ -215,9 +197,10 @@ class PersistentTaskService:
                 status="failed",
                 metadata={"error": f"Unsupported export type: {request.export_type}", "task_id": task_id},
             )
-        render_model = render_model_adapter.validate_python(task.render_model)
-        content_spec = content_spec_adapter.validate_python(task.content_spec) if task.content_spec else None
-        result = exporter.export(task_id, render_model, request, asset_ids=task.asset_ids, content_spec=content_spec)
+        content_spec_artifact = self.repository.get_latest_artifact(task_id, "content_spec")
+        render_model = render_model_adapter.validate_python(render_payload)
+        content_spec = content_spec_adapter.validate_python(content_spec_artifact.payload) if content_spec_artifact else None
+        result = exporter.export(task_id, render_model, request, asset_ids=[], content_spec=content_spec)
         export_files = [*self.repository.to_task_result(task).export_files, ExportFile(type=request.export_type, url=result.file_url)]
         self.repository.update_export_files(task_id, export_files)
         return result
@@ -228,63 +211,40 @@ InMemoryTaskService = PersistentTaskService
 
 def _artifact_record(artifact) -> ContentArtifactRecord:
     return ContentArtifactRecord(
-        id=artifact.id,
+        id=artifact.artifact_id,
         task_id=artifact.task_id,
         artifact_type=artifact.artifact_type,
         unit_id=artifact.unit_id,
-        unit_order=artifact.unit_order,
         version=artifact.version,
-        status=artifact.status,
-        schema_name=artifact.schema_name,
-        schema_version=artifact.schema_version,
         payload=artifact.payload,
-        payload_hash=artifact.payload_hash,
-        source_node=artifact.source_node,
         created_at=artifact.created_at,
         updated_at=artifact.updated_at,
     )
 
 
-def _reference_record(reference) -> ContentReferenceRecord:
-    return ContentReferenceRecord(
-        id=reference.id,
-        task_id=reference.task_id,
-        artifact_id=reference.artifact_id,
-        stage=reference.stage,
-        unit_id=reference.unit_id,
-        knowledge_base_id=reference.knowledge_base_id,
-        chunk_id=reference.chunk_id,
-        source_id=reference.source_id,
-        source_title=reference.source_title,
-        score=reference.score,
-        retrieval_query=reference.retrieval_query,
-        content_excerpt=reference.content_excerpt,
-        content_hash=reference.content_hash,
-        metadata=reference.metadata_json,
-        created_at=reference.created_at,
-    )
-
-
-def _reference_chunk(reference) -> ReferenceChunk:
+def _reference_chunk(reference, text: str) -> ReferenceChunk:
     return ReferenceChunk(
-        chunk_id=reference.source_id or reference.chunk_id,
-        title=reference.source_title or reference.source_id or reference.chunk_id,
-        text=reference.content_excerpt or "",
+        chunk_id=reference.chunk_id,
+        path=reference.source_path,
+        title=reference.source_title or reference.source_path or reference.chunk_id,
+        text=text,
+        rank=reference.rank,
+        score=reference.score,
     )
 
 
-def _reference_response_title(task, unit_id: str | None) -> str | None:
+def _reference_response_title(task, unit_id: str | None, repository: SQLModelTaskRepository) -> str | None:
     if unit_id is None:
-        if isinstance(task.outline, dict) and isinstance(task.outline.get("title"), str):
-            return task.outline["title"]
         return task.topic
-    snapshot = task.render_units.get(unit_id) if isinstance(task.render_units, dict) else None
+    artifact = repository.get_latest_artifact(task.task_id, "unit_render", unit_id)
+    snapshot = artifact.payload if artifact else None
     if isinstance(snapshot, dict):
         render_fragment = snapshot.get("render_fragment")
         if isinstance(render_fragment, dict) and isinstance(render_fragment.get("title"), str):
             return render_fragment["title"]
-    if isinstance(task.outline, dict):
-        units = task.outline.get("units")
+    outline_artifact = repository.get_latest_artifact(task.task_id, "outline")
+    if outline_artifact and isinstance(outline_artifact.payload, dict):
+        units = outline_artifact.payload.get("units")
         if isinstance(units, list):
             for unit in units:
                 if isinstance(unit, dict) and unit.get("id") == unit_id and isinstance(unit.get("title"), str):
@@ -292,22 +252,8 @@ def _reference_response_title(task, unit_id: str | None) -> str | None:
     return None
 
 
-def _metric_record(metric) -> GenerationMetricRecord:
-    return GenerationMetricRecord(
-        id=metric.id,
-        task_id=metric.task_id,
-        node=metric.node,
-        unit_id=metric.unit_id,
-        provider=metric.provider,
-        model=metric.model,
-        duration_ms=metric.duration_ms,
-        prompt_tokens=metric.prompt_tokens,
-        completion_tokens=metric.completion_tokens,
-        total_tokens=metric.total_tokens,
-        retry_count=metric.retry_count,
-        fallback_used=metric.fallback_used,
-        fallback_reason=metric.fallback_reason,
-        error_type=metric.error_type,
-        metadata=metric.metadata_json,
-        created_at=metric.created_at,
-    )
+def _render_payload(payload: dict | None) -> dict | None:
+    if payload is None:
+        return None
+    render_model = payload.get("render_model")
+    return render_model if isinstance(render_model, dict) else payload

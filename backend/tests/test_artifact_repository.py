@@ -1,10 +1,11 @@
 from pathlib import Path
 
 from app.core.task import TaskStatus
+from app.models import __all__ as model_exports
 from app.models.content_generation_artifact import ContentGenerationArtifact
-from app.models.content_generation_event import ContentGenerationEvent
-from app.models.content_generation_metric import ContentGenerationMetric
+from app.models.content_generation_asset import ContentGenerationAsset
 from app.models.content_generation_reference import ContentGenerationReference
+from app.models.knowledge_chunk_cache import KnowledgeChunkCache
 from app.schemas.outline import Outline, OutlineUnit
 from app.schemas.render import LectureRenderModel, LectureRenderSection, RenderBlock
 from app.schemas.request import ContentGenerationRequest
@@ -86,7 +87,7 @@ def _state_with_core_artifacts(task_id: str) -> ContentGenerationState:
     )
 
 
-def test_repository_writes_artifacts_references_events_and_keeps_legacy_readback(tmp_path: Path) -> None:
+def test_repository_writes_artifacts_and_cached_references_without_task_snapshots(tmp_path: Path) -> None:
     repository = SQLModelTaskRepository(database_url=sqlite_url(tmp_path), echo=False, create_tables=True)
     request = ContentGenerationRequest(content_type="lecture", topic="AI basics", user_prompt="Generate a lecture")
     created = repository.create_task(
@@ -103,28 +104,56 @@ def test_repository_writes_artifacts_references_events_and_keeps_legacy_readback
     loaded = repository.get_task(created.task_id)
     artifacts = repository.list_artifacts(created.task_id)
     references = repository.list_references(created.task_id)
-    events = repository.list_events(created.task_id)
+    cache_rows = repository.list_cached_chunks()
 
     assert loaded is not None
     assert loaded.platform_log_id == "log_001"
     assert loaded.platform_user_id == "user_001"
     assert loaded.platform_session_id == "session_001"
     assert loaded.topic == "AI basics"
-    assert loaded.generation_options["allow_fallback"] is False
-    assert loaded.generation_options["include_images"] is True
-    assert loaded.outline["title"] == "AI basics"
-    assert loaded.content_spec["title"] == "AI basics"
-    assert loaded.render_model["title"] == "AI basics"
+    assert loaded.request_payload["generation_options"]["allow_fallback"] is False
+    assert loaded.request_payload["generation_options"]["include_images"] is True
+    assert not hasattr(loaded, "outline")
+    assert not hasattr(loaded, "content_spec")
+    assert not hasattr(loaded, "render_model")
     assert {artifact.artifact_type for artifact in artifacts} >= {"outline", "content_spec", "final_render"}
-    assert any(reference.chunk_id == "chunk_1" and reference.stage == "planning" for reference in references)
-    assert any(event.event_type == "outline_ready" for event in events)
+    assert any(reference.source_path == "source_1" and reference.source_title == "Overview" for reference in references)
+    assert len(cache_rows) == 1
+    assert cache_rows[0].text == "AI Agent overview content"
 
 
-def test_sqlmodel_metadata_includes_new_generation_tables(tmp_path: Path) -> None:
+def test_repository_deduplicates_cached_reference_text_and_updates_retry_metadata(tmp_path: Path) -> None:
+    repository = SQLModelTaskRepository(database_url=sqlite_url(tmp_path), echo=False, create_tables=True)
+    request = ContentGenerationRequest(content_type="lecture", topic="AI basics", user_prompt="Generate a lecture")
+    created = repository.create_task(request, task_id="task_reference_cache")
+    chunk = RetrievedChunk(
+        id="legacy_chunk_id",
+        source_id="concepts/ai.md",
+        source_title="AI Overview",
+        content="  Same text\r\nfrom knowledge base  ",
+        score=0.4,
+        metadata={"path": "concepts/ai.md", "title": "AI Overview"},
+    )
+
+    repository.append_references(created.task_id, [chunk], unit_id="unit_001")
+    repository.append_references(created.task_id, [chunk.model_copy(update={"score": 0.9})], unit_id="unit_001")
+
+    references = repository.list_references(created.task_id, unit_id="unit_001")
+    cache_rows = repository.list_cached_chunks()
+
+    assert len(cache_rows) == 1
+    assert cache_rows[0].text == "Same text\nfrom knowledge base"
+    assert len(references) == 1
+    assert references[0].score == 0.9
+
+
+def test_sqlmodel_metadata_includes_refactored_generation_tables(tmp_path: Path) -> None:
     repository = SQLModelTaskRepository(database_url=sqlite_url(tmp_path), echo=False, create_tables=True)
     del repository
 
     assert ContentGenerationArtifact.__tablename__ == "content_generation_artifact"
     assert ContentGenerationReference.__tablename__ == "content_generation_reference"
-    assert ContentGenerationEvent.__tablename__ == "content_generation_event"
-    assert ContentGenerationMetric.__tablename__ == "content_generation_metric"
+    assert ContentGenerationAsset.__tablename__ == "content_generation_asset"
+    assert KnowledgeChunkCache.__tablename__ == "knowledge_chunk_cache"
+    assert "ContentGenerationEvent" not in model_exports
+    assert "ContentGenerationMetric" not in model_exports

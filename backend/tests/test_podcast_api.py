@@ -50,8 +50,7 @@ def test_podcast_task_lifecycle_exposes_script_audio_preview_and_exports() -> No
 
     events_response = client.get(f"/api/content-generation/tasks/{task_id}/events")
     assert events_response.status_code == 200
-    event_types = [event["type"] for event in events_response.json()["events"]]
-    assert event_types.count("audio_segment_ready") == len(preview["render_model"]["segments"])
+    assert events_response.json()["events"] == []
 
     markdown_response = client.post(f"/api/content-generation/tasks/{task_id}/export", json={"export_type": "markdown"})
     assert markdown_response.status_code == 200
