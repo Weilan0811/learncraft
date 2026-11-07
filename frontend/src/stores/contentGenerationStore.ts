@@ -7,7 +7,8 @@ import {
   getContentGenerationPartialPreview,
   getContentGenerationPreview,
   getContentGenerationTask,
-  getContentGenerationUnits
+  getContentGenerationUnits,
+  subscribeContentGenerationStream
 } from "../api/contentGenerationApi";
 import type { ContentGenerationRequest, ExportType } from "../types/content";
 import type {
@@ -59,6 +60,72 @@ async function waitForCompletedTask(
   }
 }
 
+interface SseWaitHandlers {
+  onTaskPatch: (patch: Partial<TaskResult>) => void;
+  onRefresh: () => void;
+  onPollFallback: () => Promise<TaskResult>;
+}
+
+/**
+ * Wait for task completion over the backend SSE stream. Snapshots are
+ * lightweight, so unit/event refreshes are triggered only when the counters
+ * change — this removes the 1-2 beat lag of interval polling. Any SSE error
+ * (including the backend closing the stream before a terminal frame) falls
+ * back to interval polling exactly once.
+ */
+async function waitForCompletedTaskSse(taskId: string, handlers: SseWaitHandlers): Promise<TaskResult> {
+  return new Promise<TaskResult>((resolve, reject) => {
+    let settled = false;
+    let lastUnitsCount = -1;
+    let lastEventsCount = -1;
+    let unsubscribe: (() => void) | undefined;
+
+    const finish = (taskPromise: Promise<TaskResult>) => {
+      settled = true;
+      unsubscribe?.();
+      taskPromise.then(resolve, reject);
+    };
+
+    unsubscribe = subscribeContentGenerationStream(
+      taskId,
+      (snapshot) => {
+        if (settled) {
+          return;
+        }
+        const patch: Partial<TaskResult> = {};
+        if (snapshot.status) {
+          patch.status = snapshot.status as TaskResult["status"];
+        }
+        if (snapshot.progress) {
+          patch.progress = snapshot.progress as TaskResult["progress"];
+        }
+        if (snapshot.current_node != null) {
+          patch.current_node = snapshot.current_node;
+        }
+        if (snapshot.errors && snapshot.errors.length > 0) {
+          patch.errors = snapshot.errors;
+        }
+        handlers.onTaskPatch(patch);
+
+        if (snapshot.units_count !== lastUnitsCount || snapshot.events_count !== lastEventsCount) {
+          lastUnitsCount = snapshot.units_count ?? -1;
+          lastEventsCount = snapshot.events_count ?? -1;
+          handlers.onRefresh();
+        }
+        if (snapshot.done || snapshot.missing) {
+          finish(getContentGenerationTask(taskId));
+        }
+      },
+      () => {
+        if (settled) {
+          return;
+        }
+        finish(handlers.onPollFallback());
+      }
+    );
+  });
+}
+
 export const useContentGenerationStore = create<ContentGenerationState>((set, get) => ({
   streamEvents: [],
   renderUnits: [],
@@ -100,9 +167,24 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
         }
       };
 
-      const completedTask = await waitForCompletedTask(createdTask.task_id, async (task) => {
-        set({ task });
-        await refreshStreamingState(task.task_id);
+      const completedTask = await waitForCompletedTaskSse(createdTask.task_id, {
+        onTaskPatch: (patch) => {
+          const current = get().task;
+          if (current && current.task_id === createdTask.task_id) {
+            set({ task: { ...current, ...patch } });
+          }
+        },
+        onRefresh: () => {
+          void refreshStreamingState(createdTask.task_id);
+        },
+        onPollFallback: async () => {
+          const polled = await waitForCompletedTask(createdTask.task_id, async (task) => {
+            set({ task });
+            await refreshStreamingState(task.task_id);
+          });
+          set({ task: polled });
+          return polled;
+        }
       });
       set({ task: completedTask });
 

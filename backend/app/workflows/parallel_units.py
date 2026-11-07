@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from app.core.config import get_settings
 from app.schemas.elements import ContentElement
 from app.schemas.state import ContentGenerationState, RenderUnitSnapshot, TaskStreamEvent, UnitGenerationResult, WorkflowError
+from app.services.task_repository import SQLModelTaskRepository
 from app.workflows.nodes.element_flow_node import collect_unit_required_elements, merge_unit_elements
 from app.workflows.nodes.helpers import build_progress, ensure_monotonic_progress
 from app.workflows.nodes.image_element_node import generate_image_element
@@ -59,20 +60,11 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
     max_workers = max(1, concurrency if concurrency is not None else int(getattr(settings, "generation_unit_concurrency", 3)))
     results_by_unit: dict[str, UnitPipelineResult] = {}
 
-    for batch in build_unit_batches(unit_ids, max_workers):
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(process_unit_pipeline, state, unit_id): unit_id for unit_id in batch}
-            for future in as_completed(futures):
-                unit_id = futures[future]
-                try:
-                    results_by_unit[unit_id] = future.result()
-                except Exception as exc:
-                    results_by_unit[unit_id] = UnitPipelineResult(unit_id=unit_id, failed=True, errors=[f"unit pipeline failed: {exc}"])
-
-    ordered_results = [results_by_unit[unit_id] for unit_id in unit_ids if unit_id in results_by_unit]
-    completed_unit_ids = [result.unit_id for result in ordered_results if not result.failed and result.unit_result is not None]
-    failed_unit_ids = [result.unit_id for result in ordered_results if result.failed or result.unit_result is None]
-
+    # Accumulators start from the incoming state and are extended the moment each
+    # unit pipeline finishes, so mid-stage progress can be persisted incrementally.
+    # Previously the whole unit stage wrote nothing to the repository until the
+    # node returned, which made the frontend progress page freeze during parallel
+    # unit generation (the "multi-page progress stuck" bug).
     unit_results = dict(state.unit_results)
     unit_context_map = dict(state.unit_context_map)
     render_units = dict(state.render_units)
@@ -82,10 +74,14 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
     errors = list(state.errors)
     workflow_errors = list(state.workflow_errors)
     elements_by_id = {element.id: element for element in state.elements}
+    completed_unit_ids: list[str] = []
+    failed_unit_ids: list[str] = []
 
-    for result in ordered_results:
+    incremental_repository = _incremental_repository()
+
+    def _merge_unit_result_into_state(result: UnitPipelineResult) -> None:
         if result.context:
-            unit_context_map[result.unit_id] = result.context  # type: ignore[assignment]
+            unit_context_map[result.unit_id] = result.context
         if result.unit_result is not None:
             unit_results[result.unit_id] = result.unit_result
         if result.render_unit is not None:
@@ -97,6 +93,61 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
         retry_counts.update(result.retry_counts)
         errors.extend(result.errors)
         workflow_errors.extend(result.workflow_errors)
+        if not result.failed and result.unit_result is not None:
+            completed_unit_ids.append(result.unit_id)
+        else:
+            failed_unit_ids.append(result.unit_id)
+
+    def _persist_incremental_state() -> None:
+        if incremental_repository is None or not state.request_id:
+            return
+        try:
+            partial = _build_partial_render_model(state, render_units) if render_units else state.partial_render_model
+            snapshot = state.model_copy(
+                update={
+                    "unit_context_map": unit_context_map,
+                    "unit_results": unit_results,
+                    "render_units": render_units,
+                    "partial_render_model": partial,
+                    "elements": list(elements_by_id.values()),
+                    "element_status": element_status,
+                    "stream_events": list(stream_events),
+                    "retry_counts": dict(retry_counts),
+                    "errors": list(errors),
+                    "workflow_errors": list(workflow_errors),
+                    "completed_unit_ids": list(completed_unit_ids),
+                    "failed_unit_ids": list(failed_unit_ids),
+                    "current_node": "generate_units_parallel",
+                    "progress": build_progress(
+                        stage="unit_completed",
+                        current_node="generate_units_parallel",
+                        completed_units=len(completed_unit_ids),
+                        total_units=len(unit_ids),
+                    ),
+                }
+            )
+            incremental_repository.save_state(state.request_id, snapshot)
+        except Exception:
+            # Best-effort only; run_task persists the authoritative state when the
+            # node returns, and dedup in the artifact layer makes retries safe.
+            pass
+
+    for batch in build_unit_batches(unit_ids, max_workers):
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_unit_pipeline, state, unit_id): unit_id for unit_id in batch}
+            for future in as_completed(futures):
+                unit_id = futures[future]
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    result = UnitPipelineResult(unit_id=unit_id, failed=True, errors=[f"unit pipeline failed: {exc}"])
+                results_by_unit[unit_id] = result
+                _merge_unit_result_into_state(result)
+                _persist_incremental_state()
+
+    ordered_results = [results_by_unit[unit_id] for unit_id in unit_ids if unit_id in results_by_unit]
+    ordered_completed = [result.unit_id for result in ordered_results if not result.failed and result.unit_result is not None]
+    ordered_failed = [result.unit_id for result in ordered_results if result.failed or result.unit_result is None]
 
     partial_render_model = _build_partial_render_model(state, render_units) if render_units else state.partial_render_model
     progress = ensure_monotonic_progress(
@@ -104,11 +155,11 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
         build_progress(
             stage="unit_completed",
             current_node="generate_units_parallel",
-            completed_units=len(completed_unit_ids),
+            completed_units=len(ordered_completed),
             total_units=len(unit_ids),
         ),
     )
-    next_index = len(completed_unit_ids) + len(failed_unit_ids)
+    next_index = len(ordered_completed) + len(ordered_failed)
     return {
         "unit_context_map": unit_context_map,
         "unit_results": unit_results,
@@ -117,8 +168,8 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
         "elements": list(elements_by_id.values()),
         "element_status": element_status,
         "stream_events": stream_events,
-        "completed_unit_ids": completed_unit_ids,
-        "failed_unit_ids": failed_unit_ids,
+        "completed_unit_ids": ordered_completed,
+        "failed_unit_ids": ordered_failed,
         "current_unit_index": next_index,
         "current_unit_id": None,
         "current_unit_context": [],
@@ -256,6 +307,14 @@ def _element_belongs_to_unit(element: ContentElement, unit_id: str) -> bool:
 
 def _element_status_belongs_to_unit(element_id: str, unit_result: UnitGenerationResult | None) -> bool:
     return bool(unit_result and element_id in unit_result.element_requests)
+
+
+def _incremental_repository() -> SQLModelTaskRepository | None:
+    """Repository for mid-stage incremental persistence; None disables it."""
+    try:
+        return SQLModelTaskRepository()
+    except Exception:
+        return None
 
 
 __all__ = [

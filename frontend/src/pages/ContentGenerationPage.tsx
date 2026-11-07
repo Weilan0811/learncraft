@@ -1,6 +1,7 @@
 import { ContentGenerationForm } from "../components/generation/ContentGenerationForm";
 import { ExportActions } from "../components/generation/ExportActions";
 import { GenerationProgress } from "../components/generation/GenerationProgress";
+import { PreviewErrorBoundary } from "../components/generation/PreviewErrorBoundary";
 import { TaskPreviewLookup } from "../components/generation/TaskPreviewLookup";
 import { ContentPreviewPage } from "./ContentPreviewPage";
 
@@ -18,7 +19,9 @@ export function ContentGenerationPage() {
         </div>
         <div className="panel preview-panel">
           <GenerationProgress />
-          <ContentPreviewPage />
+          <PreviewErrorBoundary>
+            <ContentPreviewPage />
+          </PreviewErrorBoundary>
           <ExportActions />
         </div>
       </section>

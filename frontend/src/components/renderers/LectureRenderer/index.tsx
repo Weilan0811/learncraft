@@ -7,16 +7,18 @@ interface LectureRendererProps {
 }
 
 export function LectureRenderer({ model }: LectureRendererProps) {
+  const objectives = model.objectives ?? [];
+  const sections = model.sections ?? [];
   return (
     <article className="lecture-renderer">
       <header className="lecture-header">
         <p className="eyebrow">Lecture Preview</p>
         <h2>{model.title}</h2>
-        {model.objectives.length > 0 && (
+        {objectives.length > 0 && (
           <div className="objectives">
             <h3>学习目标</h3>
             <ul className="objective-list">
-              {model.objectives.map((objective, i) => (
+              {objectives.map((objective, i) => (
                 <li key={i}>{objective}</li>
               ))}
             </ul>
@@ -24,7 +26,7 @@ export function LectureRenderer({ model }: LectureRendererProps) {
         )}
       </header>
       <div className="lecture-content">
-        {model.sections.map((section) => (
+        {sections.map((section) => (
           <LectureSection key={section.id} section={section} />
         ))}
       </div>
