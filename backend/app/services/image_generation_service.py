@@ -337,23 +337,40 @@ class APIMartImageGenerationService:
 
 
 class BailianImageGenerationService:
+    """DashScope native text-to-image via the async two-phase task API.
+
+    NOTE: DashScope's OpenAI-compatible layer (/compatible-mode/v1) does NOT expose
+    /images/generations for image models — that path returns 404 (verified 2026-11-07,
+    regardless of model name, while /chat/completions works with the same key).
+    Text-to-image must use the native API:
+      1) POST /services/aigc/text2image/image-synthesis with X-DashScope-Async: enable
+      2) poll GET /tasks/{task_id} until SUCCEEDED
+      3) download output.results[0].url
+    """
+
+    NATIVE_DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/api/v1"
+
     def __init__(
         self,
         api_key: str,
-        model: str = "qwen-image-2.0",
-        base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        model: str = "wan2.2-t2i-flash",
+        base_url: str | None = None,
         storage_service: StorageService | None = None,
         client: object | None = None,
         timeout_seconds: float = 60.0,
+        poll_interval_seconds: float = 2.0,
+        poll_timeout_seconds: float = 180.0,
     ) -> None:
         if not api_key:
             raise ValueError("Bailian API key is required for real image generation.")
         self.api_key = api_key
         self.model = model
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or self.NATIVE_DEFAULT_BASE_URL).rstrip("/")
         self.storage_service = storage_service or LocalStorageService()
         self.client = client or httpx.Client(timeout=timeout_seconds)
         self.timeout_seconds = timeout_seconds
+        self.poll_interval_seconds = poll_interval_seconds
+        self.poll_timeout_seconds = poll_timeout_seconds
         self.last_retry_count = 0
         self.last_metadata: dict[str, object] = {"provider": "bailian", "model": model}
 
@@ -366,23 +383,41 @@ class BailianImageGenerationService:
         layout: str = "image_text",
     ) -> ImageElement:
         prompt = f"Clean educational illustration, {description}, aspect ratio {aspect_ratio}"
-        response = self.client.post(
-            f"{self.base_url}/images/generations",
-            json={"model": self.model, "prompt": prompt, "n": 1, "size": aspect_ratio},
-            headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-            timeout=self.timeout_seconds,
-        )
-        response.raise_for_status()
-        data = response.json()
-        image_url = self._extract_image_url(data)
+        # wan2.2 free-tier concurrency is low; a 429 here is a throttle, not an error.
+        submit_response = None
+        for attempt in range(3):
+            submit_response = self.client.post(
+                f"{self.base_url}/services/aigc/text2image/image-synthesis",
+                json={
+                    "model": self.model,
+                    "input": {"prompt": prompt},
+                    "parameters": {"size": self._size_for_aspect_ratio(aspect_ratio), "n": 1},
+                },
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                    "X-DashScope-Async": "enable",
+                },
+                timeout=self.timeout_seconds,
+            )
+            if submit_response.status_code != 429:
+                break
+            time.sleep(15.0 * (attempt + 1))
+        submit_response.raise_for_status()
+        submit_data = submit_response.json()
+        output = submit_data.get("output") if isinstance(submit_data, dict) else None
+        task_id = output.get("task_id") if isinstance(output, dict) else None
+        if not task_id:
+            raise ImageGenerationError("Bailian image task submission did not return a task_id.")
+        image_url = self._poll_task_url(str(task_id))
         image_response = self.client.get(image_url, timeout=self.timeout_seconds)
         image_response.raise_for_status()
         content_type = image_response.headers.get("content-type", "image/png").split(";")[0]
         file_format = APIMartImageGenerationService._format_from_content_type(content_type, image_url)
-        asset_id = asset_id or f"img_{uuid4().hex[:12]}"
+        resolved_asset_id = asset_id or f"img_{uuid4().hex[:12]}"
         record = self.storage_service.save_bytes(
-            asset_id=asset_id,
-            filename=f"{asset_id}.{file_format}",
+            asset_id=resolved_asset_id,
+            filename=f"{resolved_asset_id}.{file_format}",
             content=image_response.content,
             content_type=content_type,
             kind="image",
@@ -390,6 +425,7 @@ class BailianImageGenerationService:
                 "provider": "bailian",
                 "model": self.model,
                 "aspect_ratio": aspect_ratio,
+                "size": self._size_for_aspect_ratio(aspect_ratio),
                 "prompt": prompt,
                 "retry_count": 0,
                 "format": file_format,
@@ -407,16 +443,45 @@ class BailianImageGenerationService:
             metadata=record.metadata,
         )
 
+    def _poll_task_url(self, task_id: str) -> str:
+        deadline = time.monotonic() + self.poll_timeout_seconds
+        last_status = None
+        while time.monotonic() < deadline:
+            response = self.client.get(
+                f"{self.base_url}/tasks/{task_id}",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                timeout=self.timeout_seconds,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            output = payload.get("output") if isinstance(payload, dict) else None
+            status = output.get("task_status") if isinstance(output, dict) else None
+            last_status = status
+            if status == "SUCCEEDED":
+                results = output.get("results") or []
+                url = results[0].get("url") if results and isinstance(results[0], dict) else None
+                if not url:
+                    raise ImageGenerationError("Bailian image task succeeded without an image URL.")
+                return str(url)
+            if status in {"FAILED", "UNKNOWN", "CANCELED"}:
+                message = output.get("message") or output.get("code") if isinstance(output, dict) else None
+                raise ImageGenerationError(f"Bailian image task {task_id} ended with status {status}: {message or ''}")
+            time.sleep(self.poll_interval_seconds)
+        raise ImageGenerationError(f"Bailian image task timed out after {self.poll_timeout_seconds}s (last status: {last_status}): {task_id}")
+
     @staticmethod
-    def _extract_image_url(data: dict[str, object]) -> str:
-        output = data.get("output", {})
-        results = output.get("results", []) if isinstance(output, dict) else []
-        if results and isinstance(results[0], dict) and isinstance(results[0].get("url"), str):
-            return results[0]["url"]
-        choices = data.get("data", [])
-        if choices and isinstance(choices, list) and isinstance(choices[0], dict) and isinstance(choices[0].get("url"), str):
-            return choices[0]["url"]
-        raise ImageGenerationError("Bailian image response did not include an image URL.")
+    def _size_for_aspect_ratio(aspect_ratio: str) -> str:
+        # DashScope native API uses "width*height" strings and requires both
+        # dimensions within 512-1440 ("Either width or height should be between
+        # 512 and 1440"). All mapped sizes stay inside that window; wide covers
+        # keep the target ratio as closely as the window allows.
+        mapping = {
+            "1:1": "1024*1024",
+            "9:16": "810*1440",
+            "16:9": "1440*810",
+            "21:9": "1440*618",
+        }
+        return mapping.get(aspect_ratio, "1440*810")
 
 
 def get_image_generation_service(settings: Settings | None = None, storage_service: StorageService | None = None) -> ImageGenerationService:
@@ -438,8 +503,9 @@ def get_image_generation_service(settings: Settings | None = None, storage_servi
         return BailianImageGenerationService(
             api_key=settings.bailian_api_key or "",
             model=settings.image_model,
-            base_url=settings.bailian_base_url,
             storage_service=storage_service,
             timeout_seconds=settings.request_timeout_seconds,
+            poll_interval_seconds=settings.apimart_image_poll_interval_seconds,
+            poll_timeout_seconds=settings.apimart_image_poll_timeout_seconds,
         )
     raise ValueError(f"Unsupported image provider: {settings.image_provider}")
