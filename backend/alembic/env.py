@@ -8,7 +8,7 @@ from sqlmodel import SQLModel
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from app.core.config import get_settings
+from app.core.config import ensure_sqlite_parent_directory, get_settings
 from app import models
 
 
@@ -18,6 +18,7 @@ if config.config_file_name is not None and config.file_config.has_section("forma
     fileConfig(config.config_file_name)
 
 config.set_main_option("sqlalchemy.url", get_settings().DATABASE_URL)
+ensure_sqlite_parent_directory(config.get_main_option("sqlalchemy.url"))
 target_metadata = SQLModel.metadata
 
 

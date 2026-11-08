@@ -1,6 +1,7 @@
 from pydantic import TypeAdapter
 
 from app.core.task import TaskStatus
+from app.core.provider_config import redact_secrets
 from app.schemas.artifacts import (
     ContentArtifactDetailResponse,
     ContentArtifactListResponse,
@@ -16,6 +17,7 @@ from app.schemas.request import ContentGenerationRequest
 from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
 from app.services.task_repository import SQLModelTaskRepository
 from app.services.task_event_store import TaskEventStore
+from app.services.provider_readiness import ensure_request_providers_ready
 from app.services.unit_text_service import build_unit_text_response
 from app.schemas.state import ContentGenerationState
 from app.workflows.content_generation_graph import run_content_generation, stream_content_generation
@@ -37,6 +39,7 @@ class PersistentTaskService:
         request: ContentGenerationRequest,
         platform_context: dict[str, str | None] | None = None,
     ) -> TaskResult:
+        ensure_request_providers_ready(request)
         task = self.repository.create_task(request, platform_context=platform_context)
         return self.repository.to_task_result(task)
 
@@ -66,7 +69,7 @@ class PersistentTaskService:
                 status=TaskStatus.failed,
                 current_node="run_task",
                 progress=progress,
-                errors=[str(exc)],
+                errors=[redact_secrets(str(exc))],
             )
             return
             

@@ -5,7 +5,7 @@ from uuid import uuid4
 from sqlalchemy import inspect, text
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from app.core.config import get_settings
+from app.core.config import ensure_sqlite_parent_directory, get_settings
 from app.core.task import TaskStatus
 from app.models import ContentGenerationArtifact, ContentGenerationReference, ContentGenerationTask, KnowledgeChunkCache
 from app.schemas.export import ExportFile
@@ -24,6 +24,7 @@ class SQLModelTaskRepository:
     def __init__(self, database_url: str | None = None, echo: bool | None = None, create_tables: bool | None = None) -> None:
         settings = get_settings()
         resolved_url = database_url or settings.DATABASE_URL
+        ensure_sqlite_parent_directory(resolved_url)
         self.engine = create_engine(
             resolved_url,
             echo=settings.db_log_echo if echo is None else echo,

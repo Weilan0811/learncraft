@@ -1,8 +1,52 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field, MySQLDsn
+from pydantic import AliasChoices, Field, MySQLDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+
+
+# backend/app/core/config.py -> repository root; relative runtime paths and the
+# .env file must resolve the same way no matter which directory starts the app.
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _resolve_project_path(value: str) -> str:
+    path = Path(value)
+    if path.is_absolute():
+        return str(path)
+    return str((PROJECT_ROOT / path).resolve())
+
+
+def _resolve_sqlite_url(database_url: str) -> str:
+    try:
+        url = make_url(database_url)
+    except Exception:
+        return database_url
+    if url.get_backend_name() != "sqlite":
+        return database_url
+    database = url.database
+    if not database or database == ":memory:":
+        return database_url
+    path = Path(database)
+    if path.is_absolute():
+        return database_url
+    return url.set(database=(PROJECT_ROOT / path).resolve().as_posix()).render_as_string(hide_password=False)
+
+
+def ensure_sqlite_parent_directory(database_url: str) -> None:
+    """SQLite cannot create missing parent directories; do it before connecting."""
+    try:
+        url = make_url(database_url)
+    except Exception:
+        return
+    if url.get_backend_name() != "sqlite" or not url.database or url.database == ":memory:":
+        return
+    path = Path(url.database)
+    if not path.is_absolute():
+        path = (PROJECT_ROOT / path).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
 
 
 class Settings(BaseSettings):
@@ -62,7 +106,20 @@ class Settings(BaseSettings):
     kb_max_chars_per_item: int = 8000
     kb_request_timeout_seconds: float = 120.0
 
-    model_config = SettingsConfigDict(env_prefix="CONTENT_GENERATOR_", env_file=".env")
+    model_config = SettingsConfigDict(env_prefix="CONTENT_GENERATOR_", env_file=PROJECT_ROOT / ".env")
+
+    @model_validator(mode="after")
+    def resolve_runtime_paths(self) -> "Settings":
+        self.storage_root = _resolve_project_path(self.storage_root)
+        self.log_root = _resolve_project_path(self.log_root)
+        self.debug_root = _resolve_project_path(self.debug_root)
+        self.text_provider = self.text_provider.strip().lower()
+        self.image_provider = self.image_provider.strip().lower()
+        self.tts_provider = self.tts_provider.strip().lower()
+        self.tts_output_format = self.tts_output_format.strip().lower()
+        if self.database_url:
+            self.database_url = _resolve_sqlite_url(self.database_url)
+        return self
 
     @property
     def DATABASE_URL(self) -> str:

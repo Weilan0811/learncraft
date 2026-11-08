@@ -4,6 +4,7 @@ from typing import Protocol
 import httpx
 
 from app.core.config import Settings, get_settings
+from app.core.provider_config import ensure_capability
 from app.schemas.elements.audio import AudioFileElement
 from app.services.storage_service import LocalStorageService, StorageService
 
@@ -185,6 +186,7 @@ def get_tts_service(settings: Settings | None = None) -> TTSService:
     settings = settings or get_settings()
     if settings.provider_mode == "stub":
         return StubTTSService(output_format=settings.tts_output_format)
+    ensure_capability(settings, "tts")
     if settings.tts_provider != "bailian":
         raise ValueError(f"Unsupported TTS provider: {settings.tts_provider}")
     return BailianTTSService(

@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -9,6 +10,11 @@ from app.api.assets import router as assets_router
 from app.api.content_generation import router as content_generation_router
 from app.api.learning import router as learning_router
 from app.core.config import get_settings
+from app.core.provider_config import (
+    ProviderConfigurationError,
+    describe_capability,
+    masked_database_url,
+)
 
 
 settings = get_settings()
@@ -22,10 +28,37 @@ _error_logger.setLevel(logging.ERROR)
 if not _error_logger.handlers:
     _error_logger.addHandler(logging.FileHandler(_error_log_path, encoding="utf-8"))
 
+_runtime_logger = logging.getLogger("content_generator.runtime")
+_runtime_logger.setLevel(logging.INFO)
+if not _runtime_logger.handlers:
+    _runtime_handler = logging.StreamHandler()
+    _runtime_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    _runtime_logger.addHandler(_runtime_handler)
+_runtime_logger.propagate = False
+
+
+def _log_runtime_summary() -> None:
+    """Log which providers are ready without ever printing credentials."""
+    _runtime_logger.info("运行模式：%s", settings.provider_mode)
+    for capability in ("text", "image", "tts"):
+        description = describe_capability(settings, capability)
+        log = _runtime_logger.warning if "未就绪" in description else _runtime_logger.info
+        log("%s服务：%s", {"text": "文本", "image": "图片", "tts": "语音"}[capability], description)
+    _runtime_logger.info("数据库：%s", masked_database_url(settings))
+    _runtime_logger.info("存储目录：%s", settings.storage_root)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _log_runtime_summary()
+    yield
+
+
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="Extensible skeleton for multimodal content generation.",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -40,6 +73,13 @@ app.add_middleware(
 @app.get("/health", tags=["system"])
 def health_check() -> dict[str, str]:
     return {"status": "ok", "service": "content-generator-agent"}
+
+
+@app.exception_handler(ProviderConfigurationError)
+async def provider_configuration_error_handler(
+    request: Request, exc: ProviderConfigurationError
+) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
 @app.exception_handler(Exception)
