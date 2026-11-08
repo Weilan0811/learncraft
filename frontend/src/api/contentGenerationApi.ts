@@ -14,6 +14,7 @@ import type {
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? ""
 });
+const STREAM_REQUEST_TIMEOUT_MS = 15000;
 // TODO(MVP-api): Add auth headers, request tracing, cancellation/retry
 // endpoints, and OpenAPI-generated client types.
 
@@ -55,17 +56,55 @@ export async function getContentGenerationPreview(taskId: string): Promise<Previ
 }
 
 export async function getContentGenerationPartialPreview(taskId: string): Promise<PartialPreviewResponse> {
-  return unwrapApiCall(api.get<PartialPreviewResponse>(`/api/content-generation/tasks/${taskId}/preview/partial`));
+  return unwrapApiCall(api.get<PartialPreviewResponse>(`/api/content-generation/tasks/${taskId}/preview/partial`, { timeout: STREAM_REQUEST_TIMEOUT_MS }));
 }
 
 export async function getContentGenerationEvents(taskId: string): Promise<TaskEventsResponse> {
-  return unwrapApiCall(api.get<TaskEventsResponse>(`/api/content-generation/tasks/${taskId}/events`));
+  return unwrapApiCall(api.get<TaskEventsResponse>(`/api/content-generation/tasks/${taskId}/events`, { timeout: STREAM_REQUEST_TIMEOUT_MS }));
 }
 
 export async function getContentGenerationUnits(taskId: string): Promise<TaskUnitsResponse> {
-  return unwrapApiCall(api.get<TaskUnitsResponse>(`/api/content-generation/tasks/${taskId}/units`));
+  return unwrapApiCall(api.get<TaskUnitsResponse>(`/api/content-generation/tasks/${taskId}/units`, { timeout: STREAM_REQUEST_TIMEOUT_MS }));
 }
 
 export async function exportContentGenerationTask(taskId: string, request: ExportRequest): Promise<ExportResult> {
   return unwrapApiCall(api.post<ExportResult>(`/api/content-generation/tasks/${taskId}/export`, request));
+}
+
+export interface TaskStreamSnapshot {
+  task_id: string;
+  status: string;
+  progress?: Record<string, unknown>;
+  current_node?: string | null;
+  errors?: string[];
+  units_count?: number;
+  events_count?: number;
+  done?: boolean;
+  missing?: boolean;
+}
+
+/**
+ * Subscribe to the backend SSE progress stream for a task. Returns an
+ * unsubscribe function that closes the connection. Frames are lightweight
+ * (status/progress/counters); heavy payloads should be refetched through
+ * the regular endpoints when the counters change.
+ */
+export function subscribeContentGenerationStream(
+  taskId: string,
+  onSnapshot: (snapshot: TaskStreamSnapshot) => void,
+  onError?: (error: Event) => void
+): () => void {
+  const base = import.meta.env.VITE_API_BASE_URL ?? "";
+  const source = new EventSource(`${base}/api/content-generation/tasks/${taskId}/events/stream`);
+  source.onmessage = (event) => {
+    try {
+      onSnapshot(JSON.parse(event.data) as TaskStreamSnapshot);
+    } catch {
+      // Ignore malformed frames; the next snapshot will resync.
+    }
+  };
+  if (onError) {
+    source.onerror = (event) => onError(event);
+  }
+  return () => source.close();
 }

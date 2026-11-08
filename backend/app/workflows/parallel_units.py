@@ -1,5 +1,9 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+import logging
+from typing import Optional
+
+from langchain_core.runnables import RunnableConfig
 
 from app.core.config import get_settings
 from app.schemas.elements import ContentElement
@@ -23,6 +27,9 @@ from app.workflows.nodes.validator_node import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 @dataclass
 class UnitPipelineResult:
     unit_id: str
@@ -43,7 +50,12 @@ def build_unit_batches(unit_ids: list[str], concurrency: int) -> list[list[str]]
     return [unit_ids[index : index + batch_size] for index in range(0, len(unit_ids), batch_size)]
 
 
-def generate_units_parallel(state: ContentGenerationState, concurrency: int | None = None) -> dict[str, object]:
+def generate_units_parallel(
+    state: ContentGenerationState,
+    concurrency: int | None = None,
+    *,
+    config: Optional[RunnableConfig] = None,
+) -> dict[str, object]:
     unit_ids = list(state.pending_unit_ids)
     if not unit_ids:
         return {
@@ -59,20 +71,11 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
     max_workers = max(1, concurrency if concurrency is not None else int(getattr(settings, "generation_unit_concurrency", 3)))
     results_by_unit: dict[str, UnitPipelineResult] = {}
 
-    for batch in build_unit_batches(unit_ids, max_workers):
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(process_unit_pipeline, state, unit_id): unit_id for unit_id in batch}
-            for future in as_completed(futures):
-                unit_id = futures[future]
-                try:
-                    results_by_unit[unit_id] = future.result()
-                except Exception as exc:
-                    results_by_unit[unit_id] = UnitPipelineResult(unit_id=unit_id, failed=True, errors=[f"unit pipeline failed: {exc}"])
-
-    ordered_results = [results_by_unit[unit_id] for unit_id in unit_ids if unit_id in results_by_unit]
-    completed_unit_ids = [result.unit_id for result in ordered_results if not result.failed and result.unit_result is not None]
-    failed_unit_ids = [result.unit_id for result in ordered_results if result.failed or result.unit_result is None]
-
+    # Accumulators start from the incoming state and are extended the moment each
+    # unit pipeline finishes, so mid-stage progress can be persisted incrementally.
+    # Previously the whole unit stage wrote nothing to the repository until the
+    # node returned, which made the frontend progress page freeze during parallel
+    # unit generation (the "multi-page progress stuck" bug).
     unit_results = dict(state.unit_results)
     unit_context_map = dict(state.unit_context_map)
     render_units = dict(state.render_units)
@@ -82,10 +85,14 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
     errors = list(state.errors)
     workflow_errors = list(state.workflow_errors)
     elements_by_id = {element.id: element for element in state.elements}
+    completed_unit_ids: list[str] = []
+    failed_unit_ids: list[str] = []
 
-    for result in ordered_results:
+    persist_snapshot = (config or {}).get("configurable", {}).get("persist_unit_snapshot")
+
+    def _merge_unit_result_into_state(result: UnitPipelineResult) -> None:
         if result.context:
-            unit_context_map[result.unit_id] = result.context  # type: ignore[assignment]
+            unit_context_map[result.unit_id] = result.context
         if result.unit_result is not None:
             unit_results[result.unit_id] = result.unit_result
         if result.render_unit is not None:
@@ -97,6 +104,59 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
         retry_counts.update(result.retry_counts)
         errors.extend(result.errors)
         workflow_errors.extend(result.workflow_errors)
+        if not result.failed and result.unit_result is not None:
+            completed_unit_ids.append(result.unit_id)
+        else:
+            failed_unit_ids.append(result.unit_id)
+
+    def _persist_incremental_state() -> None:
+        if persist_snapshot is None or not state.request_id:
+            return
+        try:
+            partial = _build_partial_render_model(state, render_units) if render_units else state.partial_render_model
+            snapshot = state.model_copy(
+                update={
+                    "unit_context_map": unit_context_map,
+                    "unit_results": unit_results,
+                    "render_units": render_units,
+                    "partial_render_model": partial,
+                    "elements": list(elements_by_id.values()),
+                    "element_status": element_status,
+                    "stream_events": list(stream_events),
+                    "retry_counts": dict(retry_counts),
+                    "errors": list(errors),
+                    "workflow_errors": list(workflow_errors),
+                    "completed_unit_ids": list(completed_unit_ids),
+                    "failed_unit_ids": list(failed_unit_ids),
+                    "current_node": "generate_units_parallel",
+                    "progress": build_progress(
+                        stage="unit_completed",
+                        current_node="generate_units_parallel",
+                        completed_units=len(completed_unit_ids),
+                        total_units=len(unit_ids),
+                    ),
+                }
+            )
+            persist_snapshot(state.request_id, snapshot)
+        except Exception:
+            logger.exception("Failed to save incremental progress for task %s", state.request_id)
+
+    for batch in build_unit_batches(unit_ids, max_workers):
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_unit_pipeline, state, unit_id): unit_id for unit_id in batch}
+            for future in as_completed(futures):
+                unit_id = futures[future]
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    result = UnitPipelineResult(unit_id=unit_id, failed=True, errors=[f"unit pipeline failed: {exc}"])
+                results_by_unit[unit_id] = result
+                _merge_unit_result_into_state(result)
+                _persist_incremental_state()
+
+    ordered_results = [results_by_unit[unit_id] for unit_id in unit_ids if unit_id in results_by_unit]
+    ordered_completed = [result.unit_id for result in ordered_results if not result.failed and result.unit_result is not None]
+    ordered_failed = [result.unit_id for result in ordered_results if result.failed or result.unit_result is None]
 
     partial_render_model = _build_partial_render_model(state, render_units) if render_units else state.partial_render_model
     progress = ensure_monotonic_progress(
@@ -104,11 +164,11 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
         build_progress(
             stage="unit_completed",
             current_node="generate_units_parallel",
-            completed_units=len(completed_unit_ids),
+            completed_units=len(ordered_completed),
             total_units=len(unit_ids),
         ),
     )
-    next_index = len(completed_unit_ids) + len(failed_unit_ids)
+    next_index = len(ordered_completed) + len(ordered_failed)
     return {
         "unit_context_map": unit_context_map,
         "unit_results": unit_results,
@@ -117,8 +177,8 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
         "elements": list(elements_by_id.values()),
         "element_status": element_status,
         "stream_events": stream_events,
-        "completed_unit_ids": completed_unit_ids,
-        "failed_unit_ids": failed_unit_ids,
+        "completed_unit_ids": ordered_completed,
+        "failed_unit_ids": ordered_failed,
         "current_unit_index": next_index,
         "current_unit_id": None,
         "current_unit_context": [],

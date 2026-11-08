@@ -24,6 +24,7 @@ from app.schemas.specs import (
 from app.schemas.state import ContentGenerationState, RetrievedChunk
 from app.services.image_generation_service import get_image_generation_service
 from app.services.llm_service import get_llm_service
+from app.services.storage_service import LocalStorageService
 
 
 class SocialPostGenerationError(RuntimeError):
@@ -31,6 +32,10 @@ class SocialPostGenerationError(RuntimeError):
         super().__init__(f"{stage} failed: {original}")
         self.stage = stage
         self.original = original
+
+
+def _svg_escape(text: str) -> str:
+    return (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 class SocialPostGenerator:
@@ -56,6 +61,12 @@ class SocialPostGenerator:
             spec = self._generate_fallback(state)
             spec = spec.model_copy(update={"metadata": {**spec.metadata, "generation_mode": "stub_fallback"}})
         spec = self._normalize_citation_refs(state, spec)
+        if not bool((state.normalized_request or {}).get("include_images", True)):
+            # Keep slots/assets/validator consistent when images are disabled:
+            # empty slots mean validate_final has nothing to require and no image
+            # calls happen downstream. (Fixes the "include_images=false but required
+            # slots still validated" deadlock, task_cdef46af7e90.)
+            return spec.model_copy(update={"image_slots": [], "image_assets": []})
         return self._generate_image_assets(state, spec)
 
     def _generate_with_llm(self, state: ContentGenerationState) -> SocialPostSpec:
@@ -70,6 +81,16 @@ class SocialPostGenerator:
             draft = cast(WechatArticleDraft, llm_service.generate_structured(draft_prompt, WechatArticleDraft))
         except Exception as exc:
             raise SocialPostGenerationError("social_post_draft_generation", exc) from exc
+        if not bool((state.normalized_request or {}).get("include_images", True)):
+            # Skip the image-slot planning LLM call entirely when images are disabled.
+            return SocialPostSpec(
+                id=f"social_{state.request_id}",
+                title=draft.meta.title,
+                metadata={"language": (state.normalized_request or {}).get("language", "zh-CN"), "generation_mode": "llm"},
+                outline=outline,
+                draft=draft,
+                image_slots=[],
+            )
         image_prompt = self._prompt("generator", "social_post_image.md", state, draft=draft.model_dump(mode="json"))
         try:
             slot_plan = cast(ImageSlotPlan, llm_service.generate_structured(image_prompt, ImageSlotPlan))
@@ -246,7 +267,68 @@ class SocialPostGenerator:
                 index, asset = future.result()
                 assets_by_index[index] = asset
         assets = [assets_by_index[index] for index in range(len(spec.image_slots))]
-        return spec.model_copy(update={"image_assets": assets})
+        fallback_errors = {
+            slot.slot_id: (asset.error_message or "unknown image generation error")
+            for slot, asset in zip(spec.image_slots, assets)
+            if asset.status != "generated"
+        }
+        assets = [
+            self._placeholder_asset(state, slot, asset.error_message or "unknown image generation error")
+            if asset.status != "generated"
+            else asset
+            for slot, asset in zip(spec.image_slots, assets)
+        ]
+        metadata = dict(spec.metadata)
+        if fallback_errors:
+            metadata["image_fallbacks"] = fallback_errors
+        return spec.model_copy(update={"image_assets": assets, "metadata": metadata})
+
+    _PLACEHOLDER_DIMENSIONS = {
+        "2.35:1": (1000, 426),
+        "21:9": (1344, 576),
+        "16:9": (1024, 576),
+        "9:16": (576, 1024),
+        "1:1": (1024, 1024),
+    }
+
+    def _placeholder_asset(self, state: ContentGenerationState, slot: ImageSlot, error_message: str) -> ImageAsset:
+        """Replace a failed image asset with a local SVG placeholder so the task can
+        still produce a complete, previewable artifact. The original error is kept in
+        error_message and spec.metadata["image_fallbacks"] for observability."""
+        width, height = self._PLACEHOLDER_DIMENSIONS.get(slot.aspect_ratio, (1024, 576))
+        caption = _svg_escape((slot.caption or slot.slot_id)[:40])
+        label_size = max(16, min(28, width // 40))
+        svg = (
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+            f'viewBox="0 0 {width} {height}">'
+            f'<rect width="100%" height="100%" fill="#F2F4F8"/>'
+            f'<rect x="10" y="10" width="{width - 20}" height="{height - 20}" fill="none" '
+            f'stroke="#C6CDDA" stroke-width="2" stroke-dasharray="8 6"/>'
+            f'<text x="{width // 2}" y="{height // 2 - 10}" '
+            f'font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="{label_size}" '
+            f'fill="#5A6478" text-anchor="middle">{caption}</text>'
+            f'<text x="{width // 2}" y="{height // 2 + 26}" font-family="sans-serif" font-size="14" '
+            f'fill="#8A93A6" text-anchor="middle">fallback placeholder · {width}&#215;{height}</text>'
+            f"</svg>"
+        )
+        storage_service = LocalStorageService()
+        base_id = f"social_{state.request_id}_{slot.slot_id}"
+        record = storage_service.save_bytes(
+            asset_id=f"{base_id}_placeholder",
+            filename=f"{base_id}_placeholder.svg",
+            content=svg.encode("utf-8"),
+            content_type="image/svg+xml",
+            kind="image",
+            metadata={"provider": "placeholder", "fallback": True, "slot_id": slot.slot_id},
+        )
+        return ImageAsset(
+            slot_id=slot.slot_id,
+            status="generated",
+            public_url=record.url,
+            width=width,
+            height=height,
+            error_message=f"fallback placeholder ({error_message})",
+        )
 
     def _normalize_citation_refs(self, state: ContentGenerationState, spec: SocialPostSpec) -> SocialPostSpec:
         refs = self._citation_refs(state.planning_chunks or state.retrieved_chunks)

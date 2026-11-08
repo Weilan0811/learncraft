@@ -1,176 +1,113 @@
-## 内容生成 Agent
+<div align="center">
 
-这是一个可启动的内容生成组件骨架，后续业务能力会沿着统一流程逐步实现：
+# Content Generator Agent
 
-```text
-content_request -> outline -> content_spec -> elements -> renderer -> exporter
-```
+**多类型学习内容生成引擎。给一个主题，产出可讲、可看、可追溯的内容。**
 
-当前阶段已提供框架、统一 schema、接口、抽象服务、stub workflow、Local 资源存储、基础导出链路，以及可配置的外部 provider service。默认运行仍使用 stub，避免开发和测试时误调用付费 API；切换到真实 provider 后，文本生成使用 OpenAI-compatible provider，图片生成默认使用 APIMart GPT-Image-2，TTS 使用百炼，检索调用外部知识库 HTTP API。
+![FastAPI](https://img.shields.io/badge/FastAPI-009485?style=flat-square&logo=fastapi&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?style=flat-square)
+![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
 
-生成过程已拆分为任务主表、artifact、reference、event、metric 等产品态数据表。开发期仍保留 `storage/debug_workflow/<task_id>/` JSON 快照用于排障，但产品接口优先读取数据库中的 artifact/reference/metric。
+<!-- TODO: 演示 GIF 录好后放 docs/assets/，取消注释：
+<img src="docs/assets/demo-generation.gif" width="720" alt="生成过程演示"/>
+-->
 
----
+*演示 GIF 占位——录制中*
 
-### Backend
+</div>
 
-```powershell
-uv run uvicorn app.main:app --app-dir backend --reload
-uv run pytest backend/tests
-```
+## 这是什么
 
-本地配置从根目录 `.env` 读取，可从 `.env.example` 复制后填写。`.env` 已被 `.gitignore` 忽略，API key 不应提交到仓库。
+做一份能直接用的学习内容，通常要跨过几道工序：查资料、搭大纲、写正文、配插图、排版。这个项目把整条工序交给一条 LangGraph 工作流：输入主题与要求，引擎完成检索、规划、逐节写作与配图，产出图文讲义、幻灯片、交互式讲义、图文推文、播客脚本五类内容。
 
-常用 provider 配置：
+生成过程实时可见——章节在并行产出，每完成一章立即出现在预览里；生成结果有据可查——正文中的引用可以对应到来源资料；链路也经得起出错——单张配图失败、某个模型超时，任务会降级继续推进，而不是整体报废。
 
-```env
-CONTENT_GENERATOR_PROVIDER_MODE=stub
-CONTENT_GENERATOR_TEXT_PROVIDER=bailian
-CONTENT_GENERATOR_TEXT_MODEL=qwen3.5-flash
-CONTENT_GENERATOR_IMAGE_PROVIDER=apimart
-CONTENT_GENERATOR_IMAGE_MODEL=gpt-image-2
-CONTENT_GENERATOR_IMAGE_RESOLUTION=1k
-CONTENT_GENERATOR_KB_API_BASE_URL=
-CONTENT_GENERATOR_KB_API_KEY=
-CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K=5
-CONTENT_GENERATOR_ALLOW_FALLBACK=false
-CONTENT_GENERATOR_GENERATION_UNIT_CONCURRENCY=3
-CONTENT_GENERATOR_IMAGE_GENERATION_CONCURRENCY=3
-CONTENT_GENERATOR_TTS_GENERATION_CONCURRENCY=4
-```
+## ✨ 内容类型
 
-fallback 优先级：
+| 类型 | 产物 | 适合做什么 |
+|---|---|---|
+| 📖 图文讲义（lecture） | 分章节讲解、学习目标、思考题 | 备课、系统自学材料 |
+| 🎞️ 幻灯片（slide_deck） | 逐页大纲与页面内容 | 课堂演示、分享汇报 |
+| 🧩 交互式讲义（interactive_html） | 内嵌测验与可交互元素的单文件 HTML | 概念演示、课后练习 |
+| 📰 图文推文（social_post） | 封面图、章节配图与排版好的长文 | 公众号等知识分享 |
+| 🎙️ 播客脚本（podcast_script） | 多人对谈式讲稿 | 知识播客、通勤伴听 |
 
-1. 请求体显式传 `generation_options.allow_fallback` 时，以请求体为准。
-2. 请求体未显式传时，使用 `.env` 中的 `CONTENT_GENERATOR_ALLOW_FALLBACK`。
-3. `CONTENT_GENERATOR_PROVIDER_MODE=stub` 时 fallback 总是允许，用于本地闭环。
+各类型支持 HTML / Markdown / PDF 等一种或多种导出格式；任务规格和产物保存到数据库，任务事件和日志保存在本地文件中。
 
----
+## 亮点
 
-### 检索服务配置
+### 👀 生成过程全程直播
 
-真实检索依赖外部知识库 HTTP API，需要配置以下环境变量：
+- **SSE 流式进度**：后端持续推送状态与进度快照，前端经 EventSource 订阅，轮询仅作兜底。
+- **章节并行、逐个可见**：多章节内容在线程池中并行生成，每完成一章立即落库并更新预览，而不是全部结束后一次性给出。
 
-```env
-CONTENT_GENERATOR_KB_API_BASE_URL=https://your-kb-api.example.com
-CONTENT_GENERATOR_KB_API_KEY=your-api-key
-CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K=5
-CONTENT_GENERATOR_KB_MAX_CHARS_PER_ITEM=8000
-```
+### 🧗 经得起出错
 
-将 `CONTENT_GENERATOR_PROVIDER_MODE` 设置为 `real` 后，后端 service factory 会按 provider 配置创建真实服务。默认图片 provider 为 APIMart `gpt-image-2`，会轮询任务结果并把图片转存到 Local storage；百炼图片 provider 仍可通过 `CONTENT_GENERATOR_IMAGE_PROVIDER=bailian` 切换。真实模式默认不静默 fallback，便于暴露 provider、schema 和渲染错误；demo 场景可设置 `CONTENT_GENERATOR_ALLOW_FALLBACK=true`。
+- **三级降级**：内容校验不过先自动修复重写，仍不过时按开关降级产出，两者都不可行才判定任务失败。
+- **配图占位兜底**：某张配图生成失败时自动替换为占位图，失败原因写入元数据，任务继续推进。
 
-核心入口：
+### 📎 有据可查
 
-- `POST /api/content-generation/tasks`
-- `GET /api/content-generation/tasks/{task_id}`
-- `GET /api/content-generation/tasks/{task_id}/preview`
-- `GET /api/content-generation/tasks/{task_id}/artifacts`
-- `GET /api/content-generation/tasks/{task_id}/references`
-- `GET /api/content-generation/tasks/{task_id}/metrics`
-- `POST /api/content-generation/tasks/{task_id}/export`
-- `GET /api/assets/{asset_id}`
+- **引用留痕**：生成内容中的引用会记录来源资料与位置，随导出一并呈现。
+- **过程可追溯**：节点输入输出保存在调试文件中，任务事件和日志保存在本地文件中。
 
----
+### 🔌 模型与检索可插拔
 
-### 数据库迁移
+- **四个环节独立可换**：文本、配图、语音、检索均为 provider 工厂模式，`.env` 一行切换服务商。
+- **零配置起步**：默认 stub 模式不依赖任何 API Key，即可跑通全流程；接入真实模型只需复制 `.env.example` 填入 Key。
 
-本地 SQLite 会在测试和开发时自动建表；生产 MySQL 建议使用 Alembic：
+## 🚀 快速开始
 
-```powershell
-uv run alembic -c backend/alembic.ini upgrade head
-```
+环境要求：Python 3.11+，Node.js 20+。
 
-当前产品态核心表：
+```bash
+git clone https://github.com/Weilan0811/content-generator-agent.git
+cd content-generator-agent
 
-- `content_generation_task`
-- `content_generation_artifact`
-- `content_generation_reference`
-- `content_generation_asset`
-- `content_generation_event`
-- `content_generation_metric`
+# 后端（默认 stub 模式，无需 API Key）
+python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
+pip install -r backend/requirements.txt
+uvicorn app.main:app --app-dir backend
 
-平台后端继续保持“一会话一主产物”规则，生成模块通过 `platform_log_id`、`platform_user_id`、`platform_session_id` 与平台侧记录关联，不建立跨库外键。
-
----
-
-### Frontend
-
-```powershell
+# 前端
 cd frontend
 npm install
 npm run dev
-npm run build
 ```
 
-Vite dev server 默认代理 `/api` 到 `http://127.0.0.1:8000`。
+打开 `http://localhost:5173`，输入一个主题即可开始生成。要使用真实模型，复制 `.env.example` 为 `.env`，填入所用服务商的 Key 后重启后端。
 
----
+## ⚙️ 工作原理
 
-### Schema
-
-Pydantic v2 是当前 schema 单一真源。后端 schema 位于 `backend/app/schemas/`，可用下面命令导出 JSON Schema：
-
-```powershell
-uv run python backend/scripts/export_json_schema.py
+```mermaid
+flowchart LR
+    A[主题与要求] --> B[检索资料]
+    B --> C[规划内容规格]
+    C --> D{内容类型}
+    D -->|单文档| E[一次成文]
+    D -->|多章节| F[章节并行生成]
+    E --> G[校验 · 修复 · 降级]
+    F --> G
+    G --> H[渲染]
+    H --> I[预览 / 导出]
 ```
 
----
+单文档类型（推文、播客脚本）一次成文；多章节类型（讲义、幻灯片、交互式讲义）按章节并行生成，逐个校验与修复。持久化模型、降级矩阵、接口契约等工程细节见 **[backend/README.md](backend/README.md)**。
 
-### Tests
+## 🗺️ 开发计划
 
-后端测试默认使用 mock 或 stub，不会调用 APIMart、百炼或真实 Qdrant 服务：
+- ✅ 五类内容生成、双通路工作流、三级降级、配图占位兜底
+- ✅ SSE 流式进度与章节级实时落库
+- 🔭 本地知识库：BM25 + 向量混合检索与召回率评测，替代外部知识库服务
+- 🔭 内容质量评测：LLM-as-judge 评分体系与 badcase 集
+- 🔭 知识演化：LLM Wiki 式的 ingest / lint / 双链最小闭环
+- 🔭 更多内容类型与导出格式
 
-```powershell
-uv run pytest backend/tests
-```
+## 📚 文档
 
-如在受限 Windows 环境中遇到 pytest 临时目录权限问题，可使用项目虚拟环境直接运行：
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest backend/tests -q -p no:cacheprovider
-```
-
----
-
-### Workflow debug test
-
-`backend/tests/test_workflow_debug.py` 是手动真实生成调试测试，不属于默认稳定测试入口。运行前请确认：
-
-- `.env` 已配置真实 provider 所需 API key，并设置 `CONTENT_GENERATOR_PROVIDER_MODE=real`。
-- 已配置外部知识库 API（`CONTENT_GENERATOR_KB_API_BASE_URL`）。
-- 真实图片生成可能产生外部 API 调用和费用。
-
-运行 lecture 全流程 debug：
-
-```powershell
-$env:CONTENT_GENERATOR_PROVIDER_MODE="real"
-.\.venv\Scripts\python.exe -m pytest backend/tests/test_workflow_debug.py::test_lecture -q -s -p no:cacheprovider
-```
-
-运行 slide deck 全流程 debug：
-
-```powershell
-$env:CONTENT_GENERATOR_PROVIDER_MODE="real"
-.\.venv\Scripts\python.exe -m pytest backend/tests/test_workflow_debug.py::test_slides -q -s -p no:cacheprovider
-```
-
-运行全部 workflow debug：
-
-```powershell
-$env:CONTENT_GENERATOR_PROVIDER_MODE="real"
-.\.venv\Scripts\python.exe -m pytest backend/tests/test_workflow_debug.py -q -s -p no:cacheprovider
-```
-
-测试会在 stdout 显式打印 workflow 每一步输出，并把调试结果保存到 `storage/debug_workflow/<request_id>/`：
-
-- `steps/NN_<node>.json`：每个 LangGraph 节点的 update 输出。
-- `trace.json`：按顺序汇总的节点输出。
-- `final_state.json`、`content_spec.json`、`render_model.json`、`elements.json`：最终工作流产物。
-- `assets/`、`generated_assets.json`：真实生成资产及 manifest。
-
----
-
-### TODO
-
-现在存在的问题：前端没有办法持久化记录答案，答案可以随意修改，和我的设计想法有冲突，需要调整，但目前优先级不高。
+| 文档 | 内容 |
+|---|---|
+| [docs/introduction.md](docs/introduction.md) | 项目设计与背景 |
+| [backend/README.md](backend/README.md) | 后端架构、接口、持久化与开发约定 |

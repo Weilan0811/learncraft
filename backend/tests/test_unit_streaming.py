@@ -96,7 +96,8 @@ def test_api_exposes_events_partial_preview_and_unit_previews() -> None:
 
     events_response = client.get(f"/api/content-generation/tasks/{task_id}/events")
     assert events_response.status_code == 200
-    assert events_response.json()["events"] == []
+    events = events_response.json()["events"]
+    assert any(event["type"] == "unit_render_ready" for event in events)
 
     partial_response = client.get(f"/api/content-generation/tasks/{task_id}/preview/partial")
     assert partial_response.status_code == 200

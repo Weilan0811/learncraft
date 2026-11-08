@@ -8,7 +8,7 @@ function formatPercent(percent?: number) {
 }
 
 export function GenerationProgress() {
-  const { task, loading, error, renderUnits, streamEvents } = useContentGenerationStore();
+  const { task, loading, error, streamRefreshError, retryStreamRefresh, renderUnits, streamEvents } = useContentGenerationStore();
   const progress = task?.progress;
   const stage = progress?.display_stage || progress?.stage || task?.status || (loading ? "running" : "idle");
   const percent = formatPercent(progress?.percent);
@@ -54,6 +54,12 @@ export function GenerationProgress() {
         <strong>{task?.task_id ?? "not created"}</strong>
       </div>
       {error ? <p className="error-text">{error}</p> : null}
+      {streamRefreshError ? (
+        <div className="error-text" role="alert">
+          <p>{streamRefreshError}</p>
+          <button type="button" onClick={retryStreamRefresh}>重新加载</button>
+        </div>
+      ) : null}
     </section>
   );
 }

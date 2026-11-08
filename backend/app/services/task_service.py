@@ -15,6 +15,7 @@ from app.schemas.specs import ContentSpec
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
 from app.services.task_repository import SQLModelTaskRepository
+from app.services.task_event_store import TaskEventStore
 from app.services.unit_text_service import build_unit_text_response
 from app.schemas.state import ContentGenerationState
 from app.workflows.content_generation_graph import run_content_generation, stream_content_generation
@@ -27,8 +28,9 @@ content_spec_adapter = TypeAdapter(ContentSpec)
 
 
 class PersistentTaskService:
-    def __init__(self, repository: SQLModelTaskRepository | None = None) -> None:
+    def __init__(self, repository: SQLModelTaskRepository | None = None, event_store: TaskEventStore | None = None) -> None:
         self.repository = repository or SQLModelTaskRepository()
+        self.event_store = event_store or TaskEventStore()
 
     def create_task(
         self,
@@ -47,9 +49,12 @@ class PersistentTaskService:
             request = ContentGenerationRequest.model_validate(task.request_payload)
             # state = run_content_generation(request, request_id=task_id)
             final_state = None
-            for update in stream_content_generation(request, request_id=task_id):
+            for update in stream_content_generation(
+                request, request_id=task_id, persist_unit_snapshot=self._save_unit_snapshot
+            ):
                 partial_state = ContentGenerationState.model_validate(update)
                 self.repository.save_state(task_id, partial_state)
+                self.event_store.save_events(task_id, partial_state.stream_events)
                 final_state = partial_state
 
         except Exception as exc:
@@ -68,6 +73,10 @@ class PersistentTaskService:
         # self.repository.save_state(task_id, state)
         if final_state is not None:
             self.repository.save_state(task_id, final_state)
+
+    def _save_unit_snapshot(self, task_id: str, state: ContentGenerationState) -> None:
+        self.repository.save_unit_snapshot(task_id, state)
+        self.event_store.save_events(task_id, state.stream_events)
 
     def get_task(self, task_id: str) -> TaskResult | None:
         task = self.repository.get_task(task_id)
@@ -95,7 +104,7 @@ class PersistentTaskService:
         task = self.repository.get_task(task_id)
         if task is None:
             return None
-        return TaskEventsResponse(task_id=task_id, events=[])
+        return TaskEventsResponse(task_id=task_id, events=self.event_store.get_events(task_id))
 
     def get_units(self, task_id: str) -> TaskUnitsResponse | None:
         task = self.repository.get_task(task_id)

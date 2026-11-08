@@ -83,10 +83,7 @@ class SQLModelTaskRepository:
 
         outline = state.outline.model_dump(mode="json") if state.outline else None
         render_model = state.render_model.model_dump(mode="json") if state.render_model else None
-        partial_render_model = state.partial_render_model.model_dump(mode="json") if state.partial_render_model else None
         content_spec = state.content_spec.model_dump(mode="json") if state.content_spec else None
-        unit_results = {unit_id: result.model_dump(mode="json") for unit_id, result in state.unit_results.items()}
-        render_units = {unit_id: snapshot.model_dump(mode="json") for unit_id, snapshot in state.render_units.items()}
 
         with Session(self.engine) as session:
             task_row = session.get(ContentGenerationTask, task_id)
@@ -98,24 +95,14 @@ class SQLModelTaskRepository:
                 artifacts.upsert_artifact(task_id, "outline", outline)
             if content_spec:
                 artifacts.upsert_artifact(task_id, "content_spec", content_spec)
-            if partial_render_model:
-                artifacts.upsert_artifact(task_id, "partial_render", partial_render_model)
             if render_model:
                 artifacts.upsert_artifact(
                     task_id,
                     "final_render",
                     {"content_type": task_row.content_type, "render_model": render_model},
                 )
-            for unit_id, result in unit_results.items():
-                unit_spec = result.get("unit_spec")
-                if isinstance(unit_spec, dict):
-                    artifacts.upsert_artifact(task_id, "unit_spec", unit_spec, unit_id=unit_id)
-            for unit_id, snapshot in render_units.items():
-                artifacts.upsert_artifact(task_id, "unit_render", snapshot, unit_id=unit_id)
-
+            self._save_unit_artifacts(artifacts, task_id, state)
             artifacts.append_references(task_id, "planning", state.planning_chunks)
-            for unit_id, chunks in state.unit_context_map.items():
-                artifacts.append_references(task_id, "unit_spec", chunks, unit_id=unit_id)
             if state.current_unit_id and state.current_unit_context:
                 artifacts.append_references(task_id, "unit_spec", state.current_unit_context, unit_id=state.current_unit_id)
 
@@ -129,6 +116,46 @@ class SQLModelTaskRepository:
             session.commit()
             session.refresh(task_row)
             return self._detach(session, task_row)
+
+    def save_unit_snapshot(self, task_id: str, state: ContentGenerationState) -> ContentGenerationTask | None:
+        with Session(self.engine) as session:
+            task_row = session.get(ContentGenerationTask, task_id)
+            if task_row is None:
+                return None
+
+            progress = ensure_monotonic_progress(
+                task_row.progress, state.progress or build_progress(stage=str(state.status), current_node=state.current_node)
+            )
+            if state.current_node:
+                progress["current_node"] = state.current_node
+            task_row.progress = progress
+            task_row.error_message = state.errors[-1] if state.errors else None
+            task_row.updated_at = now_utc()
+
+            self._save_unit_artifacts(ArtifactRepository(session), task_id, state)
+            session.add(task_row)
+            session.commit()
+            session.refresh(task_row)
+            return self._detach(session, task_row)
+
+    @staticmethod
+    def _save_unit_artifacts(artifacts: ArtifactRepository, task_id: str, state: ContentGenerationState) -> None:
+        if state.partial_render_model:
+            artifacts.upsert_artifact(
+                task_id, "partial_render", state.partial_render_model.model_dump(mode="json")
+            )
+        for unit_id, result in state.unit_results.items():
+            unit_spec = result.unit_spec.model_dump(mode="json") if result.unit_spec else None
+            if unit_spec:
+                artifacts.upsert_artifact(
+                    task_id, "unit_spec", unit_spec, unit_id=unit_id,
+                )
+        for unit_id, snapshot in state.render_units.items():
+            artifacts.upsert_artifact(
+                task_id, "unit_render", snapshot.model_dump(mode="json"), unit_id=unit_id,
+            )
+        for unit_id, chunks in state.unit_context_map.items():
+            artifacts.append_references(task_id, "unit_spec", chunks, unit_id=unit_id)
 
     def append_references(
         self,

@@ -1,5 +1,11 @@
-from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, status
+import json
+import time
+from collections.abc import Iterator
 
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
+
+from app.core.task import TaskStatus
 from app.schemas.artifacts import (
     ContentArtifactDetailResponse,
     ContentArtifactListResponse,
@@ -157,3 +163,71 @@ def export_content_generation_task(task_id: str, request: ExportRequest) -> Expo
     if export_result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return export_result
+
+
+@router.get("/tasks/{task_id}/events/stream")
+def stream_content_generation_task(task_id: str) -> StreamingResponse:
+    """Server-Sent Events stream of lightweight task progress snapshots.
+
+    Each frame carries only status/progress/counters so the frontend can
+    react within ~600ms instead of blind-polling at 1.2s. Heavy payloads
+    (units, partial preview) are still fetched through the regular
+    endpoints when the counters change.
+    """
+
+    def _frame(payload: dict[str, object]) -> str:
+        return f"data: {json.dumps(payload, ensure_ascii=False, default=str)}\n\n"
+
+    def event_source() -> Iterator[str]:
+        last_signature: tuple[object, ...] | None = None
+        idle_ticks = 0
+        deadline = time.monotonic() + 3600
+        while True:
+            task = task_service.get_task(task_id)
+            if task is None:
+                yield _frame({"task_id": task_id, "missing": True, "done": True})
+                return
+            units = task_service.get_units(task_id)
+            events = task_service.get_events(task_id)
+            units_count = len(units.units) if units else 0
+            events_count = len(events.events) if events else 0
+            progress = task.progress or {}
+            terminal = task.status in {TaskStatus.completed, TaskStatus.failed}
+            signature = (
+                str(task.status),
+                json.dumps(progress, sort_keys=True, default=str),
+                units_count,
+                events_count,
+            )
+            if signature != last_signature:
+                last_signature = signature
+                idle_ticks = 0
+                yield _frame(
+                    {
+                        "task_id": task_id,
+                        "status": str(task.status),
+                        "progress": progress,
+                        "current_node": task.current_node,
+                        "errors": task.errors,
+                        "units_count": units_count,
+                        "events_count": events_count,
+                        "done": terminal,
+                    }
+                )
+            else:
+                idle_ticks += 1
+                if idle_ticks % 15 == 0:
+                    yield ": keep-alive\n\n"
+            if terminal or time.monotonic() > deadline:
+                return
+            time.sleep(0.6)
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
