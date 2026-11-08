@@ -81,6 +81,9 @@ class Settings(BaseSettings):
     tts_output_format: str = "mp3"
     podcast_segment_max_retries: int = 1
     podcast_segment_retry_delay_seconds: float = 10.0
+    # Single-process deployments can safely mark leftover tasks as interrupted
+    # on startup. Disable this when running several workers against one database.
+    recover_interrupted_tasks: bool = True
 
     apimart_api_key: str | None = None
     apimart_base_url: str = "https://api.apimart.ai/v1"

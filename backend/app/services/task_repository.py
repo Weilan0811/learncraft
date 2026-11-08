@@ -14,6 +14,7 @@ from app.schemas.request import ContentGenerationRequest
 from app.schemas.task import KnowledgeBaseStatus, TaskResult
 from app.schemas.state import ContentGenerationState
 from app.services.artifact_repository import ArtifactRepository
+from app.services.asset_repository import sync_assets_from_state
 from app.workflows.nodes.helpers import build_progress, ensure_monotonic_progress
 
 
@@ -108,6 +109,7 @@ class SQLModelTaskRepository:
             artifacts.append_references(task_id, "planning", state.planning_chunks)
             if state.current_unit_id and state.current_unit_context:
                 artifacts.append_references(task_id, "unit_spec", state.current_unit_context, unit_id=state.current_unit_id)
+            progress["resource_summary"] = sync_assets_from_state(session, task_id, state)
 
             task_row.status = str(state.status)
             task_row.progress = progress
@@ -132,11 +134,13 @@ class SQLModelTaskRepository:
             if state.current_node:
                 progress["current_node"] = state.current_node
             self._apply_retrieval_status(progress, state)
+
+            self._save_unit_artifacts(ArtifactRepository(session), task_id, state)
+            progress["resource_summary"] = sync_assets_from_state(session, task_id, state)
             task_row.progress = progress
             task_row.error_message = state.errors[-1] if state.errors else None
             task_row.updated_at = now_utc()
 
-            self._save_unit_artifacts(ArtifactRepository(session), task_id, state)
             session.add(task_row)
             session.commit()
             session.refresh(task_row)
@@ -288,12 +292,31 @@ class SQLModelTaskRepository:
         if self.engine.dialect.name != "sqlite":
             return
         inspector = inspect(self.engine)
-        if not inspector.has_table("content_generation_task"):
-            return
-        columns = {column["name"] for column in inspector.get_columns("content_generation_task")}
-        with self.engine.begin() as connection:
-            if "error_message" not in columns:
-                connection.execute(text("ALTER TABLE content_generation_task ADD COLUMN error_message TEXT"))
+        if inspector.has_table("content_generation_task"):
+            columns = {column["name"] for column in inspector.get_columns("content_generation_task")}
+            with self.engine.begin() as connection:
+                if "error_message" not in columns:
+                    connection.execute(text("ALTER TABLE content_generation_task ADD COLUMN error_message TEXT"))
+        if inspector.has_table("content_generation_asset"):
+            asset_columns = {column["name"] for column in inspector.get_columns("content_generation_asset")}
+            with self.engine.begin() as connection:
+                if "status" not in asset_columns:
+                    connection.execute(
+                        text(
+                            "ALTER TABLE content_generation_asset ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'generated'"
+                        )
+                    )
+                if "error_message" not in asset_columns:
+                    connection.execute(text("ALTER TABLE content_generation_asset ADD COLUMN error_message TEXT"))
+                if "retry_count" not in asset_columns:
+                    connection.execute(
+                        text("ALTER TABLE content_generation_asset ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0")
+                    )
+                if "updated_at" not in asset_columns:
+                    connection.execute(text("ALTER TABLE content_generation_asset ADD COLUMN updated_at DATETIME"))
+                    connection.execute(
+                        text("UPDATE content_generation_asset SET updated_at = created_at WHERE updated_at IS NULL")
+                    )
 
     @staticmethod
     def _apply_retrieval_status(progress: dict[str, Any], state: ContentGenerationState) -> None:

@@ -192,7 +192,7 @@ def stream_content_generation_task(task_id: str) -> StreamingResponse:
             units_count = len(units.units) if units else 0
             events_count = len(events.events) if events else 0
             progress = task.progress or {}
-            terminal = task.status in {TaskStatus.completed, TaskStatus.failed}
+            terminal = task.status in {TaskStatus.completed, TaskStatus.failed, TaskStatus.interrupted}
             signature = (
                 str(task.status),
                 json.dumps(progress, sort_keys=True, default=str),

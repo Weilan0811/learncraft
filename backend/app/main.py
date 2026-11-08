@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.assets import router as assets_router
-from app.api.content_generation import router as content_generation_router
+from app.api.content_generation import router as content_generation_router, task_service
 from app.api.learning import router as learning_router
 from app.core.config import get_settings
 from app.core.provider_config import (
@@ -15,6 +15,7 @@ from app.core.provider_config import (
     describe_capability,
     masked_database_url,
 )
+from app.services.task_recovery import recover_interrupted_tasks
 
 
 settings = get_settings()
@@ -51,6 +52,14 @@ def _log_runtime_summary() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _log_runtime_summary()
+    if settings.recover_interrupted_tasks:
+        recovery = recover_interrupted_tasks(task_service.repository)
+        if recovery["interrupted_tasks"] or recovery["reset_assets"]:
+            _runtime_logger.info(
+                "任务恢复：%s 个任务标记为中断，%s 个资源重试标记为失败",
+                recovery["interrupted_tasks"],
+                recovery["reset_assets"],
+            )
     yield
 
 
