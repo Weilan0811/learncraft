@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     image_model: str = "gpt-image-2"
     image_resolution: Literal["1k", "2k", "4k"] = "1k"
     tts_provider: str = "bailian"
+    kb_provider: Literal["external", "local"] = "external"
     tts_model: str = "qwen3-tts-instruct-flash"
     tts_person1_voice: str = "Ethan"
     tts_person2_voice: str = "Cherry"

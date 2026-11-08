@@ -1,0 +1,3274 @@
+{
+ "summary": {
+  "keyword": {
+   "recall@5": 0.4473684210526316,
+   "recall@10": 0.4473684210526316,
+   "mrr": 0.4263157894736842,
+   "latency_ms_p50": 5.5
+  },
+  "vector": {
+   "recall@5": 0.9210526315789473,
+   "recall@10": 0.9473684210526315,
+   "mrr": 0.8327067669172932,
+   "latency_ms_p50": 386.1
+  },
+  "hybrid": {
+   "recall@5": 0.8421052631578947,
+   "recall@10": 0.8947368421052632,
+   "mrr": 0.6026315789473684,
+   "latency_ms_p50": 370.2
+  },
+  "router": {
+   "recall@5": 0.8947368421052632,
+   "recall@10": 0.9210526315789473,
+   "mrr": 0.7039473684210527,
+   "latency_ms_p50": 384.2
+  }
+ },
+ "records": {
+  "keyword": [
+   {
+    "id": "q01",
+    "query": "RAG 的基本原理是什么？检索和生成是怎么配合的？",
+    "relevant": [
+     "retrieval-rag-original",
+     "engineering-llm-patterns"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-cybertown",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 6.5,
+    "note": "直白"
+   },
+   {
+    "id": "q02",
+    "query": "上下文检索怎么解决传统 RAG 里 chunk 语义割裂的问题？",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 6.2,
+    "note": "直白"
+   },
+   {
+    "id": "q03",
+    "query": "BM25 和向量检索怎么融合？RRF 是怎么做的",
+    "relevant": [
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 5.1,
+    "note": "直白"
+   },
+   {
+    "id": "q04",
+    "query": "混合检索里稀疏和稠密两路结果如何合并排序",
+    "relevant": [
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 5.7,
+    "note": "语义漂移：不说 RRF"
+   },
+   {
+    "id": "q05",
+    "query": "怎么给知识库检索结果做重排序提升质量",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-context",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 4.8,
+    "note": "直白 rerank"
+   },
+   {
+    "id": "q06",
+    "query": "DPR 这类稠密检索模型的训练方法",
+    "relevant": [
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 5.6,
+    "note": "术语"
+   },
+   {
+    "id": "q07",
+    "query": "怎么系统性地评测一个 AI 产品的输出质量",
+    "relevant": [
+     "evals-hamel"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-intro",
+     "memory-helloagents-cybertown",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "evals-helloagents-perf",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 6.9,
+    "note": "直白"
+   },
+   {
+    "id": "q08",
+    "query": "让 LLM 当裁判评估对话质量可靠吗？MT-Bench 是怎么做的",
+    "relevant": [
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-cybertown",
+     "evals-helloagents-perf",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-cybertown",
+     "engineering-helloagents-pitfalls",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 6.9,
+    "note": "直白"
+   },
+   {
+    "id": "q09",
+    "query": "智能体性能评估有哪些维度和指标",
+    "relevant": [
+     "evals-helloagents-perf"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 5.0,
+    "note": "直白"
+   },
+   {
+    "id": "q10",
+    "query": "为什么快速迭代离不开评测集",
+    "relevant": [
+     "evals-hamel"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "memory-helloagents-context",
+     "agents-helloagents-intro",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 3.3,
+    "note": "语义漂移：Iterating Quickly == Success"
+   },
+   {
+    "id": "q11",
+    "query": "评估 LLM 应用时人工标注和自动评测怎么选",
+    "relevant": [
+     "evals-hamel",
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "engineering-helloagents-pitfalls",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 5.9,
+    "note": "对比类"
+   },
+   {
+    "id": "q12",
+    "query": "什么时候该用 agent，什么时候普通工作流就够了",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 5.5,
+    "note": "直白 When to use agents"
+   },
+   {
+    "id": "q13",
+    "query": "ReAct 模式如何把推理和行动结合起来",
+    "relevant": [
+     "agents-reasoning-react"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "memory-helloagents-cybertown",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 5.5,
+    "note": "直白"
+   },
+   {
+    "id": "q14",
+    "query": "构建有效智能体的最佳实践有哪些",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-intro",
+     "memory-helloagents-context",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "memory-helloagents-context",
+     "evals-helloagents-perf",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 5.9,
+    "note": "直白"
+   },
+   {
+    "id": "q15",
+    "query": "LLM 自主智能体的系统架构包含哪些组件",
+    "relevant": [
+     "agents-lilian-agents"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-context",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 6.1,
+    "note": "直白"
+   },
+   {
+    "id": "q16",
+    "query": "智能体有哪些经典范式，怎么构建",
+    "relevant": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 3.6,
+    "note": "直白"
+   },
+   {
+    "id": "q17",
+    "query": "任务分解和自我反思机制怎么提升规划能力",
+    "relevant": [
+     "agents-lilian-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 5.5,
+    "note": "语义漂移：Task Decomposition / Self-Reflection"
+   },
+   {
+    "id": "q18",
+    "query": "智能体为什么需要长期记忆",
+    "relevant": [
+     "memory-helloagents-memretrieval",
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-context",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-cybertown",
+     "evals-helloagents-perf",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-context",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 3.4,
+    "note": "直白"
+   },
+   {
+    "id": "q19",
+    "query": "生成式代理的记忆流和反思机制是怎么设计的",
+    "relevant": [
+     "memory-generative-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-context",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 6.4,
+    "note": "直白"
+   },
+   {
+    "id": "q20",
+    "query": "MemGPT 怎么把操作系统的思想用在 LLM 内存管理上",
+    "relevant": [
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 6.5,
+    "note": "直白"
+   },
+   {
+    "id": "q21",
+    "query": "大模型怎么记住用户偏好并个性化回复",
+    "relevant": [
+     "memory-generative-agents",
+     "memory-helloagents-memretrieval"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-cybertown",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "memory-helloagents-cybertown",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 5.0,
+    "note": "无词面重叠"
+   },
+   {
+    "id": "q22",
+    "query": "AI 小镇项目的技术架构是怎样的",
+    "relevant": [
+     "memory-helloagents-cybertown"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown"
+    ],
+    "latency_ms": 6.7,
+    "note": "直白"
+   },
+   {
+    "id": "q23",
+    "query": "MCP 协议是什么？为什么重要",
+    "relevant": [
+     "engineering-mcp-intro"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "evals-helloagents-perf",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "engineering-openai-structured-outputs"
+    ],
+    "latency_ms": 3.9,
+    "note": "直白"
+   },
+   {
+    "id": "q24",
+    "query": "LLM 应用系统有哪些常见设计模式",
+    "relevant": [
+     "engineering-llm-patterns"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-intro",
+     "evals-helloagents-perf",
+     "agents-helloagents-intro",
+     "evals-helloagents-perf",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 4.0,
+    "note": "直白"
+   },
+   {
+    "id": "q25",
+    "query": "怎么用 JSON Schema 约束模型输出格式",
+    "relevant": [
+     "engineering-openai-structured-outputs"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 4.2,
+    "note": "语义漂移：不说 structured outputs"
+   },
+   {
+    "id": "q26",
+    "query": "Agent 开发实际踩过哪些坑，有什么经验教训",
+    "relevant": [
+     "engineering-helloagents-pitfalls"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 5.4,
+    "note": "直白"
+   },
+   {
+    "id": "q27",
+    "query": "上下文工程的核心原则是什么",
+    "relevant": [
+     "agents-context-engineering",
+     "memory-helloagents-context"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 4.3,
+    "note": "双页同主题"
+   },
+   {
+    "id": "q28",
+    "query": "检索增强生成和智能体记忆有什么关系",
+    "relevant": [
+     "memory-helloagents-memretrieval",
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 5.2,
+    "note": "跨主题"
+   },
+   {
+    "id": "q29",
+    "query": "做 RAG 评测时应该看哪些指标",
+    "relevant": [
+     "engineering-llm-patterns",
+     "evals-hamel",
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 4.6,
+    "note": "跨主题"
+   },
+   {
+    "id": "q30",
+    "query": "上下文窗口有限时怎么管理长对话历史",
+    "relevant": [
+     "memory-memgpt",
+     "memory-helloagents-context",
+     "agents-context-engineering"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 7.6,
+    "note": "跨主题"
+   },
+   {
+    "id": "q31",
+    "query": "queue manager 和 function chaining 在 MemGPT 里怎么协作",
+    "relevant": [
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "engineering-helloagents-pitfalls",
+     "memory-memgpt",
+     "memory-memgpt"
+    ],
+    "latency_ms": 5.2,
+    "note": "术语密集"
+   },
+   {
+    "id": "q32",
+    "query": "ReAct 在 knowledge-intensive 任务上的实验结果",
+    "relevant": [
+     "agents-reasoning-react"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms",
+     "agents-lilian-agents",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 5.0,
+    "note": "术语密集"
+   },
+   {
+    "id": "q33",
+    "query": "generative agents 的 memory stream、retrieval 和 reflection 三模块",
+    "relevant": [
+     "memory-generative-agents"
+    ],
+    "ranked_docs": [
+     "memory-generative-agents",
+     "agents-helloagents-paradigms",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "agents-lilian-agents",
+     "memory-generative-agents",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 6.0,
+    "note": "术语密集"
+   },
+   {
+    "id": "q34",
+    "query": "prompt chaining、routing 等 workflow 模式的区别",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "agents-building-effective-agents",
+     "agents-building-effective-agents",
+     "agents-building-effective-agents",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-context",
+     "agents-helloagents-intro",
+     "memory-helloagents-cybertown",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 4.3,
+    "note": "术语密集"
+   },
+   {
+    "id": "q35",
+    "query": "contextual retrieval 里 prompt caching 怎么降低成本",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual"
+    ],
+    "latency_ms": 4.3,
+    "note": "术语密集"
+   },
+   {
+    "id": "q36",
+    "query": "MT-Bench 和 Chatbot Arena 的评测设计",
+    "relevant": [
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge"
+    ],
+    "latency_ms": 4.9,
+    "note": "术语密集"
+   },
+   {
+    "id": "q37",
+    "query": "DPR 和 BART 在 RAG 里分别扮演什么角色",
+    "relevant": [
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "retrieval-rag-original",
+     "memory-helloagents-cybertown",
+     "engineering-llm-patterns",
+     "memory-helloagents-cybertown",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-cybertown",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-cybertown",
+     "agents-helloagents-intro",
+     "memory-helloagents-cybertown"
+    ],
+    "latency_ms": 6.2,
+    "note": "术语密集"
+   },
+   {
+    "id": "q38",
+    "query": "hello-agents 里 LLM 封装和 API 密钥配置怎么做",
+    "relevant": [
+     "agents-helloagents-paradigms"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-cybertown",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 6.9,
+    "note": "术语密集"
+   }
+  ],
+  "vector": [
+   {
+    "id": "q01",
+    "query": "RAG 的基本原理是什么？检索和生成是怎么配合的？",
+    "relevant": [
+     "retrieval-rag-original",
+     "engineering-llm-patterns"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 1435.2,
+    "note": "直白"
+   },
+   {
+    "id": "q02",
+    "query": "上下文检索怎么解决传统 RAG 里 chunk 语义割裂的问题？",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "engineering-llm-patterns",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 398.9,
+    "note": "直白"
+   },
+   {
+    "id": "q03",
+    "query": "BM25 和向量检索怎么融合？RRF 是怎么做的",
+    "relevant": [
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-anthropic-contextual",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-anthropic-contextual",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid"
+    ],
+    "latency_ms": 359.7,
+    "note": "直白"
+   },
+   {
+    "id": "q04",
+    "query": "混合检索里稀疏和稠密两路结果如何合并排序",
+    "relevant": [
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "memory-helloagents-memretrieval",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 499.3,
+    "note": "语义漂移：不说 RRF"
+   },
+   {
+    "id": "q05",
+    "query": "怎么给知识库检索结果做重排序提升质量",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-qdrant-hybrid",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 351.6,
+    "note": "直白 rerank"
+   },
+   {
+    "id": "q06",
+    "query": "DPR 这类稠密检索模型的训练方法",
+    "relevant": [
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "engineering-llm-patterns",
+     "retrieval-rag-original",
+     "retrieval-qdrant-hybrid",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "engineering-llm-patterns",
+     "retrieval-rag-original",
+     "retrieval-rag-original"
+    ],
+    "latency_ms": 412.0,
+    "note": "术语"
+   },
+   {
+    "id": "q07",
+    "query": "怎么系统性地评测一个 AI 产品的输出质量",
+    "relevant": [
+     "evals-hamel"
+    ],
+    "ranked_docs": [
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "evals-hamel"
+    ],
+    "latency_ms": 371.6,
+    "note": "直白"
+   },
+   {
+    "id": "q08",
+    "query": "让 LLM 当裁判评估对话质量可靠吗？MT-Bench 是怎么做的",
+    "relevant": [
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge"
+    ],
+    "latency_ms": 468.6,
+    "note": "直白"
+   },
+   {
+    "id": "q09",
+    "query": "智能体性能评估有哪些维度和指标",
+    "relevant": [
+     "evals-helloagents-perf"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 372.1,
+    "note": "直白"
+   },
+   {
+    "id": "q10",
+    "query": "为什么快速迭代离不开评测集",
+    "relevant": [
+     "evals-hamel"
+    ],
+    "ranked_docs": [
+     "evals-hamel",
+     "evals-hamel",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "evals-hamel",
+     "agents-helloagents-paradigms",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel"
+    ],
+    "latency_ms": 388.4,
+    "note": "语义漂移：Iterating Quickly == Success"
+   },
+   {
+    "id": "q11",
+    "query": "评估 LLM 应用时人工标注和自动评测怎么选",
+    "relevant": [
+     "evals-hamel",
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "evals-hamel",
+     "evals-hamel",
+     "evals-mtbench-judge",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-helloagents-perf",
+     "engineering-llm-patterns",
+     "agents-lilian-agents",
+     "evals-mtbench-judge",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 410.6,
+    "note": "对比类"
+   },
+   {
+    "id": "q12",
+    "query": "什么时候该用 agent，什么时候普通工作流就够了",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "agents-building-effective-agents",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-intro",
+     "agents-building-effective-agents",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 390.5,
+    "note": "直白 When to use agents"
+   },
+   {
+    "id": "q13",
+    "query": "ReAct 模式如何把推理和行动结合起来",
+    "relevant": [
+     "agents-reasoning-react"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react"
+    ],
+    "latency_ms": 398.5,
+    "note": "直白"
+   },
+   {
+    "id": "q14",
+    "query": "构建有效智能体的最佳实践有哪些",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 370.1,
+    "note": "直白"
+   },
+   {
+    "id": "q15",
+    "query": "LLM 自主智能体的系统架构包含哪些组件",
+    "relevant": [
+     "agents-lilian-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-lilian-agents",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 416.2,
+    "note": "直白"
+   },
+   {
+    "id": "q16",
+    "query": "智能体有哪些经典范式，怎么构建",
+    "relevant": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 369.4,
+    "note": "直白"
+   },
+   {
+    "id": "q17",
+    "query": "任务分解和自我反思机制怎么提升规划能力",
+    "relevant": [
+     "agents-lilian-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-lilian-agents",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-lilian-agents"
+    ],
+    "latency_ms": 351.0,
+    "note": "语义漂移：Task Decomposition / Self-Reflection"
+   },
+   {
+    "id": "q18",
+    "query": "智能体为什么需要长期记忆",
+    "relevant": [
+     "memory-helloagents-memretrieval",
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-memretrieval",
+     "agents-lilian-agents"
+    ],
+    "latency_ms": 368.8,
+    "note": "直白"
+   },
+   {
+    "id": "q19",
+    "query": "生成式代理的记忆流和反思机制是怎么设计的",
+    "relevant": [
+     "memory-generative-agents"
+    ],
+    "ranked_docs": [
+     "memory-generative-agents",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-generative-agents",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "agents-lilian-agents",
+     "agents-helloagents-paradigms",
+     "memory-generative-agents"
+    ],
+    "latency_ms": 367.7,
+    "note": "直白"
+   },
+   {
+    "id": "q20",
+    "query": "MemGPT 怎么把操作系统的思想用在 LLM 内存管理上",
+    "relevant": [
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt"
+    ],
+    "latency_ms": 363.7,
+    "note": "直白"
+   },
+   {
+    "id": "q21",
+    "query": "大模型怎么记住用户偏好并个性化回复",
+    "relevant": [
+     "memory-generative-agents",
+     "memory-helloagents-memretrieval"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "engineering-llm-patterns",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "agents-lilian-agents",
+     "engineering-llm-patterns",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 369.0,
+    "note": "无词面重叠"
+   },
+   {
+    "id": "q22",
+    "query": "AI 小镇项目的技术架构是怎样的",
+    "relevant": [
+     "memory-helloagents-cybertown"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown"
+    ],
+    "latency_ms": 418.3,
+    "note": "直白"
+   },
+   {
+    "id": "q23",
+    "query": "MCP 协议是什么？为什么重要",
+    "relevant": [
+     "engineering-mcp-intro"
+    ],
+    "ranked_docs": [
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "memory-memgpt"
+    ],
+    "latency_ms": 342.9,
+    "note": "直白"
+   },
+   {
+    "id": "q24",
+    "query": "LLM 应用系统有哪些常见设计模式",
+    "relevant": [
+     "engineering-llm-patterns"
+    ],
+    "ranked_docs": [
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "agents-lilian-agents",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns"
+    ],
+    "latency_ms": 342.3,
+    "note": "直白"
+   },
+   {
+    "id": "q25",
+    "query": "怎么用 JSON Schema 约束模型输出格式",
+    "relevant": [
+     "engineering-openai-structured-outputs"
+    ],
+    "ranked_docs": [
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs"
+    ],
+    "latency_ms": 387.6,
+    "note": "语义漂移：不说 structured outputs"
+   },
+   {
+    "id": "q26",
+    "query": "Agent 开发实际踩过哪些坑，有什么经验教训",
+    "relevant": [
+     "engineering-helloagents-pitfalls"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 411.1,
+    "note": "直白"
+   },
+   {
+    "id": "q27",
+    "query": "上下文工程的核心原则是什么",
+    "relevant": [
+     "agents-context-engineering",
+     "memory-helloagents-context"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 386.1,
+    "note": "双页同主题"
+   },
+   {
+    "id": "q28",
+    "query": "检索增强生成和智能体记忆有什么关系",
+    "relevant": [
+     "memory-helloagents-memretrieval",
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-context",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 374.0,
+    "note": "跨主题"
+   },
+   {
+    "id": "q29",
+    "query": "做 RAG 评测时应该看哪些指标",
+    "relevant": [
+     "engineering-llm-patterns",
+     "evals-hamel",
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "evals-hamel",
+     "retrieval-rag-original",
+     "evals-hamel",
+     "evals-helloagents-perf",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "evals-helloagents-perf",
+     "engineering-llm-patterns",
+     "retrieval-rag-original",
+     "retrieval-rag-original"
+    ],
+    "latency_ms": 415.8,
+    "note": "跨主题"
+   },
+   {
+    "id": "q30",
+    "query": "上下文窗口有限时怎么管理长对话历史",
+    "relevant": [
+     "memory-memgpt",
+     "memory-helloagents-context",
+     "agents-context-engineering"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 406.6,
+    "note": "跨主题"
+   },
+   {
+    "id": "q31",
+    "query": "queue manager 和 function chaining 在 MemGPT 里怎么协作",
+    "relevant": [
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt"
+    ],
+    "latency_ms": 344.9,
+    "note": "术语密集"
+   },
+   {
+    "id": "q32",
+    "query": "ReAct 在 knowledge-intensive 任务上的实验结果",
+    "relevant": [
+     "agents-reasoning-react"
+    ],
+    "ranked_docs": [
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms",
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms",
+     "agents-lilian-agents"
+    ],
+    "latency_ms": 384.1,
+    "note": "术语密集"
+   },
+   {
+    "id": "q33",
+    "query": "generative agents 的 memory stream、retrieval 和 reflection 三模块",
+    "relevant": [
+     "memory-generative-agents"
+    ],
+    "ranked_docs": [
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "agents-lilian-agents",
+     "memory-generative-agents"
+    ],
+    "latency_ms": 334.3,
+    "note": "术语密集"
+   },
+   {
+    "id": "q34",
+    "query": "prompt chaining、routing 等 workflow 模式的区别",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "agents-building-effective-agents",
+     "agents-building-effective-agents",
+     "agents-helloagents-intro",
+     "agents-building-effective-agents",
+     "memory-memgpt",
+     "engineering-llm-patterns",
+     "agents-building-effective-agents",
+     "agents-helloagents-intro",
+     "retrieval-anthropic-contextual",
+     "agents-reasoning-react"
+    ],
+    "latency_ms": 385.6,
+    "note": "术语密集"
+   },
+   {
+    "id": "q35",
+    "query": "contextual retrieval 里 prompt caching 怎么降低成本",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual"
+    ],
+    "latency_ms": 482.3,
+    "note": "术语密集"
+   },
+   {
+    "id": "q36",
+    "query": "MT-Bench 和 Chatbot Arena 的评测设计",
+    "relevant": [
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge"
+    ],
+    "latency_ms": 388.7,
+    "note": "术语密集"
+   },
+   {
+    "id": "q37",
+    "query": "DPR 和 BART 在 RAG 里分别扮演什么角色",
+    "relevant": [
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "engineering-llm-patterns"
+    ],
+    "latency_ms": 403.9,
+    "note": "术语密集"
+   },
+   {
+    "id": "q38",
+    "query": "hello-agents 里 LLM 封装和 API 密钥配置怎么做",
+    "relevant": [
+     "agents-helloagents-paradigms"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-context",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 359.2,
+    "note": "术语密集"
+   }
+  ],
+  "hybrid": [
+   {
+    "id": "q01",
+    "query": "RAG 的基本原理是什么？检索和生成是怎么配合的？",
+    "relevant": [
+     "retrieval-rag-original",
+     "engineering-llm-patterns"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 378.6,
+    "note": "直白"
+   },
+   {
+    "id": "q02",
+    "query": "上下文检索怎么解决传统 RAG 里 chunk 语义割裂的问题？",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual"
+    ],
+    "latency_ms": 366.0,
+    "note": "直白"
+   },
+   {
+    "id": "q03",
+    "query": "BM25 和向量检索怎么融合？RRF 是怎么做的",
+    "relevant": [
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "retrieval-qdrant-hybrid",
+     "engineering-helloagents-pitfalls",
+     "retrieval-qdrant-hybrid",
+     "engineering-helloagents-pitfalls",
+     "retrieval-qdrant-hybrid",
+     "engineering-helloagents-pitfalls",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "retrieval-qdrant-hybrid"
+    ],
+    "latency_ms": 351.3,
+    "note": "直白"
+   },
+   {
+    "id": "q04",
+    "query": "混合检索里稀疏和稠密两路结果如何合并排序",
+    "relevant": [
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-qdrant-hybrid",
+     "memory-helloagents-memretrieval",
+     "retrieval-qdrant-hybrid",
+     "memory-helloagents-memretrieval",
+     "retrieval-qdrant-hybrid",
+     "memory-helloagents-memretrieval",
+     "retrieval-qdrant-hybrid"
+    ],
+    "latency_ms": 389.0,
+    "note": "语义漂移：不说 RRF"
+   },
+   {
+    "id": "q05",
+    "query": "怎么给知识库检索结果做重排序提升质量",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-context",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 369.0,
+    "note": "直白 rerank"
+   },
+   {
+    "id": "q06",
+    "query": "DPR 这类稠密检索模型的训练方法",
+    "relevant": [
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "engineering-llm-patterns",
+     "memory-helloagents-memretrieval",
+     "retrieval-rag-original",
+     "agents-helloagents-paradigms",
+     "retrieval-qdrant-hybrid",
+     "agents-helloagents-intro",
+     "retrieval-rag-original",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 366.1,
+    "note": "术语"
+   },
+   {
+    "id": "q07",
+    "query": "怎么系统性地评测一个 AI 产品的输出质量",
+    "relevant": [
+     "evals-hamel"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "evals-hamel",
+     "agents-helloagents-paradigms",
+     "evals-hamel",
+     "engineering-helloagents-pitfalls",
+     "evals-hamel",
+     "agents-helloagents-intro",
+     "evals-hamel",
+     "memory-helloagents-cybertown",
+     "evals-hamel"
+    ],
+    "latency_ms": 389.4,
+    "note": "直白"
+   },
+   {
+    "id": "q08",
+    "query": "让 LLM 当裁判评估对话质量可靠吗？MT-Bench 是怎么做的",
+    "relevant": [
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "evals-mtbench-judge",
+     "memory-helloagents-cybertown",
+     "evals-mtbench-judge",
+     "evals-helloagents-perf",
+     "evals-mtbench-judge",
+     "engineering-helloagents-pitfalls",
+     "evals-mtbench-judge",
+     "memory-helloagents-cybertown",
+     "evals-mtbench-judge"
+    ],
+    "latency_ms": 350.1,
+    "note": "直白"
+   },
+   {
+    "id": "q09",
+    "query": "智能体性能评估有哪些维度和指标",
+    "relevant": [
+     "evals-helloagents-perf"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 405.3,
+    "note": "直白"
+   },
+   {
+    "id": "q10",
+    "query": "为什么快速迭代离不开评测集",
+    "relevant": [
+     "evals-hamel"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "memory-helloagents-context",
+     "evals-helloagents-perf",
+     "agents-helloagents-intro",
+     "evals-hamel"
+    ],
+    "latency_ms": 410.1,
+    "note": "语义漂移：Iterating Quickly == Success"
+   },
+   {
+    "id": "q11",
+    "query": "评估 LLM 应用时人工标注和自动评测怎么选",
+    "relevant": [
+     "evals-hamel",
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "evals-mtbench-judge",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 390.4,
+    "note": "对比类"
+   },
+   {
+    "id": "q12",
+    "query": "什么时候该用 agent，什么时候普通工作流就够了",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "agents-building-effective-agents",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-intro",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 411.3,
+    "note": "直白 When to use agents"
+   },
+   {
+    "id": "q13",
+    "query": "ReAct 模式如何把推理和行动结合起来",
+    "relevant": [
+     "agents-reasoning-react"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms",
+     "agents-reasoning-react",
+     "agents-helloagents-intro",
+     "agents-reasoning-react",
+     "memory-helloagents-cybertown",
+     "agents-reasoning-react"
+    ],
+    "latency_ms": 354.3,
+    "note": "直白"
+   },
+   {
+    "id": "q14",
+    "query": "构建有效智能体的最佳实践有哪些",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 380.1,
+    "note": "直白"
+   },
+   {
+    "id": "q15",
+    "query": "LLM 自主智能体的系统架构包含哪些组件",
+    "relevant": [
+     "agents-lilian-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "evals-helloagents-perf",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 355.6,
+    "note": "直白"
+   },
+   {
+    "id": "q16",
+    "query": "智能体有哪些经典范式，怎么构建",
+    "relevant": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 357.7,
+    "note": "直白"
+   },
+   {
+    "id": "q17",
+    "query": "任务分解和自我反思机制怎么提升规划能力",
+    "relevant": [
+     "agents-lilian-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 415.9,
+    "note": "语义漂移：Task Decomposition / Self-Reflection"
+   },
+   {
+    "id": "q18",
+    "query": "智能体为什么需要长期记忆",
+    "relevant": [
+     "memory-helloagents-memretrieval",
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 347.7,
+    "note": "直白"
+   },
+   {
+    "id": "q19",
+    "query": "生成式代理的记忆流和反思机制是怎么设计的",
+    "relevant": [
+     "memory-generative-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-generative-agents",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-context",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "memory-generative-agents",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 353.6,
+    "note": "直白"
+   },
+   {
+    "id": "q20",
+    "query": "MemGPT 怎么把操作系统的思想用在 LLM 内存管理上",
+    "relevant": [
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "memory-memgpt",
+     "engineering-helloagents-pitfalls",
+     "memory-memgpt",
+     "engineering-helloagents-pitfalls",
+     "memory-memgpt",
+     "memory-helloagents-context",
+     "memory-memgpt",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 365.1,
+    "note": "直白"
+   },
+   {
+    "id": "q21",
+    "query": "大模型怎么记住用户偏好并个性化回复",
+    "relevant": [
+     "memory-generative-agents",
+     "memory-helloagents-memretrieval"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "memory-helloagents-cybertown",
+     "agents-helloagents-intro",
+     "engineering-llm-patterns",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 420.0,
+    "note": "无词面重叠"
+   },
+   {
+    "id": "q22",
+    "query": "AI 小镇项目的技术架构是怎样的",
+    "relevant": [
+     "memory-helloagents-cybertown"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown"
+    ],
+    "latency_ms": 362.4,
+    "note": "直白"
+   },
+   {
+    "id": "q23",
+    "query": "MCP 协议是什么？为什么重要",
+    "relevant": [
+     "engineering-mcp-intro"
+    ],
+    "ranked_docs": [
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-openai-structured-outputs",
+     "engineering-helloagents-pitfalls",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-openai-structured-outputs",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 375.6,
+    "note": "直白"
+   },
+   {
+    "id": "q24",
+    "query": "LLM 应用系统有哪些常见设计模式",
+    "relevant": [
+     "engineering-llm-patterns"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-intro",
+     "engineering-llm-patterns",
+     "evals-helloagents-perf",
+     "engineering-llm-patterns",
+     "agents-helloagents-intro",
+     "engineering-llm-patterns",
+     "evals-helloagents-perf",
+     "engineering-llm-patterns",
+     "engineering-helloagents-pitfalls",
+     "engineering-llm-patterns"
+    ],
+    "latency_ms": 358.9,
+    "note": "直白"
+   },
+   {
+    "id": "q25",
+    "query": "怎么用 JSON Schema 约束模型输出格式",
+    "relevant": [
+     "engineering-openai-structured-outputs"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-openai-structured-outputs",
+     "engineering-helloagents-pitfalls",
+     "engineering-openai-structured-outputs",
+     "memory-helloagents-context",
+     "engineering-openai-structured-outputs",
+     "agents-helloagents-paradigms",
+     "engineering-openai-structured-outputs",
+     "agents-helloagents-paradigms",
+     "engineering-openai-structured-outputs"
+    ],
+    "latency_ms": 407.5,
+    "note": "语义漂移：不说 structured outputs"
+   },
+   {
+    "id": "q26",
+    "query": "Agent 开发实际踩过哪些坑，有什么经验教训",
+    "relevant": [
+     "engineering-helloagents-pitfalls"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 489.1,
+    "note": "直白"
+   },
+   {
+    "id": "q27",
+    "query": "上下文工程的核心原则是什么",
+    "relevant": [
+     "agents-context-engineering",
+     "memory-helloagents-context"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 409.3,
+    "note": "双页同主题"
+   },
+   {
+    "id": "q28",
+    "query": "检索增强生成和智能体记忆有什么关系",
+    "relevant": [
+     "memory-helloagents-memretrieval",
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 347.7,
+    "note": "跨主题"
+   },
+   {
+    "id": "q29",
+    "query": "做 RAG 评测时应该看哪些指标",
+    "relevant": [
+     "engineering-llm-patterns",
+     "evals-hamel",
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "engineering-helloagents-pitfalls",
+     "retrieval-rag-original",
+     "agents-helloagents-intro",
+     "evals-hamel",
+     "memory-helloagents-memretrieval",
+     "evals-helloagents-perf",
+     "engineering-helloagents-pitfalls",
+     "engineering-llm-patterns"
+    ],
+    "latency_ms": 389.8,
+    "note": "跨主题"
+   },
+   {
+    "id": "q30",
+    "query": "上下文窗口有限时怎么管理长对话历史",
+    "relevant": [
+     "memory-memgpt",
+     "memory-helloagents-context",
+     "agents-context-engineering"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 332.2,
+    "note": "跨主题"
+   },
+   {
+    "id": "q31",
+    "query": "queue manager 和 function chaining 在 MemGPT 里怎么协作",
+    "relevant": [
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-helloagents-memretrieval",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt"
+    ],
+    "latency_ms": 357.1,
+    "note": "术语密集"
+   },
+   {
+    "id": "q32",
+    "query": "ReAct 在 knowledge-intensive 任务上的实验结果",
+    "relevant": [
+     "agents-reasoning-react"
+    ],
+    "ranked_docs": [
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-lilian-agents",
+     "agents-helloagents-paradigms",
+     "engineering-helloagents-pitfalls",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 406.1,
+    "note": "术语密集"
+   },
+   {
+    "id": "q33",
+    "query": "generative agents 的 memory stream、retrieval 和 reflection 三模块",
+    "relevant": [
+     "memory-generative-agents"
+    ],
+    "ranked_docs": [
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "agents-lilian-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents"
+    ],
+    "latency_ms": 333.3,
+    "note": "术语密集"
+   },
+   {
+    "id": "q34",
+    "query": "prompt chaining、routing 等 workflow 模式的区别",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "agents-building-effective-agents",
+     "agents-building-effective-agents",
+     "agents-building-effective-agents",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "engineering-openai-structured-outputs",
+     "agents-helloagents-intro",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-memretrieval",
+     "memory-memgpt"
+    ],
+    "latency_ms": 495.4,
+    "note": "术语密集"
+   },
+   {
+    "id": "q35",
+    "query": "contextual retrieval 里 prompt caching 怎么降低成本",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual"
+    ],
+    "latency_ms": 335.2,
+    "note": "术语密集"
+   },
+   {
+    "id": "q36",
+    "query": "MT-Bench 和 Chatbot Arena 的评测设计",
+    "relevant": [
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge"
+    ],
+    "latency_ms": 370.2,
+    "note": "术语密集"
+   },
+   {
+    "id": "q37",
+    "query": "DPR 和 BART 在 RAG 里分别扮演什么角色",
+    "relevant": [
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "retrieval-rag-original",
+     "engineering-llm-patterns",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "memory-helloagents-cybertown",
+     "retrieval-rag-original",
+     "memory-helloagents-cybertown",
+     "retrieval-rag-original",
+     "engineering-helloagents-pitfalls",
+     "retrieval-rag-original"
+    ],
+    "latency_ms": 386.7,
+    "note": "术语密集"
+   },
+   {
+    "id": "q38",
+    "query": "hello-agents 里 LLM 封装和 API 密钥配置怎么做",
+    "relevant": [
+     "agents-helloagents-paradigms"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-memretrieval",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-paradigms"
+    ],
+    "latency_ms": 367.4,
+    "note": "术语密集"
+   }
+  ],
+  "router": [
+   {
+    "id": "q01",
+    "query": "RAG 的基本原理是什么？检索和生成是怎么配合的？",
+    "relevant": [
+     "retrieval-rag-original",
+     "engineering-llm-patterns"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 366.0,
+    "note": "直白"
+   },
+   {
+    "id": "q02",
+    "query": "上下文检索怎么解决传统 RAG 里 chunk 语义割裂的问题？",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "engineering-llm-patterns"
+    ],
+    "latency_ms": 433.4,
+    "note": "直白"
+   },
+   {
+    "id": "q03",
+    "query": "BM25 和向量检索怎么融合？RRF 是怎么做的",
+    "relevant": [
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-anthropic-contextual",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-anthropic-contextual",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid"
+    ],
+    "latency_ms": 506.3,
+    "note": "直白"
+   },
+   {
+    "id": "q04",
+    "query": "混合检索里稀疏和稠密两路结果如何合并排序",
+    "relevant": [
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid"
+    ],
+    "latency_ms": 390.6,
+    "note": "语义漂移：不说 RRF"
+   },
+   {
+    "id": "q05",
+    "query": "怎么给知识库检索结果做重排序提升质量",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval",
+     "retrieval-anthropic-contextual",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 443.3,
+    "note": "直白 rerank"
+   },
+   {
+    "id": "q06",
+    "query": "DPR 这类稠密检索模型的训练方法",
+    "relevant": [
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "engineering-llm-patterns",
+     "retrieval-rag-original",
+     "retrieval-qdrant-hybrid",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-qdrant-hybrid",
+     "retrieval-qdrant-hybrid",
+     "engineering-llm-patterns"
+    ],
+    "latency_ms": 378.4,
+    "note": "术语"
+   },
+   {
+    "id": "q07",
+    "query": "怎么系统性地评测一个 AI 产品的输出质量",
+    "relevant": [
+     "evals-hamel"
+    ],
+    "ranked_docs": [
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "evals-hamel"
+    ],
+    "latency_ms": 365.3,
+    "note": "直白"
+   },
+   {
+    "id": "q08",
+    "query": "让 LLM 当裁判评估对话质量可靠吗？MT-Bench 是怎么做的",
+    "relevant": [
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge"
+    ],
+    "latency_ms": 370.1,
+    "note": "直白"
+   },
+   {
+    "id": "q09",
+    "query": "智能体性能评估有哪些维度和指标",
+    "relevant": [
+     "evals-helloagents-perf"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf"
+    ],
+    "latency_ms": 366.3,
+    "note": "直白"
+   },
+   {
+    "id": "q10",
+    "query": "为什么快速迭代离不开评测集",
+    "relevant": [
+     "evals-hamel"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-hamel"
+    ],
+    "latency_ms": 425.3,
+    "note": "语义漂移：Iterating Quickly == Success"
+   },
+   {
+    "id": "q11",
+    "query": "评估 LLM 应用时人工标注和自动评测怎么选",
+    "relevant": [
+     "evals-hamel",
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "evals-hamel",
+     "evals-hamel",
+     "evals-mtbench-judge",
+     "evals-hamel",
+     "evals-hamel",
+     "engineering-llm-patterns",
+     "agents-lilian-agents",
+     "evals-mtbench-judge"
+    ],
+    "latency_ms": 372.6,
+    "note": "对比类"
+   },
+   {
+    "id": "q12",
+    "query": "什么时候该用 agent，什么时候普通工作流就够了",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "agents-building-effective-agents",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-intro",
+     "agents-building-effective-agents",
+     "engineering-helloagents-pitfalls",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 389.1,
+    "note": "直白 When to use agents"
+   },
+   {
+    "id": "q13",
+    "query": "ReAct 模式如何把推理和行动结合起来",
+    "relevant": [
+     "agents-reasoning-react"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react"
+    ],
+    "latency_ms": 340.5,
+    "note": "直白"
+   },
+   {
+    "id": "q14",
+    "query": "构建有效智能体的最佳实践有哪些",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 407.5,
+    "note": "直白"
+   },
+   {
+    "id": "q15",
+    "query": "LLM 自主智能体的系统架构包含哪些组件",
+    "relevant": [
+     "agents-lilian-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "evals-helloagents-perf",
+     "agents-helloagents-paradigms",
+     "evals-helloagents-perf",
+     "evals-helloagents-perf",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 343.8,
+    "note": "直白"
+   },
+   {
+    "id": "q16",
+    "query": "智能体有哪些经典范式，怎么构建",
+    "relevant": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-intro"
+    ],
+    "latency_ms": 429.0,
+    "note": "直白"
+   },
+   {
+    "id": "q17",
+    "query": "任务分解和自我反思机制怎么提升规划能力",
+    "relevant": [
+     "agents-lilian-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-lilian-agents"
+    ],
+    "latency_ms": 374.3,
+    "note": "语义漂移：Task Decomposition / Self-Reflection"
+   },
+   {
+    "id": "q18",
+    "query": "智能体为什么需要长期记忆",
+    "relevant": [
+     "memory-helloagents-memretrieval",
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 372.8,
+    "note": "直白"
+   },
+   {
+    "id": "q19",
+    "query": "生成式代理的记忆流和反思机制是怎么设计的",
+    "relevant": [
+     "memory-generative-agents"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-generative-agents",
+     "agents-helloagents-paradigms",
+     "memory-generative-agents",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "agents-lilian-agents",
+     "agents-helloagents-paradigms",
+     "memory-generative-agents"
+    ],
+    "latency_ms": 349.1,
+    "note": "直白"
+   },
+   {
+    "id": "q20",
+    "query": "MemGPT 怎么把操作系统的思想用在 LLM 内存管理上",
+    "relevant": [
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt"
+    ],
+    "latency_ms": 346.7,
+    "note": "直白"
+   },
+   {
+    "id": "q21",
+    "query": "大模型怎么记住用户偏好并个性化回复",
+    "relevant": [
+     "memory-generative-agents",
+     "memory-helloagents-memretrieval"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "engineering-llm-patterns",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "agents-lilian-agents",
+     "engineering-llm-patterns"
+    ],
+    "latency_ms": 367.6,
+    "note": "无词面重叠"
+   },
+   {
+    "id": "q22",
+    "query": "AI 小镇项目的技术架构是怎样的",
+    "relevant": [
+     "memory-helloagents-cybertown"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-cybertown"
+    ],
+    "latency_ms": 358.3,
+    "note": "直白"
+   },
+   {
+    "id": "q23",
+    "query": "MCP 协议是什么？为什么重要",
+    "relevant": [
+     "engineering-mcp-intro"
+    ],
+    "ranked_docs": [
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-mcp-intro",
+     "engineering-openai-structured-outputs",
+     "engineering-mcp-intro",
+     "engineering-openai-structured-outputs",
+     "engineering-mcp-intro",
+     "engineering-openai-structured-outputs"
+    ],
+    "latency_ms": 485.7,
+    "note": "直白"
+   },
+   {
+    "id": "q24",
+    "query": "LLM 应用系统有哪些常见设计模式",
+    "relevant": [
+     "engineering-llm-patterns"
+    ],
+    "ranked_docs": [
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "agents-lilian-agents",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns"
+    ],
+    "latency_ms": 422.8,
+    "note": "直白"
+   },
+   {
+    "id": "q25",
+    "query": "怎么用 JSON Schema 约束模型输出格式",
+    "relevant": [
+     "engineering-openai-structured-outputs"
+    ],
+    "ranked_docs": [
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs",
+     "engineering-openai-structured-outputs"
+    ],
+    "latency_ms": 397.0,
+    "note": "语义漂移：不说 structured outputs"
+   },
+   {
+    "id": "q26",
+    "query": "Agent 开发实际踩过哪些坑，有什么经验教训",
+    "relevant": [
+     "engineering-helloagents-pitfalls"
+    ],
+    "ranked_docs": [
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 490.9,
+    "note": "直白"
+   },
+   {
+    "id": "q27",
+    "query": "上下文工程的核心原则是什么",
+    "relevant": [
+     "agents-context-engineering",
+     "memory-helloagents-context"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 384.2,
+    "note": "双页同主题"
+   },
+   {
+    "id": "q28",
+    "query": "检索增强生成和智能体记忆有什么关系",
+    "relevant": [
+     "memory-helloagents-memretrieval",
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 364.2,
+    "note": "跨主题"
+   },
+   {
+    "id": "q29",
+    "query": "做 RAG 评测时应该看哪些指标",
+    "relevant": [
+     "engineering-llm-patterns",
+     "evals-hamel",
+     "retrieval-qdrant-hybrid"
+    ],
+    "ranked_docs": [
+     "evals-hamel",
+     "retrieval-rag-original",
+     "evals-hamel",
+     "evals-helloagents-perf",
+     "engineering-llm-patterns",
+     "engineering-llm-patterns",
+     "evals-helloagents-perf",
+     "engineering-llm-patterns",
+     "retrieval-rag-original",
+     "retrieval-rag-original"
+    ],
+    "latency_ms": 522.0,
+    "note": "跨主题"
+   },
+   {
+    "id": "q30",
+    "query": "上下文窗口有限时怎么管理长对话历史",
+    "relevant": [
+     "memory-memgpt",
+     "memory-helloagents-context",
+     "agents-context-engineering"
+    ],
+    "ranked_docs": [
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "memory-helloagents-context",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-context",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 363.5,
+    "note": "跨主题"
+   },
+   {
+    "id": "q31",
+    "query": "queue manager 和 function chaining 在 MemGPT 里怎么协作",
+    "relevant": [
+     "memory-memgpt"
+    ],
+    "ranked_docs": [
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-memgpt",
+     "memory-helloagents-memretrieval",
+     "memory-memgpt",
+     "memory-memgpt"
+    ],
+    "latency_ms": 400.7,
+    "note": "术语密集"
+   },
+   {
+    "id": "q32",
+    "query": "ReAct 在 knowledge-intensive 任务上的实验结果",
+    "relevant": [
+     "agents-reasoning-react"
+    ],
+    "ranked_docs": [
+     "agents-reasoning-react",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "agents-lilian-agents",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react",
+     "agents-reasoning-react"
+    ],
+    "latency_ms": 366.1,
+    "note": "术语密集"
+   },
+   {
+    "id": "q33",
+    "query": "generative agents 的 memory stream、retrieval 和 reflection 三模块",
+    "relevant": [
+     "memory-generative-agents"
+    ],
+    "ranked_docs": [
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "agents-lilian-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-generative-agents",
+     "memory-helloagents-memretrieval"
+    ],
+    "latency_ms": 331.8,
+    "note": "术语密集"
+   },
+   {
+    "id": "q34",
+    "query": "prompt chaining、routing 等 workflow 模式的区别",
+    "relevant": [
+     "agents-building-effective-agents"
+    ],
+    "ranked_docs": [
+     "agents-building-effective-agents",
+     "agents-building-effective-agents",
+     "agents-building-effective-agents",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "agents-helloagents-intro",
+     "engineering-openai-structured-outputs",
+     "memory-helloagents-cybertown",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-context"
+    ],
+    "latency_ms": 398.9,
+    "note": "术语密集"
+   },
+   {
+    "id": "q35",
+    "query": "contextual retrieval 里 prompt caching 怎么降低成本",
+    "relevant": [
+     "retrieval-anthropic-contextual"
+    ],
+    "ranked_docs": [
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual",
+     "retrieval-anthropic-contextual"
+    ],
+    "latency_ms": 369.9,
+    "note": "术语密集"
+   },
+   {
+    "id": "q36",
+    "query": "MT-Bench 和 Chatbot Arena 的评测设计",
+    "relevant": [
+     "evals-mtbench-judge"
+    ],
+    "ranked_docs": [
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge",
+     "evals-mtbench-judge"
+    ],
+    "latency_ms": 455.1,
+    "note": "术语密集"
+   },
+   {
+    "id": "q37",
+    "query": "DPR 和 BART 在 RAG 里分别扮演什么角色",
+    "relevant": [
+     "retrieval-rag-original"
+    ],
+    "ranked_docs": [
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "engineering-llm-patterns",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original",
+     "retrieval-rag-original"
+    ],
+    "latency_ms": 469.5,
+    "note": "术语密集"
+   },
+   {
+    "id": "q38",
+    "query": "hello-agents 里 LLM 封装和 API 密钥配置怎么做",
+    "relevant": [
+     "agents-helloagents-paradigms"
+    ],
+    "ranked_docs": [
+     "agents-helloagents-paradigms",
+     "agents-helloagents-paradigms",
+     "memory-helloagents-memretrieval",
+     "memory-helloagents-memretrieval",
+     "agents-helloagents-intro",
+     "memory-helloagents-memretrieval",
+     "engineering-helloagents-pitfalls",
+     "memory-helloagents-memretrieval",
+     "engineering-helloagents-pitfalls",
+     "engineering-helloagents-pitfalls"
+    ],
+    "latency_ms": 454.6,
+    "note": "术语密集"
+   }
+  ]
+ }
+}

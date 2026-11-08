@@ -144,6 +144,10 @@ def get_rag_service(settings: Settings | None = None) -> RAGService:
     settings = settings or get_settings()
     if settings.provider_mode == "stub":
         return StubRAGService()
+    if settings.kb_provider == "local":
+        from app.services.local_kb_service import LocalKBService
+
+        return LocalKBService(top_k=settings.kb_retrieval_top_k, api_key=settings.bailian_api_key or "")
     return ExternalKBService(
         base_url=settings.kb_api_base_url,
         api_key=settings.kb_api_key,

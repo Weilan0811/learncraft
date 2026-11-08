@@ -1,0 +1,38 @@
+{"id": "q01", "query": "RAG 的基本原理是什么？检索和生成是怎么配合的？", "relevant_docs": ["retrieval-rag-original", "engineering-llm-patterns"], "category": "retrieval", "note": "直白"}
+{"id": "q02", "query": "上下文检索怎么解决传统 RAG 里 chunk 语义割裂的问题？", "relevant_docs": ["retrieval-anthropic-contextual"], "category": "retrieval", "note": "直白"}
+{"id": "q03", "query": "BM25 和向量检索怎么融合？RRF 是怎么做的", "relevant_docs": ["retrieval-qdrant-hybrid"], "category": "retrieval", "note": "直白"}
+{"id": "q04", "query": "混合检索里稀疏和稠密两路结果如何合并排序", "relevant_docs": ["retrieval-qdrant-hybrid"], "category": "retrieval", "note": "语义漂移：不说 RRF"}
+{"id": "q05", "query": "怎么给知识库检索结果做重排序提升质量", "relevant_docs": ["retrieval-anthropic-contextual"], "category": "retrieval", "note": "直白 rerank"}
+{"id": "q06", "query": "DPR 这类稠密检索模型的训练方法", "relevant_docs": ["retrieval-rag-original"], "category": "retrieval", "note": "术语"}
+{"id": "q07", "query": "怎么系统性地评测一个 AI 产品的输出质量", "relevant_docs": ["evals-hamel"], "category": "evals", "note": "直白"}
+{"id": "q08", "query": "让 LLM 当裁判评估对话质量可靠吗？MT-Bench 是怎么做的", "relevant_docs": ["evals-mtbench-judge"], "category": "evals", "note": "直白"}
+{"id": "q09", "query": "智能体性能评估有哪些维度和指标", "relevant_docs": ["evals-helloagents-perf"], "category": "evals", "note": "直白"}
+{"id": "q10", "query": "为什么快速迭代离不开评测集", "relevant_docs": ["evals-hamel"], "category": "evals", "note": "语义漂移：Iterating Quickly == Success"}
+{"id": "q11", "query": "评估 LLM 应用时人工标注和自动评测怎么选", "relevant_docs": ["evals-hamel", "evals-mtbench-judge"], "category": "evals", "note": "对比类"}
+{"id": "q12", "query": "什么时候该用 agent，什么时候普通工作流就够了", "relevant_docs": ["agents-building-effective-agents"], "category": "agents", "note": "直白 When to use agents"}
+{"id": "q13", "query": "ReAct 模式如何把推理和行动结合起来", "relevant_docs": ["agents-reasoning-react"], "category": "agents", "note": "直白"}
+{"id": "q14", "query": "构建有效智能体的最佳实践有哪些", "relevant_docs": ["agents-building-effective-agents"], "category": "agents", "note": "直白"}
+{"id": "q15", "query": "LLM 自主智能体的系统架构包含哪些组件", "relevant_docs": ["agents-lilian-agents"], "category": "agents", "note": "直白"}
+{"id": "q16", "query": "智能体有哪些经典范式，怎么构建", "relevant_docs": ["agents-helloagents-paradigms", "agents-helloagents-intro"], "category": "agents", "note": "直白"}
+{"id": "q17", "query": "任务分解和自我反思机制怎么提升规划能力", "relevant_docs": ["agents-lilian-agents"], "category": "agents", "note": "语义漂移：Task Decomposition / Self-Reflection"}
+{"id": "q18", "query": "智能体为什么需要长期记忆", "relevant_docs": ["memory-helloagents-memretrieval", "memory-memgpt"], "category": "memory", "note": "直白"}
+{"id": "q19", "query": "生成式代理的记忆流和反思机制是怎么设计的", "relevant_docs": ["memory-generative-agents"], "category": "memory", "note": "直白"}
+{"id": "q20", "query": "MemGPT 怎么把操作系统的思想用在 LLM 内存管理上", "relevant_docs": ["memory-memgpt"], "category": "memory", "note": "直白"}
+{"id": "q21", "query": "大模型怎么记住用户偏好并个性化回复", "relevant_docs": ["memory-generative-agents", "memory-helloagents-memretrieval"], "category": "memory", "note": "无词面重叠"}
+{"id": "q22", "query": "AI 小镇项目的技术架构是怎样的", "relevant_docs": ["memory-helloagents-cybertown"], "category": "memory", "note": "直白"}
+{"id": "q23", "query": "MCP 协议是什么？为什么重要", "relevant_docs": ["engineering-mcp-intro"], "category": "engineering", "note": "直白"}
+{"id": "q24", "query": "LLM 应用系统有哪些常见设计模式", "relevant_docs": ["engineering-llm-patterns"], "category": "engineering", "note": "直白"}
+{"id": "q25", "query": "怎么用 JSON Schema 约束模型输出格式", "relevant_docs": ["engineering-openai-structured-outputs"], "category": "engineering", "note": "语义漂移：不说 structured outputs"}
+{"id": "q26", "query": "Agent 开发实际踩过哪些坑，有什么经验教训", "relevant_docs": ["engineering-helloagents-pitfalls"], "category": "engineering", "note": "直白"}
+{"id": "q27", "query": "上下文工程的核心原则是什么", "relevant_docs": ["agents-context-engineering", "memory-helloagents-context"], "category": "engineering", "note": "双页同主题"}
+{"id": "q28", "query": "检索增强生成和智能体记忆有什么关系", "relevant_docs": ["memory-helloagents-memretrieval", "retrieval-rag-original"], "category": "cross", "note": "跨主题"}
+{"id": "q29", "query": "做 RAG 评测时应该看哪些指标", "relevant_docs": ["engineering-llm-patterns", "evals-hamel", "retrieval-qdrant-hybrid"], "category": "cross", "note": "跨主题"}
+{"id": "q30", "query": "上下文窗口有限时怎么管理长对话历史", "relevant_docs": ["memory-memgpt", "memory-helloagents-context", "agents-context-engineering"], "category": "cross", "note": "跨主题"}
+{"id": "q31", "query": "queue manager 和 function chaining 在 MemGPT 里怎么协作", "relevant_docs": ["memory-memgpt"], "category": "term", "note": "术语密集"}
+{"id": "q32", "query": "ReAct 在 knowledge-intensive 任务上的实验结果", "relevant_docs": ["agents-reasoning-react"], "category": "term", "note": "术语密集"}
+{"id": "q33", "query": "generative agents 的 memory stream、retrieval 和 reflection 三模块", "relevant_docs": ["memory-generative-agents"], "category": "term", "note": "术语密集"}
+{"id": "q34", "query": "prompt chaining、routing 等 workflow 模式的区别", "relevant_docs": ["agents-building-effective-agents"], "category": "term", "note": "术语密集"}
+{"id": "q35", "query": "contextual retrieval 里 prompt caching 怎么降低成本", "relevant_docs": ["retrieval-anthropic-contextual"], "category": "term", "note": "术语密集"}
+{"id": "q36", "query": "MT-Bench 和 Chatbot Arena 的评测设计", "relevant_docs": ["evals-mtbench-judge"], "category": "term", "note": "术语密集"}
+{"id": "q37", "query": "DPR 和 BART 在 RAG 里分别扮演什么角色", "relevant_docs": ["retrieval-rag-original"], "category": "term", "note": "术语密集"}
+{"id": "q38", "query": "hello-agents 里 LLM 封装和 API 密钥配置怎么做", "relevant_docs": ["agents-helloagents-paradigms"], "category": "term", "note": "术语密集"}
