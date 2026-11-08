@@ -132,43 +132,14 @@ class SQLModelTaskRepository:
                 artifacts.upsert_artifact(
                     task_id, "content_spec", content_spec, status="final", source_node="assemble_content_spec", schema_name=type(state.content_spec).__name__
                 )
-            if partial_render_model:
-                artifacts.upsert_artifact(
-                    task_id, "partial_render", partial_render_model, status="partial", source_node=state.current_node
-                )
             if render_model:
                 artifacts.upsert_artifact(
                     task_id, "final_render", render_model, status="final", source_node=state.current_node, schema_name=type(state.render_model).__name__
                 )
-            for unit_id, result in unit_results.items():
-                unit_spec = result.get("unit_spec")
-                if isinstance(unit_spec, dict):
-                    artifacts.upsert_artifact(
-                        task_id,
-                        "unit_spec",
-                        unit_spec,
-                        unit_id=unit_id,
-                        unit_order=unit_spec.get("order") if isinstance(unit_spec.get("order"), int) else None,
-                        status=str(result.get("status") or "final"),
-                        source_node="generate_unit_spec",
-                    )
-            for unit_id, snapshot in render_units.items():
-                artifacts.upsert_artifact(
-                    task_id,
-                    "unit_render",
-                    snapshot,
-                    unit_id=unit_id,
-                    unit_order=snapshot.get("order") if isinstance(snapshot.get("order"), int) else None,
-                    status=str(snapshot.get("status") or "rendered"),
-                    source_node="render_unit",
-                )
+            self._save_unit_artifacts(artifacts, task_id, state)
             artifacts.append_references(task_id, "planning", state.planning_chunks, artifact_id=outline_artifact_id)
-            for unit_id, chunks in state.unit_context_map.items():
-                artifacts.append_references(task_id, "unit_spec", chunks, unit_id=unit_id)
             if state.current_unit_id and state.current_unit_context:
                 artifacts.append_references(task_id, "unit_spec", state.current_unit_context, unit_id=state.current_unit_id)
-            for event in stream_events:
-                artifacts.append_event(task_id, event)
             for metric in metrics:
                 artifacts.append_metric(task_id, metric)
 
@@ -176,6 +147,59 @@ class SQLModelTaskRepository:
             session.commit()
             session.refresh(task_row)
             return self._detach(session, task_row)
+
+    def save_unit_snapshot(self, task_id: str, state: ContentGenerationState) -> ContentGenerationTask | None:
+        with Session(self.engine) as session:
+            task_row = session.exec(select(ContentGenerationTask).where(ContentGenerationTask.task_id == task_id)).first()
+            if task_row is None:
+                return None
+
+            task_row.current_node = state.current_node
+            task_row.progress = ensure_monotonic_progress(
+                task_row.progress, state.progress or build_progress(stage=str(state.status), current_node=state.current_node)
+            )
+            task_row.partial_render_model = state.partial_render_model.model_dump(mode="json") if state.partial_render_model else None
+            task_row.unit_results = {unit_id: result.model_dump(mode="json") for unit_id, result in state.unit_results.items()}
+            task_row.render_units = {unit_id: snapshot.model_dump(mode="json") for unit_id, snapshot in state.render_units.items()}
+            task_row.elements = [element.model_dump(mode="json") for element in state.elements]
+            task_row.asset_ids = sorted(set(task_row.asset_ids) | set(collect_asset_ids_from_state(state)))
+            task_row.errors = state.errors
+            task_row.error_summary = state.errors[-1][:1000] if state.errors else None
+            events = {event["event_id"]: event for event in task_row.stream_events}
+            events.update({event.event_id: event.model_dump(mode="json") for event in state.stream_events})
+            task_row.stream_events = list(events.values())
+            task_row.updated_at = now_utc()
+
+            self._save_unit_artifacts(ArtifactRepository(session), task_id, state)
+            session.add(task_row)
+            session.commit()
+            session.refresh(task_row)
+            return self._detach(session, task_row)
+
+    @staticmethod
+    def _save_unit_artifacts(artifacts: ArtifactRepository, task_id: str, state: ContentGenerationState) -> None:
+        if state.partial_render_model:
+            artifacts.upsert_artifact(
+                task_id, "partial_render", state.partial_render_model.model_dump(mode="json"),
+                status="partial", source_node=state.current_node,
+            )
+        for unit_id, result in state.unit_results.items():
+            unit_spec = result.unit_spec.model_dump(mode="json") if result.unit_spec else None
+            if unit_spec:
+                artifacts.upsert_artifact(
+                    task_id, "unit_spec", unit_spec, unit_id=unit_id,
+                    unit_order=unit_spec.get("order") if isinstance(unit_spec.get("order"), int) else None,
+                    status=str(result.status or "final"), source_node="generate_unit_spec",
+                )
+        for unit_id, snapshot in state.render_units.items():
+            artifacts.upsert_artifact(
+                task_id, "unit_render", snapshot.model_dump(mode="json"), unit_id=unit_id,
+                unit_order=snapshot.order, status=str(snapshot.status or "rendered"), source_node="render_unit",
+            )
+        for unit_id, chunks in state.unit_context_map.items():
+            artifacts.append_references(task_id, "unit_spec", chunks, unit_id=unit_id)
+        for event in state.stream_events:
+            artifacts.append_event(task_id, event.model_dump(mode="json"))
 
     def update_export_files(self, task_id: str, export_files: list[ExportFile]) -> ContentGenerationTask | None:
         return self.update_task(task_id, export_files=[file.model_dump(mode="json") for file in export_files])
