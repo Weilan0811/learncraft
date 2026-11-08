@@ -70,6 +70,9 @@ def test_repository_saves_generation_artifacts_without_losing_task_summary(tmp_p
 
     saved = repository.save_state(created.task_id, state)
     loaded = repository.get_task(created.task_id)
+    outline_artifact = repository.get_latest_artifact(created.task_id, "outline")
+    content_spec_artifact = repository.get_latest_artifact(created.task_id, "content_spec")
+    render_artifact = repository.get_latest_artifact(created.task_id, "final_render")
 
     assert saved is not None
     assert loaded is not None
@@ -77,6 +80,10 @@ def test_repository_saves_generation_artifacts_without_losing_task_summary(tmp_p
     assert loaded.content_type == "lecture"
     assert loaded.status == TaskStatus.completed
     assert loaded.progress["percent"] == 100
-    assert loaded.outline == outline.model_dump(mode="json")
-    assert loaded.content_spec == content_spec.model_dump(mode="json")
-    assert loaded.render_model == render_model.model_dump(mode="json")
+    assert not hasattr(loaded, "outline")
+    assert outline_artifact is not None
+    assert content_spec_artifact is not None
+    assert render_artifact is not None
+    assert outline_artifact.payload == outline.model_dump(mode="json")
+    assert content_spec_artifact.payload == content_spec.model_dump(mode="json")
+    assert render_artifact.payload["render_model"] == render_model.model_dump(mode="json")

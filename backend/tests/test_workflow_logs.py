@@ -29,14 +29,14 @@ def test_task_service_persists_structured_logs_and_writes_jsonl_file(tmp_path, m
 
     task = repository.get_task(created.task_id)
     assert task is not None
-    assert task.logs
-    assert any(entry["event"] == "task_started" for entry in task.logs)
-    assert any(entry["event"] == "node_completed" and entry["node"] == "finalize_task" for entry in task.logs)
+    assert not hasattr(task, "logs")
 
     log_path = task_log_file_path(created.task_id)
     assert log_path.exists()
     file_entries = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert any(entry["task_id"] == created.task_id for entry in file_entries)
+    assert any(entry["event"] == "task_started" for entry in file_entries)
+    assert any(entry["event"] == "node_completed" and entry["node"] == "finalize_task" for entry in file_entries)
     assert any(entry["event"] == "task_completed" for entry in file_entries)
     get_settings.cache_clear()
 
@@ -71,9 +71,9 @@ def test_task_service_writes_debug_artifacts_for_workflow_steps(tmp_path, monkey
     assert content_spec_path.exists()
     assert render_model_path.exists()
 
-    task = repository.get_task(created.task_id)
-    assert task is not None
-    assert any(entry["detail"].get("debug_artifact_path") for entry in task.logs if entry["event"] == "node_completed")
+    log_path = task_log_file_path(created.task_id)
+    file_entries = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert any(entry["detail"].get("debug_artifact_path") for entry in file_entries if entry["event"] == "node_completed")
     get_settings.cache_clear()
 
 

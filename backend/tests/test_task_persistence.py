@@ -67,12 +67,18 @@ def test_task_persistence_tracks_distinct_image_assets_for_each_task(tmp_path) -
 
     first_record = repository.get_task(first.task_id)
     second_record = repository.get_task(second.task_id)
+    first_preview = service.get_preview(first.task_id)
+    second_preview = service.get_preview(second.task_id)
     assert first_record is not None
     assert second_record is not None
-    assert first_record.asset_ids
-    assert second_record.asset_ids
-    assert first_record.asset_ids != second_record.asset_ids
-    assert "img_stub" not in first_record.asset_ids
+    assert first_preview is not None
+    assert second_preview is not None
+    first_urls = [block.asset_url for section in first_preview.render_model.sections for block in section.render_blocks if block.type == "image"]
+    second_urls = [block.asset_url for section in second_preview.render_model.sections for block in section.render_blocks if block.type == "image"]
+    assert first_urls
+    assert second_urls
+    assert first_urls != second_urls
+    assert all("img_stub" not in url for url in first_urls)
 
 
 def test_progress_percent_is_monotonic_across_looping_nodes() -> None:

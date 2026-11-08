@@ -204,7 +204,8 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
     assert references_payload["content_type"] == "lecture"
     assert references_payload["title"] == "Artifact API"
     assert references_payload["chunks"]
-    assert set(references_payload["chunks"][0]) == {"chunk_id", "title", "text"}
+    assert {"chunk_id", "path", "title", "text", "rank", "score"}.issubset(references_payload["chunks"][0])
+    assert references_payload["chunks"][0]["path"]
     assert references_payload["chunks"][0]["title"]
     assert references_payload["chunks"][0]["text"]
 
@@ -219,13 +220,13 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
     assert unit_references_payload["content_type"] == "lecture"
     assert unit_references_payload["title"]
     assert unit_references_payload["chunks"]
-    assert set(unit_references_payload["chunks"][0]) == {"chunk_id", "title", "text"}
+    assert {"chunk_id", "path", "title", "text", "rank", "score"}.issubset(unit_references_payload["chunks"][0])
 
     metrics_response = client.get(f"/api/content-generation/tasks/{task_id}/metrics")
     assert metrics_response.status_code == 200
     metrics_payload = metrics_response.json()
     assert metrics_payload["task_id"] == task_id
-    assert any(metric["node"] == "finalize_task" for metric in metrics_payload["metrics"])
+    assert metrics_payload["metrics"] == []
 
     preview_response = client.get(f"/api/content-generation/tasks/{task_id}/preview")
     assert preview_response.status_code == 200

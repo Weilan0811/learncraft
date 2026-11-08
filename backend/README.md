@@ -18,7 +18,7 @@ flowchart TB
         D2 -->|fail| X[fail_task]
         U5 -->|fail| X
     end
-    S --> DB[(SQLite 六表)]
+    S --> DB[(数据库五表)]
     S --> ST[(storage/ 资源 · manifest · 日志)]
 ```
 
@@ -37,16 +37,15 @@ flowchart TB
 
 ### 任务生命周期与持久化
 
-任务创建后进入后台执行，工作流每完成一个节点即合并 state 并落库一次；unit_loop 通路更进一步，**每完成一个章节立即落库**，因此部分预览在生成中途就逐章出现。全部状态分布在六张 SQLModel 表：
+任务创建后进入后台执行，工作流每完成一个节点就保存任务状态和产物；unit_loop 通路中，**每完成一个章节立即保存**，因此部分预览在生成中途就逐章出现。数据库包含五张 SQLModel 表：
 
 | 表 | 内容 |
 |---|---|
-| `content_generation_task` | 任务主状态、progress、render model、partial render model、unit snapshots |
-| `content_generation_artifact` | 大纲、内容规格等中间产物 |
-| `content_generation_asset` | 图片、音频等资源的元数据与存储位置 |
-| `content_generation_event` | 任务事件流 |
-| `content_generation_metric` | 各环节耗时、token 用量等指标 |
-| `content_generation_reference` | 检索引用（按 stage / unit / chunk 去重） |
+| `content_generation_task` | 任务状态、进度与请求信息 |
+| `content_generation_artifact` | 大纲、内容规格、章节与预览产物 |
+| `content_generation_asset` | 资源记录 |
+| `content_generation_reference` | 任务和知识片段的引用关系 |
+| `knowledge_chunk_cache` | 知识片段正文缓存 |
 
 平台侧继续保持"一会话一主产物"规则，生成模块通过 `platform_log_id`、`platform_user_id`、`platform_session_id` 与平台侧记录关联，不建立跨库外键。
 
@@ -66,7 +65,7 @@ flowchart TB
 
 - **SSE 流式端点**：`GET /api/content-generation/tasks/{task_id}/events/stream` 以约 600ms 一帧推送轻量快照（状态、progress、unit 与事件计数），空闲期发送 keep-alive 帧，任务终态发送 `done` 帧后关闭。
 - **前端订阅**：EventSource 优先，连接失败自动回退轮询；计数无变化时跳过 units / partial 预览的重复拉取。
-- **可观测性兜底**：全部任务事件、指标落库；`storage/debug_workflow/{task_id}/steps/` 逐步导出每个节点的完整输入输出；未捕获异常写入 `storage/logs/unhandled_errors.log`。
+- **任务记录**：事件保存在 `storage/logs/content-generation/{task_id}.events.json`，任务日志写入同目录；`storage/debug_workflow/{task_id}/steps/` 保存节点输入输出。指标接口目前返回空列表。
 
 ### Provider 工厂
 
@@ -99,7 +98,7 @@ CONTENT_GENERATOR_KB_MAX_CHARS_PER_ITEM=8000
 | 能力 | 当前状态 | 说明 |
 |---|---|---|
 | API 服务 | 已具备基础闭环 | 任务创建/查询、事件查询与 SSE 流、完整/局部/单元预览、导出、资源查询下载、互动学习事件接口。 |
-| 任务系统 | 已接入持久化 | `PersistentTaskService` 通过 `SQLModelTaskRepository` 保存任务状态、进度、render model、partial render model、unit snapshots、stream events、logs、assets 和 export files。 |
+| 任务系统 | 已接入持久化 | 数据库保存任务和内容产物，本地文件保存事件、日志和资源。 |
 | Workflow 编排 | 已接入 LangGraph | 请求标准化、知识库检索、生成模式路由、outline 规划、unit loop、元素生成、单元级渲染、校验、repair / fallback 和失败路径。 |
 | 实时进度 | 已支持 SSE | `events/stream` 流式推送 + 章节 unit 逐个落库，前端 EventSource 订阅、轮询兜底。 |
 | 内容类型 | 支持 `lecture`、`slide_deck`、`interactive_html`、`social_post`、`podcast_script` | 前三者走 unit-loop workflow；后两者走 direct workflow。 |
@@ -230,7 +229,7 @@ POST /api/interactive-lessons/{lesson_id}/sessions
 
 ## 数据库
 
-任务状态分布在六张表（见「工程设计 → 任务生命周期与持久化」）。SQLite 本地开发自动建表；MySQL 等生产数据库使用 Alembic 迁移：
+任务和产物分布在五张表（见「工程设计 → 任务生命周期与持久化」）。SQLite 本地开发自动建表；MySQL 等数据库使用 Alembic 迁移：
 
 ```bash
 cd backend
