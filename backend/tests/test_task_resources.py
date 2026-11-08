@@ -8,7 +8,7 @@ from app.schemas.elements import ImageElement
 from app.schemas.render import PodcastRenderModel
 from app.schemas.render.podcast import PodcastAudioSegment
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.specs import ElementRequest, PodcastSpec, SocialPostSpec
+from app.schemas.specs import ElementRequest, PodcastSpec
 from app.schemas.state import ContentGenerationState, UnitGenerationResult
 from app.services.asset_repository import AssetRepository, AssetRegistration, collect_state_assets
 from app.services.task_recovery import recover_interrupted_tasks

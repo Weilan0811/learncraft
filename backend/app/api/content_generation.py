@@ -15,7 +15,9 @@ from app.schemas.artifacts import (
 from app.schemas.base import ContentType
 from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.request import ContentGenerationRequest
+from app.schemas.resources import FailedResourceListResponse, ResourceRetryResponse
 from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskListResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
+from app.services import resource_retry_service as resources
 from app.services.task_service import InMemoryTaskService
 
 
@@ -86,6 +88,34 @@ def get_content_generation_events(task_id: str) -> TaskEventsResponse:
     if events is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return events
+
+
+@router.get("/tasks/{task_id}/failed-resources", response_model=FailedResourceListResponse)
+def list_failed_resources(task_id: str) -> FailedResourceListResponse:
+    response = resources.list_failed_resources(task_service.repository, task_id)
+    if response is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return response
+
+
+@router.post(
+    "/tasks/{task_id}/resources/{resource_id}/retry",
+    response_model=ResourceRetryResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def retry_task_resource(
+    task_id: str,
+    resource_id: str,
+    background_tasks: BackgroundTasks,
+) -> ResourceRetryResponse:
+    try:
+        response = resources.submit_retry(task_service.repository, task_id, resource_id)
+    except resources.ResourceNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except (resources.RetryNotAllowed, resources.RetryConflict) as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    background_tasks.add_task(resources.execute_retry, task_service.repository, task_id, resource_id)
+    return response
 
 
 @router.get("/tasks/{task_id}/preview/partial", response_model=PartialPreviewResponse)
