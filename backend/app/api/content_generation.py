@@ -12,9 +12,10 @@ from app.schemas.artifacts import (
     GenerationMetricListResponse,
     ReferenceChunksResponse,
 )
+from app.schemas.base import ContentType
 from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
+from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskListResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
 from app.services.task_service import InMemoryTaskService
 
 
@@ -42,6 +43,21 @@ def create_content_generation_task(
     )
     background_tasks.add_task(task_service.run_task, task.task_id)
     return task
+
+
+@router.get("/tasks", response_model=TaskListResponse)
+def list_content_generation_tasks(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    content_type: ContentType | None = Query(default=None),
+    task_status: TaskStatus | None = Query(default=None, alias="status"),
+) -> TaskListResponse:
+    return task_service.list_tasks(
+        page=page,
+        page_size=page_size,
+        content_type=str(content_type) if content_type else None,
+        status=str(task_status) if task_status else None,
+    )
 
 
 @router.get("/tasks/{task_id}", response_model=TaskResult)

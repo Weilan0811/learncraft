@@ -14,7 +14,7 @@ from app.schemas.export import ExportFile, ExportRequest, ExportResult
 from app.schemas.render import RenderModel
 from app.schemas.specs import ContentSpec
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import KnowledgeBaseStatus, PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
+from app.schemas.task import KnowledgeBaseStatus, PartialPreviewResponse, TaskEventsResponse, TaskListItem, TaskListResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
 from app.services.task_repository import SQLModelTaskRepository
 from app.services.task_event_store import TaskEventStore
 from app.services.provider_readiness import ensure_request_providers_ready
@@ -84,6 +84,38 @@ class PersistentTaskService:
     def get_task(self, task_id: str) -> TaskResult | None:
         task = self.repository.get_task(task_id)
         return self.repository.to_task_result(task) if task else None
+
+    def list_tasks(
+        self,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        content_type: str | None = None,
+        status: str | None = None,
+    ) -> TaskListResponse:
+        tasks, total = self.repository.list_tasks(
+            page=page,
+            page_size=page_size,
+            content_type=content_type,
+            status=status,
+        )
+        return TaskListResponse(
+            items=[
+                TaskListItem(
+                    task_id=task.task_id,
+                    topic=task.topic,
+                    content_type=task.content_type,
+                    status=TaskStatus(task.status),
+                    created_at=task.created_at,
+                    updated_at=task.updated_at,
+                    failed_resource_count=_failed_resource_count(task.progress),
+                )
+                for task in tasks
+            ],
+            page=page,
+            page_size=page_size,
+            total=total,
+        )
 
     def get_preview(self, task_id: str) -> PreviewResponse | None:
         task = self.repository.get_task(task_id)
@@ -275,6 +307,14 @@ def _reference_response_title(task, unit_id: str | None, repository: SQLModelTas
 def _knowledge_base_status(progress: dict | None) -> KnowledgeBaseStatus | None:
     payload = (progress or {}).get("knowledge_base")
     return KnowledgeBaseStatus.model_validate(payload) if isinstance(payload, dict) else None
+
+
+def _failed_resource_count(progress: dict | None) -> int:
+    summary = (progress or {}).get("resource_summary")
+    if not isinstance(summary, dict):
+        return 0
+    value = summary.get("failed", 0)
+    return int(value) if isinstance(value, (int, float)) else 0
 
 
 def _render_payload(payload: dict | None) -> dict | None:

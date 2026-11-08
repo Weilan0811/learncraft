@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import inspect, text
+from sqlalchemy import func, inspect, text
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import ensure_sqlite_parent_directory, get_settings
@@ -66,6 +66,38 @@ class SQLModelTaskRepository:
         with Session(self.engine) as session:
             task = session.get(ContentGenerationTask, task_id)
             return self._detach(session, task)
+
+    def list_tasks(
+        self,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        content_type: str | None = None,
+        status: str | None = None,
+    ) -> tuple[list[ContentGenerationTask], int]:
+        filters = []
+        if content_type:
+            filters.append(ContentGenerationTask.content_type == content_type)
+        if status:
+            filters.append(ContentGenerationTask.status == status)
+        with Session(self.engine) as session:
+            count_statement = select(func.count()).select_from(ContentGenerationTask)
+            if filters:
+                count_statement = count_statement.where(*filters)
+            total = int(session.exec(count_statement).one())
+            statement = select(ContentGenerationTask)
+            if filters:
+                statement = statement.where(*filters)
+            statement = (
+                statement.order_by(
+                    ContentGenerationTask.created_at.desc(),
+                    ContentGenerationTask.task_id.desc(),
+                )
+                .offset(max(page - 1, 0) * page_size)
+                .limit(page_size)
+            )
+            rows = list(session.exec(statement).all())
+            return [self._detach(session, row) for row in rows], total
 
     def mark_running(self, task_id: str) -> ContentGenerationTask | None:
         return self.update_task(
@@ -207,6 +239,8 @@ class SQLModelTaskRepository:
                     continue
                 if key == "current_node":
                     progress["current_node"] = value
+                elif key == "progress" and isinstance(value, dict):
+                    progress = dict(value)
                 elif key == "errors":
                     errors = [str(item) for item in value] if isinstance(value, list) else [str(value)]
                     task.error_message = errors[-1] if errors else None

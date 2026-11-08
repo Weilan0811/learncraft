@@ -31,6 +31,23 @@ class TaskResult(SchemaModel):
     updated_at: datetime | None = None
 
 
+class TaskListItem(SchemaModel):
+    task_id: str
+    topic: str | None = None
+    content_type: ContentType
+    status: TaskStatus
+    created_at: datetime
+    updated_at: datetime
+    failed_resource_count: int = 0
+
+
+class TaskListResponse(SchemaModel):
+    items: list[TaskListItem] = Field(default_factory=list)
+    page: int
+    page_size: int
+    total: int
+
+
 class PreviewResponse(SchemaModel):
     content_type: ContentType
     render_model: RenderModel
