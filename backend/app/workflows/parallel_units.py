@@ -1,10 +1,13 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+import logging
+from typing import Optional
+
+from langchain_core.runnables import RunnableConfig
 
 from app.core.config import get_settings
 from app.schemas.elements import ContentElement
 from app.schemas.state import ContentGenerationState, RenderUnitSnapshot, TaskStreamEvent, UnitGenerationResult, WorkflowError
-from app.services.task_repository import SQLModelTaskRepository
 from app.workflows.nodes.element_flow_node import collect_unit_required_elements, merge_unit_elements
 from app.workflows.nodes.helpers import build_progress, ensure_monotonic_progress
 from app.workflows.nodes.image_element_node import generate_image_element
@@ -22,6 +25,9 @@ from app.workflows.nodes.validator_node import (
     validate_unit,
     validate_unit_spec,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -44,7 +50,12 @@ def build_unit_batches(unit_ids: list[str], concurrency: int) -> list[list[str]]
     return [unit_ids[index : index + batch_size] for index in range(0, len(unit_ids), batch_size)]
 
 
-def generate_units_parallel(state: ContentGenerationState, concurrency: int | None = None) -> dict[str, object]:
+def generate_units_parallel(
+    state: ContentGenerationState,
+    concurrency: int | None = None,
+    *,
+    config: Optional[RunnableConfig] = None,
+) -> dict[str, object]:
     unit_ids = list(state.pending_unit_ids)
     if not unit_ids:
         return {
@@ -77,7 +88,7 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
     completed_unit_ids: list[str] = []
     failed_unit_ids: list[str] = []
 
-    incremental_repository = _incremental_repository()
+    persist_snapshot = (config or {}).get("configurable", {}).get("persist_unit_snapshot")
 
     def _merge_unit_result_into_state(result: UnitPipelineResult) -> None:
         if result.context:
@@ -99,7 +110,7 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
             failed_unit_ids.append(result.unit_id)
 
     def _persist_incremental_state() -> None:
-        if incremental_repository is None or not state.request_id:
+        if persist_snapshot is None or not state.request_id:
             return
         try:
             partial = _build_partial_render_model(state, render_units) if render_units else state.partial_render_model
@@ -126,11 +137,9 @@ def generate_units_parallel(state: ContentGenerationState, concurrency: int | No
                     ),
                 }
             )
-            incremental_repository.save_state(state.request_id, snapshot)
+            persist_snapshot(state.request_id, snapshot)
         except Exception:
-            # Best-effort only; run_task persists the authoritative state when the
-            # node returns, and dedup in the artifact layer makes retries safe.
-            pass
+            logger.exception("Failed to save incremental progress for task %s", state.request_id)
 
     for batch in build_unit_batches(unit_ids, max_workers):
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -307,14 +316,6 @@ def _element_belongs_to_unit(element: ContentElement, unit_id: str) -> bool:
 
 def _element_status_belongs_to_unit(element_id: str, unit_result: UnitGenerationResult | None) -> bool:
     return bool(unit_result and element_id in unit_result.element_requests)
-
-
-def _incremental_repository() -> SQLModelTaskRepository | None:
-    """Repository for mid-stage incremental persistence; None disables it."""
-    try:
-        return SQLModelTaskRepository()
-    except Exception:
-        return None
 
 
 __all__ = [

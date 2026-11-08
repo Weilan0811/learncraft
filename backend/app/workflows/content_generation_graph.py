@@ -1,5 +1,6 @@
 from functools import lru_cache
 from datetime import UTC, datetime
+from collections.abc import Callable
 from uuid import uuid4
 
 from langgraph.graph import END, START, StateGraph
@@ -77,6 +78,7 @@ def run_content_generation(
 def stream_content_generation(
     request: ContentGenerationRequest,
     request_id: str | None = None,
+    persist_unit_snapshot: Callable[[str, ContentGenerationState], object] | None = None,
 ):
     """Stream the content-generation graph execution, yielding updates after each node."""
     state = ContentGenerationState(
@@ -118,7 +120,8 @@ def stream_content_generation(
 
     previous_node_started_at = monotonic_ms()
     metric_sequence = 0
-    for event_type, payload in graph.stream(state, stream_mode=["updates", "values"]):
+    config = {"configurable": {"persist_unit_snapshot": persist_unit_snapshot}} if persist_unit_snapshot else None
+    for event_type, payload in graph.stream(state, config=config, stream_mode=["updates", "values"]):
         if event_type == "updates":
             for node_name, node_output in payload.items():
                 debug_step_paths[str(node_name)] = debug_artifacts.write_step(str(node_name), node_output)

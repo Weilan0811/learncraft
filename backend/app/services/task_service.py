@@ -50,7 +50,9 @@ class PersistentTaskService:
             request = ContentGenerationRequest.model_validate(task.request_payload)
             # state = run_content_generation(request, request_id=task_id)
             final_state = None
-            for update in stream_content_generation(request, request_id=task_id):
+            for update in stream_content_generation(
+                request, request_id=task_id, persist_unit_snapshot=self.repository.save_state
+            ):
                 partial_state = ContentGenerationState.model_validate(update)
                 self.repository.save_state(task_id, partial_state)
                 final_state = partial_state
