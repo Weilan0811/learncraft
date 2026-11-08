@@ -16,8 +16,10 @@ import type {
   PartialPreviewResponse,
   PreviewResponse,
   RenderUnitSnapshot,
+  TaskEventsResponse,
   TaskResult,
-  TaskStreamEvent
+  TaskStreamEvent,
+  TaskUnitsResponse
 } from "../types/export";
 
 interface ContentGenerationState {
@@ -31,13 +33,20 @@ interface ContentGenerationState {
   loading: boolean;
   previewLookupLoading: boolean;
   error?: string;
+  streamRefreshError?: string;
   submitTask: (request: ContentGenerationRequest) => Promise<void>;
   loadPreviewByTaskId: (taskId: string) => Promise<void>;
   exportTask: (exportType: ExportType) => Promise<void>;
   setInteractiveSessionId: (sessionId?: string) => void;
+  retryStreamRefresh: () => void;
+  stopStreamRefresh: () => void;
 }
 
 const POLL_INTERVAL_MS = 1200;
+const MAX_STREAM_REFRESH_RETRIES = 3;
+
+type StreamPart = "events" | "units" | "preview";
+let activeStreamRefresh: { retryFailed: () => void; dispose: () => void } | undefined;
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -62,7 +71,7 @@ async function waitForCompletedTask(
 
 interface SseWaitHandlers {
   onTaskPatch: (patch: Partial<TaskResult>) => void;
-  onRefresh: () => void;
+  onRefresh: (unitsCount: number) => void;
   onPollFallback: () => Promise<TaskResult>;
 }
 
@@ -110,7 +119,7 @@ async function waitForCompletedTaskSse(taskId: string, handlers: SseWaitHandlers
         if (snapshot.units_count !== lastUnitsCount || snapshot.events_count !== lastEventsCount) {
           lastUnitsCount = snapshot.units_count ?? -1;
           lastEventsCount = snapshot.events_count ?? -1;
-          handlers.onRefresh();
+          handlers.onRefresh(snapshot.units_count ?? 0);
         }
         if (snapshot.done || snapshot.missing) {
           finish(getContentGenerationTask(taskId));
@@ -132,13 +141,23 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
   interactiveSessionId: undefined,
   loading: false,
   previewLookupLoading: false,
+  retryStreamRefresh() {
+    activeStreamRefresh?.retryFailed();
+  },
+  stopStreamRefresh() {
+    activeStreamRefresh?.dispose();
+    activeStreamRefresh = undefined;
+    set({ streamRefreshError: undefined });
+  },
   setInteractiveSessionId(sessionId) {
     set({ interactiveSessionId: sessionId });
   },
   async submitTask(request) {
+    get().stopStreamRefresh();
     set({
       loading: true,
       error: undefined,
+      streamRefreshError: undefined,
       preview: undefined,
       partialPreview: undefined,
       streamEvents: [],
@@ -150,30 +169,78 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       const createdTask = await createContentGenerationTask(request);
       set({ task: createdTask });
 
-      let refreshVersion = 0;
+      let disposed = false;
+      let previewExpected = false;
+      let previewDisabled = false;
+      const latestRequested = { events: 0, units: 0, preview: 0 };
       const lastAppliedRefresh = { events: 0, units: 0, preview: 0 };
-      const refreshStreamingState = async (taskId: string) => {
-        const version = ++refreshVersion;
-        const [eventsResult, unitsResult, partialPreview] = await Promise.allSettled([
-          getContentGenerationEvents(taskId),
-          getContentGenerationUnits(taskId),
-          getContentGenerationPartialPreview(taskId)
-        ]);
-        if (get().task?.task_id !== taskId) {
-          return;
+      const retryTimers: Partial<Record<StreamPart, number>> = {};
+      const failedParts = new Set<StreamPart>();
+      const isCurrent = () => !disposed && get().task?.task_id === createdTask.task_id;
+      const updateRefreshError = () => {
+        if (isCurrent()) {
+          set({ streamRefreshError: failedParts.size ? "部分进度或预览暂时无法更新。" : undefined });
         }
-        if (eventsResult.status === "fulfilled" && version > lastAppliedRefresh.events) {
-          lastAppliedRefresh.events = version;
-          set({ streamEvents: eventsResult.value.events });
+      };
+
+      const requestParts = (parts: StreamPart[]): Promise<void> => Promise.all(parts.map((part) => {
+        if (!isCurrent() || (part === "preview" && previewDisabled)) return Promise.resolve();
+        window.clearTimeout(retryTimers[part]);
+        const version = ++latestRequested[part];
+        return fetchPart(part, version, 0);
+      })).then(() => undefined);
+
+      const fetchPart = async (part: StreamPart, version: number, attempt: number): Promise<void> => {
+        if (!isCurrent() || version !== latestRequested[part] || (part === "preview" && previewDisabled)) return;
+        try {
+          const result = part === "events"
+            ? await getContentGenerationEvents(createdTask.task_id)
+            : part === "units"
+              ? await getContentGenerationUnits(createdTask.task_id)
+              : await getContentGenerationPartialPreview(createdTask.task_id);
+          if (!isCurrent() || (part === "preview" && previewDisabled) || version <= lastAppliedRefresh[part]) return;
+          lastAppliedRefresh[part] = version;
+          if (version === latestRequested[part]) {
+            failedParts.delete(part);
+            updateRefreshError();
+          }
+          if (part === "events") {
+            set({ streamEvents: (result as TaskEventsResponse).events });
+          } else if (part === "units") {
+            const units = (result as TaskUnitsResponse).units;
+            set({ renderUnits: units });
+            if (units.length > 0 && !previewExpected && !previewDisabled) {
+              previewExpected = true;
+              void requestParts(["preview"]);
+            }
+          } else {
+            set({ partialPreview: result as PartialPreviewResponse });
+          }
+        } catch {
+          if (!isCurrent() || version !== latestRequested[part] || (part === "preview" && previewDisabled)) return;
+          if (attempt < MAX_STREAM_REFRESH_RETRIES) {
+            retryTimers[part] = window.setTimeout(() => {
+              delete retryTimers[part];
+              void fetchPart(part, version, attempt + 1);
+            }, POLL_INTERVAL_MS);
+          } else {
+            failedParts.add(part);
+            updateRefreshError();
+          }
         }
-        if (unitsResult.status === "fulfilled" && version > lastAppliedRefresh.units) {
-          lastAppliedRefresh.units = version;
-          set({ renderUnits: unitsResult.value.units });
+      };
+
+      activeStreamRefresh = {
+        retryFailed: () => { void requestParts([...failedParts]); },
+        dispose: () => {
+          disposed = true;
+          for (const timer of Object.values(retryTimers)) window.clearTimeout(timer);
         }
-        if (partialPreview.status === "fulfilled" && version > lastAppliedRefresh.preview) {
-          lastAppliedRefresh.preview = version;
-          set({ partialPreview: partialPreview.value });
-        }
+      };
+
+      const refreshStreamingState = (unitsCount: number) => {
+        previewExpected ||= unitsCount > 0;
+        return requestParts(previewExpected && !previewDisabled ? ["events", "units", "preview"] : ["events", "units"]);
       };
 
       const completedTask = await waitForCompletedTaskSse(createdTask.task_id, {
@@ -183,13 +250,13 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
             set({ task: { ...current, ...patch } });
           }
         },
-        onRefresh: () => {
-          void refreshStreamingState(createdTask.task_id);
+        onRefresh: (unitsCount) => {
+          void refreshStreamingState(unitsCount);
         },
         onPollFallback: async () => {
           const polled = await waitForCompletedTask(createdTask.task_id, async (task) => {
             set({ task });
-            await refreshStreamingState(task.task_id);
+            await refreshStreamingState(task.progress?.completed_units ?? 0);
           });
           set({ task: polled });
           return polled;
@@ -202,7 +269,11 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       }
 
       const preview = await getContentGenerationPreview(completedTask.task_id);
-      await refreshStreamingState(completedTask.task_id);
+      previewDisabled = true;
+      window.clearTimeout(retryTimers.preview);
+      failedParts.delete("preview");
+      updateRefreshError();
+      await refreshStreamingState(0);
       set({ preview, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unknown request error", loading: false });
@@ -216,9 +287,11 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       return;
     }
 
+    get().stopStreamRefresh();
     set({
       previewLookupLoading: true,
       error: undefined,
+      streamRefreshError: undefined,
       task: undefined,
       preview: undefined,
       partialPreview: undefined,

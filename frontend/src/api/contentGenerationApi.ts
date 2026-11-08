@@ -14,6 +14,7 @@ import type {
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? ""
 });
+const STREAM_REQUEST_TIMEOUT_MS = 15000;
 // TODO(MVP-api): Add auth headers, request tracing, cancellation/retry
 // endpoints, and OpenAPI-generated client types.
 
@@ -55,15 +56,15 @@ export async function getContentGenerationPreview(taskId: string): Promise<Previ
 }
 
 export async function getContentGenerationPartialPreview(taskId: string): Promise<PartialPreviewResponse> {
-  return unwrapApiCall(api.get<PartialPreviewResponse>(`/api/content-generation/tasks/${taskId}/preview/partial`));
+  return unwrapApiCall(api.get<PartialPreviewResponse>(`/api/content-generation/tasks/${taskId}/preview/partial`, { timeout: STREAM_REQUEST_TIMEOUT_MS }));
 }
 
 export async function getContentGenerationEvents(taskId: string): Promise<TaskEventsResponse> {
-  return unwrapApiCall(api.get<TaskEventsResponse>(`/api/content-generation/tasks/${taskId}/events`));
+  return unwrapApiCall(api.get<TaskEventsResponse>(`/api/content-generation/tasks/${taskId}/events`, { timeout: STREAM_REQUEST_TIMEOUT_MS }));
 }
 
 export async function getContentGenerationUnits(taskId: string): Promise<TaskUnitsResponse> {
-  return unwrapApiCall(api.get<TaskUnitsResponse>(`/api/content-generation/tasks/${taskId}/units`));
+  return unwrapApiCall(api.get<TaskUnitsResponse>(`/api/content-generation/tasks/${taskId}/units`, { timeout: STREAM_REQUEST_TIMEOUT_MS }));
 }
 
 export async function exportContentGenerationTask(taskId: string, request: ExportRequest): Promise<ExportResult> {

@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { ContentGenerationForm } from "../components/generation/ContentGenerationForm";
 import { ExportActions } from "../components/generation/ExportActions";
 import { GenerationProgress } from "../components/generation/GenerationProgress";
@@ -9,6 +11,9 @@ import { ContentPreviewPage } from "./ContentPreviewPage";
 export function ContentGenerationPage() {
   const taskId = useContentGenerationStore((state) => state.task?.task_id);
   const preview = useContentGenerationStore((state) => state.preview ?? state.partialPreview);
+  const stopStreamRefresh = useContentGenerationStore((state) => state.stopStreamRefresh);
+
+  useEffect(() => () => stopStreamRefresh(), [stopStreamRefresh]);
 
   return (
     <main className="app-shell">
