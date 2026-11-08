@@ -17,7 +17,7 @@ CAPABILITY_LABELS: dict[Capability, str] = {
     "tts": "语音服务",
 }
 
-_SECRET_FIELDS = ("apimart_api_key", "bailian_api_key", "deepseek_api_key", "kb_api_key")
+_SECRET_FIELDS = ("apimart_api_key", "bailian_api_key", "deepseek_api_key")
 
 
 @dataclass(frozen=True)

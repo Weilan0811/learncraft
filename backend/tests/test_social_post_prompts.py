@@ -194,7 +194,7 @@ def test_social_post_real_mode_generator_uses_structured_prompt_sequence(monkeyp
     assert fake_llm.schemas == ["WechatBriefOutline", "WechatArticleDraft", "ImageSlotPlan"]
 
 
-def test_social_post_real_mode_normalizes_missing_citations_and_provider_cover_ratio(monkeypatch) -> None:
+def test_social_post_real_mode_strips_citations_when_retrieval_is_empty(monkeypatch) -> None:
     state = ContentGenerationState(
         request_id="task_prompt",
         content_type="social_post",
@@ -288,8 +288,15 @@ def test_social_post_real_mode_normalizes_missing_citations_and_provider_cover_r
 
     spec = SocialPostGenerator().generate(state)
 
-    assert all(section.citation_refs for section in spec.draft.sections)
-    assert all(block.citation_refs for section in spec.draft.sections for block in section.blocks if hasattr(block, "citation_refs"))
+    assert all(not section.citation_refs for section in spec.draft.sections)
+    assert all(
+        not block.citation_refs
+        for section in spec.draft.sections
+        for block in section.blocks
+        if hasattr(block, "citation_refs")
+    )
+    assert all(not section.evidence_refs for section in spec.outline.sections)
+    assert "stub_chunk" not in spec.model_dump_json()
     assert [asset.status for asset in spec.image_assets] == ["generated", "generated"]
     assert fake_image_service.aspect_ratios == ["21:9", "16:9"]
 

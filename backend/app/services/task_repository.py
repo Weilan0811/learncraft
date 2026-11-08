@@ -1,5 +1,6 @@
 from collections.abc import Iterable
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import inspect, text
@@ -10,7 +11,7 @@ from app.core.task import TaskStatus
 from app.models import ContentGenerationArtifact, ContentGenerationReference, ContentGenerationTask, KnowledgeChunkCache
 from app.schemas.export import ExportFile
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import TaskResult
+from app.schemas.task import KnowledgeBaseStatus, TaskResult
 from app.schemas.state import ContentGenerationState
 from app.services.artifact_repository import ArtifactRepository
 from app.workflows.nodes.helpers import build_progress, ensure_monotonic_progress
@@ -81,6 +82,7 @@ class SQLModelTaskRepository:
         )
         if state.current_node:
             progress["current_node"] = state.current_node
+        self._apply_retrieval_status(progress, state)
 
         outline = state.outline.model_dump(mode="json") if state.outline else None
         render_model = state.render_model.model_dump(mode="json") if state.render_model else None
@@ -129,6 +131,7 @@ class SQLModelTaskRepository:
             )
             if state.current_node:
                 progress["current_node"] = state.current_node
+            self._apply_retrieval_status(progress, state)
             task_row.progress = progress
             task_row.error_message = state.errors[-1] if state.errors else None
             task_row.updated_at = now_utc()
@@ -292,9 +295,25 @@ class SQLModelTaskRepository:
             if "error_message" not in columns:
                 connection.execute(text("ALTER TABLE content_generation_task ADD COLUMN error_message TEXT"))
 
+    @staticmethod
+    def _apply_retrieval_status(progress: dict[str, Any], state: ContentGenerationState) -> None:
+        status = state.retrieval_status
+        progress["knowledge_base"] = {
+            "used": status.state == "ok" and status.chunk_count > 0,
+            "status": status.state,
+            "chunk_count": status.chunk_count,
+            "message": status.message,
+        }
+
     def to_task_result(self, task: ContentGenerationTask) -> TaskResult:
         progress = dict(task.progress or {})
         export_files = [ExportFile.model_validate(file) for file in progress.get("export_files", []) if isinstance(file, dict)]
+        knowledge_payload = progress.get("knowledge_base")
+        knowledge_base = (
+            KnowledgeBaseStatus.model_validate(knowledge_payload)
+            if isinstance(knowledge_payload, dict)
+            else None
+        )
         return TaskResult(
             task_id=task.task_id,
             status=TaskStatus(task.status),
@@ -304,6 +323,7 @@ class SQLModelTaskRepository:
             errors=[task.error_message] if task.error_message else [],
             current_node=str(progress.get("current_node")) if progress.get("current_node") else None,
             progress=progress,
+            knowledge_base=knowledge_base,
             created_at=task.created_at,
             updated_at=task.updated_at,
         )

@@ -5,7 +5,7 @@ Hard requirements:
 - id must equal the provided unit_spec_id.
 - outline_unit_id must equal outline_unit.id.
 - order must equal outline_unit.order.
-- source_chunk_ids must come from the input chunks or outline_unit.source_chunk_ids.
+- source_chunk_ids must come from the input chunks or outline_unit.source_chunk_ids. When retrieval results are empty, keep them empty and never invent citations.
 - blocks must contain 2-4 text blocks, written as rich teaching material rather than one short sentence.
 - Every section must include exactly one image: required_elements must declare exactly one element with type "image", and blocks must contain one element_ref block pointing to that element_id.
 - required_elements may only contain that single image element. Do not declare mindmap, chart, audio, or any other element type.

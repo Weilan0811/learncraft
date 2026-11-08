@@ -203,18 +203,18 @@ instruction 必须说明：
 `layout_hints` 必须包含：
 
 ```json
-{
+{{
   "supported_renderer": "scenekit.slide/v1"
-}
+}}
 ```
 
 可额外包含：
 
 ```json
-{
+{{
   "density": "balanced" | "rich",
   "primary_visual": "image element id"
-}
+}}
 ```
 
 `density` 选择规则：

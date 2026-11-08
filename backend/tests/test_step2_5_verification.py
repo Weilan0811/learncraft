@@ -144,8 +144,8 @@ class TestStep3UnitSpecGenerator:
             assert matching_unit is not None, f"无法追踪 outline_unit_id: {section.outline_unit_id}"
         print("✅ outline_unit_id 可追踪")
 
-    def test_source_chunk_ids_not_empty(self):
-        """验收标准：source_chunk_ids 不为空"""
+    def test_source_chunk_ids_stay_empty_without_retrieval(self):
+        """验收标准：检索关闭时 source_chunk_ids 为空，不生成占位引用"""
         state = run_content_generation(
             ContentGenerationRequest(
                 content_type="lecture",
@@ -154,9 +154,10 @@ class TestStep3UnitSpecGenerator:
                 generation_options=GenerationOptions(section_count=1),
             )
         )
+        assert state.retrieval_status.state == "disabled"
         for section in state.content_spec.sections:
-            assert len(section.source_chunk_ids) > 0, f"section {section.id} 的 source_chunk_ids 为空"
-        print("✅ source_chunk_ids 不为空")
+            assert section.source_chunk_ids == [], f"section {section.id} 不应带来源 id"
+        print("✅ 检索关闭时 source_chunk_ids 为空")
 
     def test_required_elements_match_element_ref(self):
         """验收标准：required_elements 与 element_ref 能一一对应"""

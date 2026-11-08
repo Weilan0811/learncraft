@@ -21,6 +21,12 @@ class RetrievedChunk(SchemaModel):
     metadata: dict[str, object] = Field(default_factory=dict)
 
 
+class RetrievalStatus(SchemaModel):
+    state: Literal["disabled", "ok", "empty", "failed"] = "disabled"
+    chunk_count: int = 0
+    message: str = "知识库检索当前已关闭，未使用知识库资料。"
+
+
 class WorkflowError(SchemaModel):
     stage: str
     code: str
@@ -97,6 +103,7 @@ class ContentGenerationState(SchemaModel):
     user_prompt: str
     system_prompt: str | None = None
     knowledge_base_ids: list[str] = Field(default_factory=list)
+    retrieval_status: RetrievalStatus = Field(default_factory=RetrievalStatus)
     raw_request: dict[str, object] = Field(default_factory=dict)
     normalized_request: dict[str, object] | None = None
     retrieved_chunks: list[RetrievedChunk] = Field(default_factory=list)

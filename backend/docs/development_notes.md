@@ -32,9 +32,9 @@ CONTENT_GENERATOR_BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mod
 CONTENT_GENERATOR_BAILIAN_TTS_BASE_URL=https://dashscope.aliyuncs.com
 CONTENT_GENERATOR_APIMART_API_KEY=...
 CONTENT_GENERATOR_APIMART_BASE_URL=https://api.apimart.ai/v1
-CONTENT_GENERATOR_KB_API_BASE_URL=...
-CONTENT_GENERATOR_KB_API_KEY=...
 ```
+
+知识库检索当前关闭，不再需要 `CONTENT_GENERATOR_KB_*` 配置；请求中的 `knowledge_base_ids` 字段保留。
 
 常用配置：
 
@@ -61,9 +61,6 @@ CONTENT_GENERATOR_KB_API_KEY=...
 | `CONTENT_GENERATOR_PROVIDER_RATE_LIMIT_BACKOFF_SECONDS` | provider rate limit 场景预留 backoff 秒数。 |
 | `CONTENT_GENERATOR_REQUEST_TIMEOUT_SECONDS` | provider 请求超时。 |
 | `CONTENT_GENERATOR_MAX_RETRIES` | provider 重试次数。 |
-| `CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K` | 知识库检索 top_k。 |
-| `CONTENT_GENERATOR_KB_MAX_CHARS_PER_ITEM` | 单条检索结果最大字符数。 |
-| `CONTENT_GENERATOR_KB_REQUEST_TIMEOUT_SECONDS` | 知识库检索请求超时。 |
 
 ## 3. 数据库配置
 

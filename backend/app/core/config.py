@@ -100,12 +100,6 @@ class Settings(BaseSettings):
     apimart_image_poll_interval_seconds: float = 2.0
     apimart_image_poll_timeout_seconds: float = 180.0
 
-    kb_api_base_url: str = ""
-    kb_api_key: str | None = None
-    kb_retrieval_top_k: int = 5
-    kb_max_chars_per_item: int = 8000
-    kb_request_timeout_seconds: float = 120.0
-
     model_config = SettingsConfigDict(env_prefix="CONTENT_GENERATOR_", env_file=PROJECT_ROOT / ".env")
 
     @model_validator(mode="after")

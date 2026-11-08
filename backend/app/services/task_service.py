@@ -14,7 +14,7 @@ from app.schemas.export import ExportFile, ExportRequest, ExportResult
 from app.schemas.render import RenderModel
 from app.schemas.specs import ContentSpec
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
+from app.schemas.task import KnowledgeBaseStatus, PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
 from app.services.task_repository import SQLModelTaskRepository
 from app.services.task_event_store import TaskEventStore
 from app.services.provider_readiness import ensure_request_providers_ready
@@ -92,7 +92,11 @@ class PersistentTaskService:
         if task is None or payload is None:
             return None
         render_model = render_model_adapter.validate_python(payload)
-        return PreviewResponse(content_type=task.content_type, render_model=render_model)
+        return PreviewResponse(
+            content_type=task.content_type,
+            render_model=render_model,
+            knowledge_base=_knowledge_base_status(task.progress),
+        )
 
     def get_partial_preview(self, task_id: str) -> PartialPreviewResponse | None:
         task = self.repository.get_task(task_id)
@@ -101,7 +105,11 @@ class PersistentTaskService:
         if task is None or payload is None:
             return None
         render_model = render_model_adapter.validate_python(payload)
-        return PartialPreviewResponse(content_type=task.content_type, render_model=render_model)
+        return PartialPreviewResponse(
+            content_type=task.content_type,
+            render_model=render_model,
+            knowledge_base=_knowledge_base_status(task.progress),
+        )
 
     def get_events(self, task_id: str) -> TaskEventsResponse | None:
         task = self.repository.get_task(task_id)
@@ -262,6 +270,11 @@ def _reference_response_title(task, unit_id: str | None, repository: SQLModelTas
                 if isinstance(unit, dict) and unit.get("id") == unit_id and isinstance(unit.get("title"), str):
                     return unit["title"]
     return None
+
+
+def _knowledge_base_status(progress: dict | None) -> KnowledgeBaseStatus | None:
+    payload = (progress or {}).get("knowledge_base")
+    return KnowledgeBaseStatus.model_validate(payload) if isinstance(payload, dict) else None
 
 
 def _render_payload(payload: dict | None) -> dict | None:

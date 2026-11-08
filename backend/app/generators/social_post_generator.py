@@ -315,6 +315,20 @@ class SocialPostGenerator:
     def _normalize_citation_refs(self, state: ContentGenerationState, spec: SocialPostSpec) -> SocialPostSpec:
         refs = self._citation_refs(state.planning_chunks or state.retrieved_chunks)
         draft = spec.draft.model_copy(deep=True)
+        outline = spec.outline.model_copy(deep=True)
+        if not refs:
+            # Retrieval is off: never leave model-invented sources behind.
+            draft.headline.citation_refs = []
+            for section in draft.sections:
+                section.citation_refs = []
+                for block in section.blocks:
+                    if hasattr(block, "citation_refs"):
+                        block.citation_refs = []
+                    if hasattr(block, "source"):
+                        block.source = None
+            for section in outline.sections:
+                section.evidence_refs = []
+            return spec.model_copy(update={"draft": draft, "outline": outline})
         if not draft.headline.citation_refs:
             draft.headline.citation_refs = refs
         for section in draft.sections:
@@ -323,7 +337,6 @@ class SocialPostGenerator:
             for block in section.blocks:
                 if hasattr(block, "citation_refs") and not block.citation_refs:
                     block.citation_refs = refs
-        outline = spec.outline.model_copy(deep=True)
         for section in outline.sections:
             if not section.evidence_refs:
                 section.evidence_refs = refs
@@ -338,7 +351,7 @@ class SocialPostGenerator:
     @staticmethod
     def _citation_refs(chunks: list[RetrievedChunk]) -> list[CitationRef]:
         if not chunks:
-            return [CitationRef(chunk_id="stub_chunk", title="Generated fallback source", note="Fallback source for local testing.")]
+            return []
         return [
             CitationRef(
                 chunk_id=chunk.id,

@@ -198,11 +198,7 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
     assert references_payload["unit_id"] is None
     assert references_payload["content_type"] == "lecture"
     assert references_payload["title"] == "Artifact API"
-    assert references_payload["chunks"]
-    assert {"chunk_id", "path", "title", "text", "rank", "score"}.issubset(references_payload["chunks"][0])
-    assert references_payload["chunks"][0]["path"]
-    assert references_payload["chunks"][0]["title"]
-    assert references_payload["chunks"][0]["text"]
+    assert references_payload["chunks"] == []
 
     units_response = client.get(f"/api/content-generation/tasks/{task_id}/units")
     assert units_response.status_code == 200
@@ -214,8 +210,7 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
     assert unit_references_payload["unit_id"] == unit_id
     assert unit_references_payload["content_type"] == "lecture"
     assert unit_references_payload["title"]
-    assert unit_references_payload["chunks"]
-    assert {"chunk_id", "path", "title", "text", "rank", "score"}.issubset(unit_references_payload["chunks"][0])
+    assert unit_references_payload["chunks"] == []
 
     metrics_response = client.get(f"/api/content-generation/tasks/{task_id}/metrics")
     assert metrics_response.status_code == 200
@@ -225,4 +220,13 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
 
     preview_response = client.get(f"/api/content-generation/tasks/{task_id}/preview")
     assert preview_response.status_code == 200
-    assert preview_response.json()["render_model"]["render_type"] == "lecture_page"
+    preview_payload = preview_response.json()
+    assert preview_payload["render_model"]["render_type"] == "lecture_page"
+    assert preview_payload["knowledge_base"]["status"] == "disabled"
+    assert preview_payload["knowledge_base"]["used"] is False
+    assert preview_payload["knowledge_base"]["chunk_count"] == 0
+
+    task_response = client.get(f"/api/content-generation/tasks/{task_id}")
+    task_payload = task_response.json()
+    assert task_payload["knowledge_base"]["status"] == "disabled"
+    assert task_payload["knowledge_base"]["message"]

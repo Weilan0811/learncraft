@@ -12,7 +12,7 @@
 - teaching_flow：3-7 个 InteractiveHtmlTeachingBlock，组织讲解、案例、流程、互动、总结。
 - interaction_specs：本 unit 的互动规格，通常 1-2 个互动点，只能使用 P0 四类互动。
 - concepts：本 unit 涉及的核心概念。
-- citations：可选，引用当前检索结果。
+- citations：可选，引用当前检索结果；检索为空时留空，不要编造引用。
 
 ## teaching_flow 中每个 TeachingBlock 的字段
 
