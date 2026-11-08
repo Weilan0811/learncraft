@@ -150,12 +150,19 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       const createdTask = await createContentGenerationTask(request);
       set({ task: createdTask });
 
+      let refreshVersion = 0;
+      let lastAppliedRefresh = 0;
       const refreshStreamingState = async (taskId: string) => {
+        const version = ++refreshVersion;
         const [eventsResult, unitsResult, partialPreview] = await Promise.allSettled([
           getContentGenerationEvents(taskId),
           getContentGenerationUnits(taskId),
           getContentGenerationPartialPreview(taskId)
         ]);
+        if (version < lastAppliedRefresh || get().task?.task_id !== taskId) {
+          return;
+        }
+        lastAppliedRefresh = version;
         if (eventsResult.status === "fulfilled") {
           set({ streamEvents: eventsResult.value.events });
         }
