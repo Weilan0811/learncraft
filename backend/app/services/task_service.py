@@ -253,8 +253,16 @@ class PersistentTaskService:
         render_model = render_model_adapter.validate_python(render_payload)
         content_spec = content_spec_adapter.validate_python(content_spec_artifact.payload) if content_spec_artifact else None
         result = exporter.export(task_id, render_model, request, asset_ids=[], content_spec=content_spec)
-        export_files = [*self.repository.to_task_result(task).export_files, ExportFile(type=request.export_type, url=result.file_url)]
-        self.repository.update_export_files(task_id, export_files)
+        if result.status == "success" and result.file_url:
+            existing = [
+                file
+                for file in self.repository.to_task_result(task).export_files
+                if file.type != request.export_type
+            ]
+            self.repository.update_export_files(
+                task_id,
+                [*existing, ExportFile(type=request.export_type, url=result.file_url)],
+            )
         return result
 
 

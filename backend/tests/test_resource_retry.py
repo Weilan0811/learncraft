@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
+from io import BytesIO
 from pathlib import Path
 
+import wave
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -69,11 +71,11 @@ class FakeTTSService:
         self.calls.append({"text": text, "voice": voice, "asset_id": asset_id})
         record = LocalStorageService().save_bytes(
             asset_id=asset_id,
-            filename=f"{asset_id}.mp3",
-            content=b"ID3fake-audio",
-            content_type="audio/mpeg",
+            filename=f"{asset_id}.wav",
+            content=_wav_bytes(),
+            content_type="audio/wav",
             kind="audio",
-            metadata={"provider": "fake", "voice": voice},
+            metadata={"provider": "fake", "voice": voice, "format": "wav"},
         )
         return AudioFileElement(
             id=record.asset_id,
@@ -81,10 +83,20 @@ class FakeTTSService:
             speaker="Person2" if voice == "Cherry" else "Person1",
             voice=voice,
             audio_url=record.url,
-            format="mp3",
+            format="wav",
             byte_size=record.byte_size,
             order=0,
         )
+
+
+def _wav_bytes() -> bytes:
+    buffer = BytesIO()
+    with wave.open(buffer, "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(8000)
+        audio.writeframes(b"\x00\x00" * 800)
+    return buffer.getvalue()
 
 
 def make_repository(tmp_path: Path) -> SQLModelTaskRepository:
@@ -243,11 +255,11 @@ def create_podcast_task_with_failed_segment(repository: SQLModelTaskRepository) 
     first_asset_id = f"{spec.id}_001"
     record = LocalStorageService().save_bytes(
         asset_id=first_asset_id,
-        filename=f"{first_asset_id}.mp3",
-        content=b"ID3first-segment",
-        content_type="audio/mpeg",
+        filename=f"{first_asset_id}.wav",
+        content=_wav_bytes(),
+        content_type="audio/wav",
         kind="audio",
-        metadata={"provider": "fake"},
+        metadata={"provider": "fake", "format": "wav"},
     )
     render_model = PodcastRenderModel(
         title="Podcast retry",
@@ -282,7 +294,7 @@ def create_podcast_task_with_failed_segment(repository: SQLModelTaskRepository) 
                 speaker="Person1",
                 voice="Ethan",
                 audio_url=record.url,
-                format="mp3",
+                format="wav",
                 byte_size=record.byte_size,
                 order=1,
             )

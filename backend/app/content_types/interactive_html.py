@@ -24,5 +24,5 @@ def build_interactive_html_profile() -> ContentTypeProfile:
             default_required_elements=(),
             optional_elements=(),
         ),
-        exporter_types=("html", "zip"),
+        exporter_types=("html",),
     )

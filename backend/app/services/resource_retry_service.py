@@ -418,6 +418,7 @@ def _apply_audio_retry(
     warnings = [warning for warning in model.warnings if not warning.startswith(segment_id)]
     export_files = [file for file in model.export_files if file.file_type != "audio"]
     final_audio_url: str | None = None
+    final_audio_duration: float | None = None
     if segments and all(segment.status == "generated" for segment in segments):
         try:
             record = AudioAssemblerService().assemble(
@@ -428,6 +429,8 @@ def _apply_audio_retry(
             )
             if record is not None:
                 final_audio_url = record.url
+                duration = record.metadata.get("duration_seconds")
+                final_audio_duration = float(duration) if isinstance(duration, (int, float)) else None
                 export_files.insert(0, PodcastExportFile(file_type="audio", url=record.url, label="Full audio"))
         except Exception as exc:
             warnings.append(f"final audio assembly failed: {exc}")
@@ -440,6 +443,7 @@ def _apply_audio_retry(
                 "podcast_name": model.podcast_name,
                 "podcast_tagline": model.podcast_tagline,
                 "final_audio_url": final_audio_url,
+                "final_audio_duration_seconds": final_audio_duration,
                 "segments": [segment.model_dump(mode="json") for segment in segments],
             },
             ensure_ascii=False,
@@ -454,6 +458,7 @@ def _apply_audio_retry(
             "segments": segments,
             "audio_assets": audio_assets,
             "final_audio_url": final_audio_url,
+            "final_audio_duration_seconds": final_audio_duration,
             "audio_manifest_url": manifest.url,
             "export_files": export_files,
             "warnings": warnings,

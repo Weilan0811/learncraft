@@ -75,12 +75,14 @@ class Settings(BaseSettings):
     image_model: str = "gpt-image-2"
     image_resolution: Literal["1k", "2k", "4k"] = "1k"
     tts_provider: str = "bailian"
-    tts_model: str = "qwen3-tts-instruct-flash"
+    tts_model: str = "qwen3-tts-flash"
     tts_person1_voice: str = "Ethan"
     tts_person2_voice: str = "Cherry"
     tts_output_format: str = "mp3"
     podcast_segment_max_retries: int = 1
     podcast_segment_retry_delay_seconds: float = 10.0
+    # Optional ffmpeg path; when empty the binary bundled with imageio-ffmpeg is used.
+    ffmpeg_binary: str | None = None
     # Single-process deployments can safely mark leftover tasks as interrupted
     # on startup. Disable this when running several workers against one database.
     recover_interrupted_tasks: bool = True

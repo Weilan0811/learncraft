@@ -29,6 +29,9 @@ def test_content_type_profiles_register_current_generation_types() -> None:
     assert podcast.requires_outline is False
     assert podcast.generation_mode == "direct"
     assert podcast.exporter_types == ("markdown", "audio")
+    interactive_html = get_content_type_profile("interactive_html")
+    assert "zip" not in interactive_html.exporter_types
+    assert "pptx" not in slide_deck.exporter_types
 
 
 def test_request_schema_accepts_social_post_as_registered_generation_type() -> None:

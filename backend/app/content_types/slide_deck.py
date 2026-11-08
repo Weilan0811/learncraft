@@ -23,5 +23,5 @@ def build_slide_deck_profile() -> ContentTypeProfile:
             default_required_elements=("image",),
             optional_elements=(),
         ),
-        exporter_types=("slide_json", "pptx", "image_assets"),
+        exporter_types=("slide_json", "image_assets"),
     )

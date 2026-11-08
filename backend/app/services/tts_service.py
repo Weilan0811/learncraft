@@ -1,4 +1,8 @@
+import math
+import struct
 import time
+import wave
+from io import BytesIO
 from typing import Protocol
 
 import httpx
@@ -21,23 +25,35 @@ class TTSService(Protocol):
 
 
 class StubTTSService:
+    """Development placeholder that writes a real, playable WAV tone.
+
+    It deliberately ignores ``output_format``: without an encoder the stub cannot
+    produce MP3, and a text payload named ``.mp3`` is not a valid audio file.
+    """
+
     def __init__(self, storage_service: StorageService | None = None, output_format: str = "mp3") -> None:
         self.storage_service = storage_service or LocalStorageService()
         self.output_format = output_format
         self.last_retry_count = 0
-        self.last_metadata: dict[str, object] = {"provider": "stub", "format": output_format}
+        self.last_metadata: dict[str, object] = {"provider": "stub", "format": "wav"}
 
     def synthesize(self, *, text: str, voice: str, asset_id: str) -> AudioFileElement:
-        if not text.strip():
+        clean_text = text.strip()
+        if not clean_text:
             raise TTSGenerationError("TTS text is empty.")
-        payload = f"stub audio\nvoice={voice}\n{text}".encode("utf-8")
+        duration = max(0.4, min(2.0, len(clean_text) / 12))
         record = self.storage_service.save_bytes(
             asset_id=asset_id,
-            filename=f"{asset_id}.{self.output_format}",
-            content=payload,
-            content_type=_content_type(self.output_format),
+            filename=f"{asset_id}.wav",
+            content=_stub_wav(duration),
+            content_type="audio/wav",
             kind="audio",
-            metadata={"provider": "stub", "voice": voice, "format": self.output_format},
+            metadata={
+                "provider": "stub",
+                "voice": voice,
+                "format": "wav",
+                "duration_seconds": round(duration, 3),
+            },
         )
         self.last_retry_count = 0
         self.last_metadata = dict(record.metadata)
@@ -47,11 +63,26 @@ class StubTTSService:
             speaker="Person1" if voice == "Ethan" else "Person2",
             voice=voice,  # type: ignore[arg-type]
             audio_url=record.url,
-            format=self.output_format,
+            format="wav",
             byte_size=record.byte_size,
             order=_order_from_asset_id(asset_id),
             metadata={"provider": "stub", "voice": voice},
         )
+
+
+def _stub_wav(duration_seconds: float, sample_rate: int = 16000) -> bytes:
+    frame_count = max(1, int(sample_rate * duration_seconds))
+    frames = bytearray()
+    for index in range(frame_count):
+        value = int(1200 * math.sin(2 * math.pi * 220 * index / sample_rate))
+        frames.extend(struct.pack("<h", value))
+    buffer = BytesIO()
+    with wave.open(buffer, "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(sample_rate)
+        audio.writeframes(bytes(frames))
+    return buffer.getvalue()
 
 
 class BailianTTSService:
@@ -138,7 +169,7 @@ class BailianTTSService:
                 if attempt >= self.max_retries:
                     break
                 self.last_retry_count += 1
-                time.sleep(min(2**attempt, 5))
+                time.sleep(_retry_delay(exc, attempt))
         raise TTSGenerationError(f"TTS request failed after retries: {last_error}") from last_error
 
     def _get_with_retries(self, url: str) -> object:
@@ -203,6 +234,19 @@ def _content_type(output_format: str) -> str:
     if output_format == "wav":
         return "audio/wav"
     return "audio/mpeg"
+
+
+def _retry_delay(exc: Exception, attempt: int) -> float:
+    response = getattr(exc, "response", None)
+    if response is not None and getattr(response, "status_code", None) == 429:
+        retry_after = getattr(response, "headers", {}).get("retry-after")
+        try:
+            if retry_after is not None:
+                return max(1.0, float(retry_after))
+        except (TypeError, ValueError):
+            pass
+        return min(5.0 * (attempt + 1), 20.0)
+    return min(2**attempt, 5)
 
 
 def _format_from_content_type(content_type: str, *, fallback: str, url: str = "") -> str:

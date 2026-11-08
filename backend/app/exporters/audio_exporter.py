@@ -25,14 +25,25 @@ class AudioExporter:
                 status="failed",
                 metadata={"error": "audio export is only supported for podcast_script", "task_id": task_id},
             )
-        file_url = render_model.final_audio_url or render_model.audio_manifest_url or ""
+        if not render_model.final_audio_url:
+            return ExportResult(
+                export_type=request.export_type,
+                file_url="",
+                status="failed",
+                metadata={
+                    "task_id": task_id,
+                    "render_type": render_model.render_type,
+                    "error": "完整音频尚未合成，请先处理失败的分段或音频合成警告后重试。",
+                },
+            )
         return ExportResult(
             export_type=request.export_type,
-            file_url=file_url,
-            status="success" if file_url else "failed",
+            file_url=render_model.final_audio_url,
+            status="success",
             metadata={
                 "task_id": task_id,
                 "render_type": render_model.render_type,
-                "mode": "final_audio" if render_model.final_audio_url else "manifest",
+                "mode": "final_audio",
+                "duration_seconds": render_model.final_audio_duration_seconds,
             },
         )
