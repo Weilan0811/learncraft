@@ -63,7 +63,7 @@
 环境要求：Python 3.11+，Node.js 20+。
 
 ```bash
-git clone https://github.com/<you>/content-generator-agent.git
+git clone https://github.com/Weilan0811/content-generator-agent.git
 cd content-generator-agent
 
 # 后端（默认 stub 模式，无需 API Key）
