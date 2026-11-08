@@ -151,7 +151,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       set({ task: createdTask });
 
       let refreshVersion = 0;
-      let lastAppliedRefresh = 0;
+      const lastAppliedRefresh = { events: 0, units: 0, preview: 0 };
       const refreshStreamingState = async (taskId: string) => {
         const version = ++refreshVersion;
         const [eventsResult, unitsResult, partialPreview] = await Promise.allSettled([
@@ -159,17 +159,19 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
           getContentGenerationUnits(taskId),
           getContentGenerationPartialPreview(taskId)
         ]);
-        if (version < lastAppliedRefresh || get().task?.task_id !== taskId) {
+        if (get().task?.task_id !== taskId) {
           return;
         }
-        lastAppliedRefresh = version;
-        if (eventsResult.status === "fulfilled") {
+        if (eventsResult.status === "fulfilled" && version > lastAppliedRefresh.events) {
+          lastAppliedRefresh.events = version;
           set({ streamEvents: eventsResult.value.events });
         }
-        if (unitsResult.status === "fulfilled") {
+        if (unitsResult.status === "fulfilled" && version > lastAppliedRefresh.units) {
+          lastAppliedRefresh.units = version;
           set({ renderUnits: unitsResult.value.units });
         }
-        if (partialPreview.status === "fulfilled") {
+        if (partialPreview.status === "fulfilled" && version > lastAppliedRefresh.preview) {
+          lastAppliedRefresh.preview = version;
           set({ partialPreview: partialPreview.value });
         }
       };
