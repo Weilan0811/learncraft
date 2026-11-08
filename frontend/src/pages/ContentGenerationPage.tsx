@@ -3,9 +3,13 @@ import { ExportActions } from "../components/generation/ExportActions";
 import { GenerationProgress } from "../components/generation/GenerationProgress";
 import { PreviewErrorBoundary } from "../components/generation/PreviewErrorBoundary";
 import { TaskPreviewLookup } from "../components/generation/TaskPreviewLookup";
+import { useContentGenerationStore } from "../stores/contentGenerationStore";
 import { ContentPreviewPage } from "./ContentPreviewPage";
 
 export function ContentGenerationPage() {
+  const taskId = useContentGenerationStore((state) => state.task?.task_id);
+  const preview = useContentGenerationStore((state) => state.preview ?? state.partialPreview);
+
   return (
     <main className="app-shell">
       <section className="workspace">
@@ -19,7 +23,7 @@ export function ContentGenerationPage() {
         </div>
         <div className="panel preview-panel">
           <GenerationProgress />
-          <PreviewErrorBoundary>
+          <PreviewErrorBoundary taskId={taskId} preview={preview}>
             <ContentPreviewPage />
           </PreviewErrorBoundary>
           <ExportActions />
