@@ -68,7 +68,7 @@ def test_generate_units_parallel_runs_batch_concurrently_and_merges_in_outline_o
         content_type="lecture",
         topic="AI basics",
         user_prompt="Generate a lecture",
-        normalized_request={"include_images": False, "include_mindmap": False},
+        normalized_request={},
         outline=Outline(
             id="outline_parallel",
             content_type="lecture",

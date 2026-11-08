@@ -61,7 +61,7 @@ class TestStep2Planner:
                 content_type="lecture",
                 topic="人工智能基础",
                 user_prompt="生成讲义",
-                generation_options=GenerationOptions(section_count=4, include_mindmap=True),
+                generation_options=GenerationOptions(section_count=4),
             )
         )
         assert len(state.outline.units) >= 2, f"期望至少 2 个 units，实际 {len(state.outline.units)}"
@@ -102,7 +102,7 @@ class TestStep3UnitSpecGenerator:
                 content_type="lecture",
                 topic="Python 入门",
                 user_prompt="生成讲义",
-                generation_options=GenerationOptions(section_count=2, include_images=True),
+                generation_options=GenerationOptions(section_count=2),
             )
         )
         assert state.content_spec is not None
@@ -165,7 +165,7 @@ class TestStep3UnitSpecGenerator:
                 content_type="lecture",
                 topic="测试",
                 user_prompt="生成",
-                generation_options=GenerationOptions(include_images=True, include_mindmap=True),
+                generation_options=GenerationOptions(),
             )
         )
         for section in state.content_spec.sections:
@@ -180,25 +180,23 @@ class TestStep3UnitSpecGenerator:
 
 
 class TestStep4MindmapGenerator:
-    """Step 4 验收标准：接入真实 Mindmap Markdown 生成"""
+    """Step 4 验收标准：思维导图已停用，仅保留旧数据校验能力"""
 
-    def test_mindmap_markdown_starts_with_hash(self):
-        """验收标准：markdown 以 # 开头"""
+    def test_mindmap_generation_is_disabled(self):
+        """验收标准：新任务不再生成 mindmap"""
         state = run_content_generation(
             ContentGenerationRequest(
                 content_type="lecture",
                 topic="人工智能",
                 user_prompt="生成讲义",
-                generation_options=GenerationOptions(include_mindmap=True),
+                generation_options=GenerationOptions(section_count=1),
             )
         )
-        mindmap_elements = [e for e in state.elements if isinstance(e, MindmapElement)]
-        if mindmap_elements:
-            for elem in mindmap_elements:
-                assert elem.markdown.startswith("# "), f"Mindmap {elem.id} 不以 # 开头"
-            print(f"✅ {len(mindmap_elements)} 个 mindmap 以 # 开头")
-        else:
-            print("⚠️ 未生成 mindmap 元素（可能 stub 模式未启用）")
+        assert not [e for e in state.elements if isinstance(e, MindmapElement)]
+        for section in state.content_spec.sections:
+            image_specs = [item for item in section.required_elements if item.type == "image"]
+            assert len(image_specs) == 1
+        print("✅ 新任务不再生成 mindmap")
 
     def test_mindmap_max_depth_3(self):
         """验收标准：最多 3 层"""
@@ -213,20 +211,22 @@ class TestStep4MindmapGenerator:
         assert len(errors) == 0, f"应该通过，但报错: {errors}"
         print("✅ 单根节点校验通过")
 
-    def test_mindmap_source_chunk_ids_preserved(self):
-        """验收标准：source_chunk_ids 能保留"""
+    def test_lecture_sections_have_exactly_one_image(self):
+        """验收标准：讲义每节固定 1 张图片，且图片引用可追踪"""
         state = run_content_generation(
             ContentGenerationRequest(
                 content_type="lecture",
                 topic="测试",
                 user_prompt="生成",
-                generation_options=GenerationOptions(include_mindmap=True),
+                generation_options=GenerationOptions(section_count=1),
             )
         )
-        mindmap_elements = [e for e in state.elements if isinstance(e, MindmapElement)]
-        for elem in mindmap_elements:
-            assert hasattr(elem, 'source_chunk_ids'), f"Mindmap {elem.id} 缺少 source_chunk_ids"
-        print("✅ mindmap source_chunk_ids 保留")
+        for section in state.content_spec.sections:
+            image_specs = [item for item in section.required_elements if item.type == "image"]
+            assert len(image_specs) == 1, f"section {section.id} 的图片数量不是 1"
+            ref_ids = [block.element_id for block in section.blocks if hasattr(block, "element_id")]
+            assert image_specs[0].element_id in ref_ids
+        print("✅ 讲义每节固定 1 张图片")
 
 
 class TestStep5ImageGenerator:
@@ -244,7 +244,7 @@ class TestStep5ImageGenerator:
                     content_type="slide_deck",
                     topic="测试",
                     user_prompt="生成",
-                    generation_options=GenerationOptions(include_images=True),
+                    generation_options=GenerationOptions(slide_count=2),
                 )
             )
             image_elements = [e for e in state.elements if isinstance(e, ImageElement)]
@@ -264,7 +264,7 @@ class TestStep5ImageGenerator:
                 content_type="slide_deck",
                 topic="测试",
                 user_prompt="生成",
-                generation_options=GenerationOptions(include_images=True),
+                generation_options=GenerationOptions(slide_count=2),
             )
         )
         image_elements = [e for e in state.elements if isinstance(e, ImageElement)]
@@ -282,7 +282,7 @@ class TestStep5ImageGenerator:
                 content_type="slide_deck",
                 topic="测试",
                 user_prompt="生成",
-                generation_options=GenerationOptions(include_images=True),
+                generation_options=GenerationOptions(slide_count=2),
             )
         )
         image_elements = [e for e in state.elements if isinstance(e, ImageElement)]

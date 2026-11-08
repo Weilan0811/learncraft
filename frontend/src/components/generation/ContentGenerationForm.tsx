@@ -38,9 +38,6 @@ export function ContentGenerationForm() {
   const [topic, setTopic] = useState(defaultsByType.lecture.topic);
   const [userPrompt, setUserPrompt] = useState(defaultsByType.lecture.prompt);
   const [knowledgeBaseId, setKnowledgeBaseId] = useState("kb_ai_basic");
-  const [includeImages, setIncludeImages] = useState(true);
-  const [includeCharts, setIncludeCharts] = useState(false);
-  const [includeMindmap, setIncludeMindmap] = useState(true);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,9 +51,6 @@ export function ContentGenerationForm() {
         language: "zh-CN",
         difficulty: "introductory",
         style: contentType === "social_post" ? "wechat_technical_article" : contentType === "podcast_script" ? "chinese_podcast_dialogue" : "educational",
-        include_images: contentType === "podcast_script" ? false : includeImages,
-        include_charts: contentType === "social_post" || contentType === "podcast_script" ? false : includeCharts,
-        include_mindmap: contentType === "social_post" || contentType === "podcast_script" ? false : includeMindmap,
         output_depth: "standard",
         citation_policy: "light",
         speaker_notes: contentType === "slide_deck"
@@ -69,16 +63,7 @@ export function ContentGenerationForm() {
     setContentType(nextType);
     setTopic(defaultsByType[nextType].topic);
     setUserPrompt(defaultsByType[nextType].prompt);
-    if (nextType === "social_post" || nextType === "podcast_script" || nextType === "interactive_html") {
-      if (nextType === "podcast_script" || nextType === "interactive_html") {
-        setIncludeImages(false);
-      }
-      setIncludeCharts(false);
-      setIncludeMindmap(false);
-    }
   }
-
-  const visualOptionsDisabled = contentType === "social_post" || contentType === "podcast_script" || contentType === "interactive_html";
 
   return (
     <form className="generation-form" onSubmit={handleSubmit}>
@@ -107,32 +92,6 @@ export function ContentGenerationForm() {
         知识库 ID
         <input value={knowledgeBaseId} onChange={(event) => setKnowledgeBaseId(event.target.value)} />
       </label>
-
-      <fieldset>
-        <legend>生成配置</legend>
-        <label className="checkbox-row">
-          <input type="checkbox" checked={includeImages} onChange={(event) => setIncludeImages(event.target.checked)} />
-          图片
-        </label>
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={includeCharts}
-            disabled={visualOptionsDisabled}
-            onChange={(event) => setIncludeCharts(event.target.checked)}
-          />
-          图表
-        </label>
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={includeMindmap}
-            disabled={visualOptionsDisabled}
-            onChange={(event) => setIncludeMindmap(event.target.checked)}
-          />
-          思维导图
-        </label>
-      </fieldset>
 
       <button type="submit" disabled={loading}>
         {loading ? "生成中..." : "创建生成任务"}

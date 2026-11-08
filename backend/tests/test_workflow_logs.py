@@ -21,7 +21,7 @@ def test_task_service_persists_structured_logs_and_writes_jsonl_file(tmp_path, m
             content_type="lecture",
             topic="AI basics",
             user_prompt="Generate a short lecture",
-            generation_options={"include_images": False, "include_mindmap": False, "max_section_count": 1},
+            generation_options={"max_section_count": 1},
         )
     )
 
@@ -53,7 +53,6 @@ def test_task_service_writes_debug_artifacts_for_workflow_steps(tmp_path, monkey
             content_type="social_post",
             topic="Direct workflow",
             user_prompt="Generate a WeChat article",
-            generation_options={"include_images": True},
         )
     )
 

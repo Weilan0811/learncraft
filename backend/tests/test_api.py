@@ -33,9 +33,6 @@ def test_content_generation_task_lifecycle_exposes_stub_result() -> None:
             "generation_options": {
                 "language": "zh-CN",
                 "difficulty": "introductory",
-                "include_images": True,
-                "include_charts": True,
-                "include_mindmap": True,
             },
         },
     )
@@ -85,7 +82,6 @@ def test_asset_endpoint_returns_local_asset_metadata() -> None:
             "content_type": "lecture",
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份讲义",
-            "generation_options": {"include_images": True},
         },
     )
     assert create_response.status_code == 201
@@ -114,7 +110,6 @@ def test_social_post_task_lifecycle_exposes_html_preview_and_export() -> None:
             "knowledge_base_ids": ["kb_ai_basic"],
             "generation_options": {
                 "language": "zh-CN",
-                "include_images": True,
                 "citation_policy": "light",
             },
         },
@@ -166,7 +161,7 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
             "topic": "Artifact API",
             "user_prompt": "Generate a short lecture with references",
             "knowledge_base_ids": ["kb_ai_basic"],
-            "generation_options": {"include_images": False, "include_mindmap": False, "max_section_count": 1},
+            "generation_options": {"max_section_count": 1},
         },
     )
 

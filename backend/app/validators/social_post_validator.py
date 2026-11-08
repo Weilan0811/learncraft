@@ -31,8 +31,8 @@ class SocialPostValidator:
         if len(slot_ids) != len(set(slot_ids)):
             issues.append(_error("image_slots", "image slot ids must be unique"))
         if spec.image_slots and not any(slot.slot_id == "cover" and slot.target_path == "meta.cover_image" for slot in spec.image_slots):
-            # Cover is only mandatory when the task actually plans images; a spec with
-            # no slots is the legitimate "include_images=false" shape.
+            # Cover is only mandatory when the task actually plans images; legacy
+            # specs generated before the fixed image policy may have no slots.
             issues.append(_error("image_slots", "image_slots must include a cover slot"))
         for index, slot in enumerate(spec.image_slots):
             issues.extend(self._validate_slot(slot, index, len(spec.draft.sections)))

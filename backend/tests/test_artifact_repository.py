@@ -112,7 +112,7 @@ def test_repository_writes_artifacts_and_cached_references_without_task_snapshot
     assert loaded.platform_session_id == "session_001"
     assert loaded.topic == "AI basics"
     assert loaded.request_payload["generation_options"]["allow_fallback"] is False
-    assert loaded.request_payload["generation_options"]["include_images"] is True
+    assert "include_images" not in loaded.request_payload["generation_options"]
     assert not hasattr(loaded, "outline")
     assert not hasattr(loaded, "content_spec")
     assert not hasattr(loaded, "render_model")

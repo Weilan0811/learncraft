@@ -46,7 +46,7 @@ def test_normalize_request_maps_legacy_counts_to_maximums() -> None:
         content_type="slide_deck",
         topic="AI basics",
         user_prompt="Generate a slide deck",
-        generation_options={"slide_count": 5, "include_mindmap": False},
+        generation_options={"slide_count": 5},
     )
     state = ContentGenerationState(
         request_id="test_legacy_counts",

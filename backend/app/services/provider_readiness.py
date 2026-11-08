@@ -9,7 +9,7 @@ def required_capabilities(request: ContentGenerationRequest) -> tuple[Capability
     profile = get_content_type_profile(request.content_type)
     allowed_elements = profile.element_policy.allowed_elements
     capabilities: list[Capability] = ["text"]
-    if "image" in allowed_elements and request.generation_options.include_images:
+    if "image" in profile.element_policy.default_required_elements:
         capabilities.append("image")
     if "audio_file" in allowed_elements:
         capabilities.append("tts")

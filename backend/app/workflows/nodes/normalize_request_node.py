@@ -1,3 +1,5 @@
+from app.content_types.base import fixed_element_flags
+from app.content_types.registry import get_content_type_profile
 from app.core.task import TaskStatus
 from app.core.config import get_settings
 from app.schemas.state import ContentGenerationState
@@ -13,6 +15,7 @@ def normalize_request(state: ContentGenerationState) -> dict[str, object]:
         if isinstance(options, dict) and "allow_fallback" in explicit_option_fields
         else settings.allow_fallback
     )
+    element_flags = fixed_element_flags(get_content_type_profile(state.content_type).element_policy)
     
     normalized = {
         "content_type": state.content_type,
@@ -28,9 +31,7 @@ def normalize_request(state: ContentGenerationState) -> dict[str, object]:
         "max_section_count": options.get("max_section_count") if isinstance(options, dict) else 8,
         "max_slide_count": options.get("max_slide_count") if isinstance(options, dict) else 12,
         "output_depth": str(options.get("output_depth", "standard")) if isinstance(options, dict) else "standard",
-        "include_images": bool(options.get("include_images", True)) if isinstance(options, dict) else True,
-        "include_charts": bool(options.get("include_charts", False)) if isinstance(options, dict) else False,
-        "include_mindmap": bool(options.get("include_mindmap", False)) if isinstance(options, dict) else False,
+        **element_flags,
         "image_style": options.get("image_style") if isinstance(options, dict) else None,
         "citation_policy": str(options.get("citation_policy", "light")) if isinstance(options, dict) else "light",
         "allow_fallback": allow_fallback,

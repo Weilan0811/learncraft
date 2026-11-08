@@ -113,12 +113,12 @@ def test_real_mode_rejects_unsupported_tts_output_format(clean_provider_env: Non
     assert issues[0].env_vars == ("CONTENT_GENERATOR_TTS_OUTPUT_FORMAT",)
 
 
-def test_required_capabilities_follow_content_type_and_options() -> None:
+def test_required_capabilities_follow_fixed_content_type_policy() -> None:
     assert required_capabilities(build_request("podcast_script")) == ("text", "tts")
     assert required_capabilities(build_request("interactive_html")) == ("text",)
     assert required_capabilities(build_request("lecture")) == ("text", "image")
-    assert required_capabilities(build_request("lecture", include_images=False)) == ("text",)
-    assert required_capabilities(build_request("social_post", include_images=False)) == ("text",)
+    assert required_capabilities(build_request("slide_deck")) == ("text", "image")
+    assert required_capabilities(build_request("social_post")) == ("text", "image")
 
 
 def test_missing_providers_only_block_related_content_types(clean_provider_env: None) -> None:
@@ -133,7 +133,7 @@ def test_missing_providers_only_block_related_content_types(clean_provider_env: 
         ensure_request_providers_ready(build_request("lecture"), settings=settings)
     assert "CONTENT_GENERATOR_APIMART_API_KEY" in str(lecture_error.value)
 
-    ensure_request_providers_ready(build_request("lecture", include_images=False), settings=Settings(
+    ensure_request_providers_ready(build_request("interactive_html"), settings=Settings(
         _env_file=None, provider_mode="real", text_provider="bailian", bailian_api_key="sk-test-key"
     ))
 

@@ -23,7 +23,7 @@ def build_state() -> ContentGenerationState:
         user_prompt="Write a WeChat article about direct workflow.",
         planning_chunks=[chunk],
         retrieved_chunks=[chunk],
-        normalized_request={"language": "zh-CN", "include_images": True},
+        normalized_request={"language": "zh-CN"},
     )
 
 
@@ -112,6 +112,12 @@ def test_social_post_image_slots_generate_concurrently_and_keep_slot_order(monke
 
     image_service = SlowImageService()
     monkeypatch.setattr("app.generators.social_post_generator.get_image_generation_service", lambda: image_service)
+
+    class TestSettings:
+        provider_mode = "stub"
+        image_generation_concurrency = 3
+
+    monkeypatch.setattr("app.generators.social_post_generator.get_settings", lambda: TestSettings())
 
     spec = SocialPostGenerator().generate(build_state())
 

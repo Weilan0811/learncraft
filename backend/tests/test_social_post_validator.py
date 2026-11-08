@@ -19,7 +19,7 @@ def build_state() -> ContentGenerationState:
         user_prompt="Write a WeChat article about direct workflow.",
         planning_chunks=[chunk],
         retrieved_chunks=[chunk],
-        normalized_request={"language": "zh-CN", "include_images": True},
+        normalized_request={"language": "zh-CN"},
     )
 
 

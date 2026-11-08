@@ -1,4 +1,6 @@
 from app.generators.common.unit_prompt_builder import build_unit_spec_repair_prompt
+from app.generators.unit_specs.lecture_policy import enforce_single_lecture_image
+from app.generators.unit_specs.slide_normalizer import normalize_slide_spec
 from app.schemas.outline import OutlineUnit
 from app.schemas.specs import InteractiveHtmlSectionSpec, LectureSection, SlideSpecPage
 from app.schemas.state import ContentGenerationState
@@ -14,7 +16,12 @@ def repair_unit_spec_with_llm(
     schema = _schema_for_content_type(state.content_type)
     unit_spec_id = _unit_spec_id_for_content_type(state.content_type, unit.id)
     prompt = build_unit_spec_repair_prompt(state.content_type, state, unit, unit_spec_id, chunk_ids, validation_errors)
-    return get_llm_service().generate_structured(prompt=prompt, schema=schema)
+    repaired = get_llm_service().generate_structured(prompt=prompt, schema=schema)
+    if isinstance(repaired, LectureSection):
+        return enforce_single_lecture_image(repaired, state, unit, chunk_ids)
+    if isinstance(repaired, SlideSpecPage):
+        return normalize_slide_spec(repaired, unit, state)
+    return repaired
 
 
 def _schema_for_content_type(content_type: str) -> type[LectureSection] | type[SlideSpecPage] | type[InteractiveHtmlSectionSpec]:

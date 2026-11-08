@@ -16,7 +16,7 @@ def test_langgraph_workflow_populates_lecture_unit_state(monkeypatch: pytest.Mon
             content_type="lecture",
             topic="人工智能基础导论",
             user_prompt="生成一份讲义",
-            generation_options=GenerationOptions(include_images=True, include_mindmap=True, section_count=1),
+            generation_options=GenerationOptions(section_count=1),
         )
     )
 
@@ -32,7 +32,7 @@ def test_langgraph_workflow_populates_lecture_unit_state(monkeypatch: pytest.Mon
     assert state.content_spec.sections[0].required_elements
     assert len([block for block in state.content_spec.sections[0].blocks if block.type == "text"]) >= 2
     assert state.elements
-    assert {element.type for element in state.elements} == {"image", "mindmap"}
+    assert {element.type for element in state.elements} == {"image"}
     assert state.render_model is not None
     assert state.current_node == "finalize_task"
     assert state.progress["completed_units"] == 1
@@ -76,7 +76,7 @@ def test_langgraph_workflow_populates_slide_unit_state(monkeypatch: pytest.Monke
     get_settings.cache_clear()
 
 
-def test_langgraph_workflow_does_not_force_mindmap_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_langgraph_workflow_does_not_generate_mindmap(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CONTENT_GENERATOR_PROVIDER_MODE", "stub")
     get_settings.cache_clear()
 
@@ -85,7 +85,7 @@ def test_langgraph_workflow_does_not_force_mindmap_when_disabled(monkeypatch: py
             content_type="lecture",
             topic="AI basics",
             user_prompt="Generate a lecture",
-            generation_options=GenerationOptions(include_images=True, include_mindmap=False, max_section_count=1),
+            generation_options=GenerationOptions(max_section_count=1),
         )
     )
 
@@ -106,7 +106,7 @@ def test_workflow_image_specs_request_local_illustration_assets(monkeypatch: pyt
             content_type="lecture",
             topic="AI timeline",
             user_prompt="Generate a lecture with an illustration",
-            generation_options=GenerationOptions(include_images=True, include_mindmap=False, max_section_count=1),
+            generation_options=GenerationOptions(max_section_count=1),
         )
     )
 

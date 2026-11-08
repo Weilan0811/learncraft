@@ -32,7 +32,6 @@ def test_task_service_persists_render_model_across_service_instances(tmp_path) -
         content_type="lecture",
         topic="AI basics",
         user_prompt="Generate a short lecture",
-        generation_options={"include_images": True, "include_mindmap": True},
     )
 
     created = service.create_task(request)
@@ -56,10 +55,10 @@ def test_task_persistence_tracks_distinct_image_assets_for_each_task(tmp_path) -
     repository = SQLModelTaskRepository(database_url=sqlite_url(tmp_path), echo=False)
     service = PersistentTaskService(repository=repository)
     first = service.create_task(
-        ContentGenerationRequest(content_type="lecture", topic="Task one", user_prompt="Generate one", generation_options={"include_images": True})
+        ContentGenerationRequest(content_type="lecture", topic="Task one", user_prompt="Generate one")
     )
     second = service.create_task(
-        ContentGenerationRequest(content_type="lecture", topic="Task two", user_prompt="Generate two", generation_options={"include_images": True})
+        ContentGenerationRequest(content_type="lecture", topic="Task two", user_prompt="Generate two")
     )
 
     service.run_task(first.task_id)

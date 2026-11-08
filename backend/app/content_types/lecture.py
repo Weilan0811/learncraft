@@ -19,9 +19,9 @@ def build_lecture_profile() -> ContentTypeProfile:
         renderer_factory=LectureRenderer,
         generator_name="lecture_unit_spec",
         element_policy=ElementPolicy(
-            allowed_elements=("image", "mindmap"),
+            allowed_elements=("image",),
             default_required_elements=("image",),
-            optional_elements=("mindmap",),
+            optional_elements=(),
         ),
         exporter_types=("pdf", "markdown", "html", "image_assets"),
     )
