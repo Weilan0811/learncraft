@@ -92,6 +92,7 @@ class PodcastRenderer:
         audio_assets = [asset_results[index] for index in sorted(asset_results)]
 
         final_audio_url: str | None = None
+        final_audio_duration: float | None = None
         export_files: list[PodcastExportFile] = []
         if audio_segments and all(segment.status == "generated" for segment in audio_segments):
             try:
@@ -103,6 +104,8 @@ class PodcastRenderer:
                 )
                 if final_record is not None:
                     final_audio_url = final_record.url
+                    duration = final_record.metadata.get("duration_seconds")
+                    final_audio_duration = float(duration) if isinstance(duration, (int, float)) else None
                     export_files.append(PodcastExportFile(file_type="audio", url=final_record.url, label="Full audio"))
             except Exception as exc:
                 warnings.append(f"final audio assembly failed: {exc}")
@@ -116,6 +119,7 @@ class PodcastRenderer:
                     "podcast_name": spec.podcast_name,
                     "podcast_tagline": spec.podcast_tagline,
                     "final_audio_url": final_audio_url,
+                    "final_audio_duration_seconds": final_audio_duration,
                     "segments": [segment.model_dump(mode="json") for segment in audio_segments],
                 },
                 ensure_ascii=False,
@@ -134,6 +138,7 @@ class PodcastRenderer:
             audio_assets=audio_assets,
             audio_manifest_url=manifest_record.url,
             final_audio_url=final_audio_url,
+            final_audio_duration_seconds=final_audio_duration,
             export_files=[*export_files, PodcastExportFile(file_type="manifest", url=manifest_record.url, label="Audio manifest")],
             warnings=warnings,
         )

@@ -21,7 +21,7 @@ def test_task_service_persists_structured_logs_and_writes_jsonl_file(tmp_path, m
             content_type="lecture",
             topic="AI basics",
             user_prompt="Generate a short lecture",
-            generation_options={"include_images": False, "include_mindmap": False, "max_section_count": 1},
+            generation_options={"max_section_count": 1},
         )
     )
 
@@ -53,7 +53,6 @@ def test_task_service_writes_debug_artifacts_for_workflow_steps(tmp_path, monkey
             content_type="social_post",
             topic="Direct workflow",
             user_prompt="Generate a WeChat article",
-            generation_options={"include_images": True},
         )
     )
 
@@ -77,19 +76,21 @@ def test_task_service_writes_debug_artifacts_for_workflow_steps(tmp_path, monkey
     get_settings.cache_clear()
 
 
-def test_empty_retrieval_is_visible_in_workflow_logs(tmp_path, monkeypatch) -> None:
+def test_empty_retrieval_is_reported_without_per_unit_errors(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("CONTENT_GENERATOR_LOG_ROOT", str(tmp_path / "logs"))
     monkeypatch.setenv("CONTENT_GENERATOR_DEBUG_ROOT", str(tmp_path / "debug_workflow"))
     get_settings.cache_clear()
 
+    from app.schemas.state import ContentGenerationState, RetrievalStatus
+    from app.services.rag_service import RetrievalResult
     from app.workflows.nodes.retriever_node import retrieve_for_planning
-    from app.schemas.state import ContentGenerationState
 
     class EmptyRAG:
-        last_diagnostics = {"status": "failed", "query_preview": "Agent workflow", "error_message": "boom"}
-
         def retrieve(self, request, stage: str, section_hint: str | None = None):
-            return []
+            return RetrievalResult(
+                chunks=[],
+                status=RetrievalStatus(state="empty", chunk_count=0, message="没有检索到资料。"),
+            )
 
     monkeypatch.setattr("app.workflows.nodes.retriever_node.get_rag_service", lambda: EmptyRAG())
 
@@ -104,7 +105,7 @@ def test_empty_retrieval_is_visible_in_workflow_logs(tmp_path, monkeypatch) -> N
     result = retrieve_for_planning(state)
 
     assert result["retrieved_chunks"] == []
-    assert result["workflow_errors"]
-    assert result["workflow_errors"][0]["code"] == "empty_retrieval"
-    assert "query_preview" in result["workflow_errors"][0]["detail"]
+    assert result["retrieval_status"].state == "empty"
+    assert result["retrieval_status"].chunk_count == 0
+    assert "workflow_errors" not in result
     get_settings.cache_clear()

@@ -43,9 +43,6 @@ export interface GenerationOptions {
   max_slide_count?: number;
   output_depth?: OutputDepth;
 
-  include_images?: boolean;
-  include_charts?: boolean;
-  include_mindmap?: boolean;
   image_style?: string | null;
   citation_policy?: CitationPolicy;
 

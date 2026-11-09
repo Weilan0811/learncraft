@@ -114,6 +114,10 @@ def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:
             if not unit_spec.blocks:
                 errors.append(f"lecture section {unit_spec.id} must have at least one block")
 
+            image_specs = [item for item in unit_spec.required_elements if item.type == "image"]
+            if len(image_specs) != 1:
+                errors.append(f"lecture section {unit_spec.id} must declare exactly one image element")
+
             if not any(isinstance(block, ElementReferenceBlock) for block in unit_spec.blocks):
                 text_blocks = [b for b in unit_spec.blocks if b.type == "text"]
                 if not text_blocks:

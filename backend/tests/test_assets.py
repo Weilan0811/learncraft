@@ -97,7 +97,6 @@ def test_content_generation_persists_downloadable_image_asset() -> None:
             "content_type": "lecture",
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份讲义",
-            "generation_options": {"include_images": True},
         },
     )
 
@@ -179,7 +178,6 @@ def test_image_assets_export_writes_zip_manifest() -> None:
             "content_type": "lecture",
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份讲义",
-            "generation_options": {"include_images": True},
         },
     )
     task_id = create_response.json()["task_id"]

@@ -1,6 +1,7 @@
 from pydantic import TypeAdapter
 
 from app.core.task import TaskStatus
+from app.core.provider_config import redact_secrets
 from app.schemas.artifacts import (
     ContentArtifactDetailResponse,
     ContentArtifactListResponse,
@@ -10,12 +11,15 @@ from app.schemas.artifacts import (
     ReferenceChunksResponse,
 )
 from app.schemas.export import ExportFile, ExportRequest, ExportResult
-from app.schemas.render import RenderModel
-from app.schemas.specs import ContentSpec
+from app.schemas.render import PodcastRenderModel, RenderModel
+from app.schemas.specs import ContentSpec, PodcastSpec
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
+from app.schemas.task import KnowledgeBaseStatus, PartialPreviewResponse, TaskEventsResponse, TaskListItem, TaskListResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
 from app.services.task_repository import SQLModelTaskRepository
 from app.services.task_event_store import TaskEventStore
+from app.services.provider_readiness import ensure_request_providers_ready
+from app.services.audio_assembler_service import AudioAssemblerService, AudioAssemblyError
+from app.services.storage_service import LocalStorageService
 from app.services.unit_text_service import build_unit_text_response
 from app.schemas.state import ContentGenerationState
 from app.workflows.content_generation_graph import run_content_generation, stream_content_generation
@@ -37,6 +41,7 @@ class PersistentTaskService:
         request: ContentGenerationRequest,
         platform_context: dict[str, str | None] | None = None,
     ) -> TaskResult:
+        ensure_request_providers_ready(request)
         task = self.repository.create_task(request, platform_context=platform_context)
         return self.repository.to_task_result(task)
 
@@ -66,7 +71,7 @@ class PersistentTaskService:
                 status=TaskStatus.failed,
                 current_node="run_task",
                 progress=progress,
-                errors=[str(exc)],
+                errors=[redact_secrets(str(exc))],
             )
             return
             
@@ -82,6 +87,38 @@ class PersistentTaskService:
         task = self.repository.get_task(task_id)
         return self.repository.to_task_result(task) if task else None
 
+    def list_tasks(
+        self,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        content_type: str | None = None,
+        status: str | None = None,
+    ) -> TaskListResponse:
+        tasks, total = self.repository.list_tasks(
+            page=page,
+            page_size=page_size,
+            content_type=content_type,
+            status=status,
+        )
+        return TaskListResponse(
+            items=[
+                TaskListItem(
+                    task_id=task.task_id,
+                    topic=task.topic,
+                    content_type=task.content_type,
+                    status=TaskStatus(task.status),
+                    created_at=task.created_at,
+                    updated_at=task.updated_at,
+                    failed_resource_count=_failed_resource_count(task.progress),
+                )
+                for task in tasks
+            ],
+            page=page,
+            page_size=page_size,
+            total=total,
+        )
+
     def get_preview(self, task_id: str) -> PreviewResponse | None:
         task = self.repository.get_task(task_id)
         artifact = self.repository.get_latest_artifact(task_id, "final_render") if task else None
@@ -89,7 +126,11 @@ class PersistentTaskService:
         if task is None or payload is None:
             return None
         render_model = render_model_adapter.validate_python(payload)
-        return PreviewResponse(content_type=task.content_type, render_model=render_model)
+        return PreviewResponse(
+            content_type=task.content_type,
+            render_model=render_model,
+            knowledge_base=_knowledge_base_status(task.progress),
+        )
 
     def get_partial_preview(self, task_id: str) -> PartialPreviewResponse | None:
         task = self.repository.get_task(task_id)
@@ -98,7 +139,11 @@ class PersistentTaskService:
         if task is None or payload is None:
             return None
         render_model = render_model_adapter.validate_python(payload)
-        return PartialPreviewResponse(content_type=task.content_type, render_model=render_model)
+        return PartialPreviewResponse(
+            content_type=task.content_type,
+            render_model=render_model,
+            knowledge_base=_knowledge_base_status(task.progress),
+        )
 
     def get_events(self, task_id: str) -> TaskEventsResponse | None:
         task = self.repository.get_task(task_id)
@@ -209,9 +254,34 @@ class PersistentTaskService:
         content_spec_artifact = self.repository.get_latest_artifact(task_id, "content_spec")
         render_model = render_model_adapter.validate_python(render_payload)
         content_spec = content_spec_adapter.validate_python(content_spec_artifact.payload) if content_spec_artifact else None
+        recovered_model = None
+        if request.export_type == "audio" and isinstance(render_model, PodcastRenderModel) and not render_model.final_audio_url:
+            try:
+                render_model = AudioAssemblerService().recover_podcast_audio(
+                    render_model,
+                    spec_id=content_spec.id if isinstance(content_spec, PodcastSpec) else f"podcast_{task_id}",
+                    storage_service=LocalStorageService(),
+                )
+            except (AudioAssemblyError, OSError) as exc:
+                return ExportResult(
+                    export_type=request.export_type,
+                    file_url="",
+                    status="failed",
+                    metadata={"task_id": task_id, "error": redact_secrets(str(exc))},
+                )
+            recovered_model = render_model
         result = exporter.export(task_id, render_model, request, asset_ids=[], content_spec=content_spec)
-        export_files = [*self.repository.to_task_result(task).export_files, ExportFile(type=request.export_type, url=result.file_url)]
-        self.repository.update_export_files(task_id, export_files)
+        if result.status == "success" and result.file_url:
+            existing = [
+                file
+                for file in self.repository.to_task_result(task).export_files
+                if file.type != request.export_type
+            ]
+            self.repository.update_export_files(
+                task_id,
+                [*existing, ExportFile(type=request.export_type, url=result.file_url)],
+                render_model=recovered_model,
+            )
         return result
 
 
@@ -259,6 +329,19 @@ def _reference_response_title(task, unit_id: str | None, repository: SQLModelTas
                 if isinstance(unit, dict) and unit.get("id") == unit_id and isinstance(unit.get("title"), str):
                     return unit["title"]
     return None
+
+
+def _knowledge_base_status(progress: dict | None) -> KnowledgeBaseStatus | None:
+    payload = (progress or {}).get("knowledge_base")
+    return KnowledgeBaseStatus.model_validate(payload) if isinstance(payload, dict) else None
+
+
+def _failed_resource_count(progress: dict | None) -> int:
+    summary = (progress or {}).get("resource_summary")
+    if not isinstance(summary, dict):
+        return 0
+    value = summary.get("failed", 0)
+    return int(value) if isinstance(value, (int, float)) else 0
 
 
 def _render_payload(payload: dict | None) -> dict | None:

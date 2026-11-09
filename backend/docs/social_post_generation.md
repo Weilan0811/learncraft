@@ -257,7 +257,7 @@ HTMLExporter
 
 当前规则：
 
-1. `generation_options.include_images=false` 时不生成图片。
+1. 图文推文固定生成图片，不再接受 `include_images` 开关。
 2. 每个 `ImageSlot` 转换为一次图片生成调用。
 3. 图片生成结果保存为本地 asset，并写入 `ImageAsset.public_url`。
 4. 必需图片失败时记录 failed asset，并停止后续必需图片链路。

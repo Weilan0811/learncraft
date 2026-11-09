@@ -61,12 +61,6 @@ class SocialPostGenerator:
             spec = self._generate_fallback(state)
             spec = spec.model_copy(update={"metadata": {**spec.metadata, "generation_mode": "stub_fallback"}})
         spec = self._normalize_citation_refs(state, spec)
-        if not bool((state.normalized_request or {}).get("include_images", True)):
-            # Keep slots/assets/validator consistent when images are disabled:
-            # empty slots mean validate_final has nothing to require and no image
-            # calls happen downstream. (Fixes the "include_images=false but required
-            # slots still validated" deadlock, task_cdef46af7e90.)
-            return spec.model_copy(update={"image_slots": [], "image_assets": []})
         return self._generate_image_assets(state, spec)
 
     def _generate_with_llm(self, state: ContentGenerationState) -> SocialPostSpec:
@@ -81,16 +75,6 @@ class SocialPostGenerator:
             draft = cast(WechatArticleDraft, llm_service.generate_structured(draft_prompt, WechatArticleDraft))
         except Exception as exc:
             raise SocialPostGenerationError("social_post_draft_generation", exc) from exc
-        if not bool((state.normalized_request or {}).get("include_images", True)):
-            # Skip the image-slot planning LLM call entirely when images are disabled.
-            return SocialPostSpec(
-                id=f"social_{state.request_id}",
-                title=draft.meta.title,
-                metadata={"language": (state.normalized_request or {}).get("language", "zh-CN"), "generation_mode": "llm"},
-                outline=outline,
-                draft=draft,
-                image_slots=[],
-            )
         image_prompt = self._prompt("generator", "social_post_image.md", state, draft=draft.model_dump(mode="json"))
         try:
             slot_plan = cast(ImageSlotPlan, llm_service.generate_structured(image_prompt, ImageSlotPlan))
@@ -239,8 +223,6 @@ class SocialPostGenerator:
         )
 
     def _generate_image_assets(self, state: ContentGenerationState, spec: SocialPostSpec) -> SocialPostSpec:
-        if not bool((state.normalized_request or {}).get("include_images", True)):
-            return spec
         service = get_image_generation_service()
         if not spec.image_slots:
             return spec
@@ -333,6 +315,20 @@ class SocialPostGenerator:
     def _normalize_citation_refs(self, state: ContentGenerationState, spec: SocialPostSpec) -> SocialPostSpec:
         refs = self._citation_refs(state.planning_chunks or state.retrieved_chunks)
         draft = spec.draft.model_copy(deep=True)
+        outline = spec.outline.model_copy(deep=True)
+        if not refs:
+            # Retrieval is off: never leave model-invented sources behind.
+            draft.headline.citation_refs = []
+            for section in draft.sections:
+                section.citation_refs = []
+                for block in section.blocks:
+                    if hasattr(block, "citation_refs"):
+                        block.citation_refs = []
+                    if hasattr(block, "source"):
+                        block.source = None
+            for section in outline.sections:
+                section.evidence_refs = []
+            return spec.model_copy(update={"draft": draft, "outline": outline})
         if not draft.headline.citation_refs:
             draft.headline.citation_refs = refs
         for section in draft.sections:
@@ -341,7 +337,6 @@ class SocialPostGenerator:
             for block in section.blocks:
                 if hasattr(block, "citation_refs") and not block.citation_refs:
                     block.citation_refs = refs
-        outline = spec.outline.model_copy(deep=True)
         for section in outline.sections:
             if not section.evidence_refs:
                 section.evidence_refs = refs
@@ -356,7 +351,7 @@ class SocialPostGenerator:
     @staticmethod
     def _citation_refs(chunks: list[RetrievedChunk]) -> list[CitationRef]:
         if not chunks:
-            return [CitationRef(chunk_id="stub_chunk", title="Generated fallback source", note="Fallback source for local testing.")]
+            return []
         return [
             CitationRef(
                 chunk_id=chunk.id,

@@ -71,9 +71,9 @@ class AssetExporter:
                         urls.append(block.asset_url)
         elif getattr(render_model, "render_type", None) == "slide_deck":
             for page in getattr(render_model, "pages", []):
-                for element in page.page.get("elements", []):
-                    if isinstance(element, dict) and element.get("type") == "image" and isinstance(element.get("src"), str):
-                        urls.append(element["src"])
+                for element in page.page.elements:
+                    if getattr(element, "type", None) == "image" and isinstance(getattr(element, "src", None), str):
+                        urls.append(element.src)
         elif getattr(render_model, "render_type", None) == "social_post":
             for asset in render_model.preview_assets:
                 url = asset.public_url or asset.local_path or asset.wechat_url

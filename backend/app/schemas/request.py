@@ -18,9 +18,6 @@ class GenerationOptions(SchemaModel):
     max_slide_count: int = 12
     output_depth: Literal["brief", "standard", "detailed"] = "standard"
 
-    include_images: bool = True
-    include_charts: bool = False
-    include_mindmap: bool = False
     image_style: str | None = None
     citation_policy: Literal["none", "light", "strict"] = "light"
     allow_fallback: bool = False

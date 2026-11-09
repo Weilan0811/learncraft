@@ -24,9 +24,6 @@ def test_podcast_task_lifecycle_exposes_script_audio_preview_and_exports() -> No
             "knowledge_base_ids": ["kb_ai_basic"],
             "generation_options": {
                 "language": "zh-CN",
-                "include_images": False,
-                "include_charts": False,
-                "include_mindmap": False,
                 "style": "chinese_podcast_dialogue",
             },
         },

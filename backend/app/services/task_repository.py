@@ -1,18 +1,25 @@
 from collections.abc import Iterable
 from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import inspect, text
+from alembic import command
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from sqlalchemy import func, inspect
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from app.core.config import get_settings
+from app.core.config import ensure_sqlite_parent_directory, get_settings
 from app.core.task import TaskStatus
 from app.models import ContentGenerationArtifact, ContentGenerationReference, ContentGenerationTask, KnowledgeChunkCache
 from app.schemas.export import ExportFile
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import TaskResult
+from app.schemas.render import RenderModel
+from app.schemas.task import KnowledgeBaseStatus, TaskResult
 from app.schemas.state import ContentGenerationState
 from app.services.artifact_repository import ArtifactRepository
+from app.services.asset_repository import sync_assets_from_state
 from app.workflows.nodes.helpers import build_progress, ensure_monotonic_progress
 
 
@@ -24,6 +31,7 @@ class SQLModelTaskRepository:
     def __init__(self, database_url: str | None = None, echo: bool | None = None, create_tables: bool | None = None) -> None:
         settings = get_settings()
         resolved_url = database_url or settings.DATABASE_URL
+        ensure_sqlite_parent_directory(resolved_url)
         self.engine = create_engine(
             resolved_url,
             echo=settings.db_log_echo if echo is None else echo,
@@ -32,8 +40,10 @@ class SQLModelTaskRepository:
         if create_tables is None:
             create_tables = resolved_url.startswith("sqlite")
         if create_tables:
-            SQLModel.metadata.create_all(self.engine)
-            self._ensure_sqlite_schema()
+            if self.engine.dialect.name == "sqlite":
+                self._initialize_sqlite_schema()
+            else:
+                SQLModel.metadata.create_all(self.engine)
 
     def create_task(
         self,
@@ -64,6 +74,38 @@ class SQLModelTaskRepository:
             task = session.get(ContentGenerationTask, task_id)
             return self._detach(session, task)
 
+    def list_tasks(
+        self,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+        content_type: str | None = None,
+        status: str | None = None,
+    ) -> tuple[list[ContentGenerationTask], int]:
+        filters = []
+        if content_type:
+            filters.append(ContentGenerationTask.content_type == content_type)
+        if status:
+            filters.append(ContentGenerationTask.status == status)
+        with Session(self.engine) as session:
+            count_statement = select(func.count()).select_from(ContentGenerationTask)
+            if filters:
+                count_statement = count_statement.where(*filters)
+            total = int(session.exec(count_statement).one())
+            statement = select(ContentGenerationTask)
+            if filters:
+                statement = statement.where(*filters)
+            statement = (
+                statement.order_by(
+                    ContentGenerationTask.created_at.desc(),
+                    ContentGenerationTask.task_id.desc(),
+                )
+                .offset(max(page - 1, 0) * page_size)
+                .limit(page_size)
+            )
+            rows = list(session.exec(statement).all())
+            return [self._detach(session, row) for row in rows], total
+
     def mark_running(self, task_id: str) -> ContentGenerationTask | None:
         return self.update_task(
             task_id,
@@ -80,6 +122,7 @@ class SQLModelTaskRepository:
         )
         if state.current_node:
             progress["current_node"] = state.current_node
+        self._apply_retrieval_status(progress, state)
 
         outline = state.outline.model_dump(mode="json") if state.outline else None
         render_model = state.render_model.model_dump(mode="json") if state.render_model else None
@@ -105,6 +148,7 @@ class SQLModelTaskRepository:
             artifacts.append_references(task_id, "planning", state.planning_chunks)
             if state.current_unit_id and state.current_unit_context:
                 artifacts.append_references(task_id, "unit_spec", state.current_unit_context, unit_id=state.current_unit_id)
+            progress["resource_summary"] = sync_assets_from_state(session, task_id, state)
 
             task_row.status = str(state.status)
             task_row.progress = progress
@@ -128,11 +172,14 @@ class SQLModelTaskRepository:
             )
             if state.current_node:
                 progress["current_node"] = state.current_node
+            self._apply_retrieval_status(progress, state)
+
+            self._save_unit_artifacts(ArtifactRepository(session), task_id, state)
+            progress["resource_summary"] = sync_assets_from_state(session, task_id, state)
             task_row.progress = progress
             task_row.error_message = state.errors[-1] if state.errors else None
             task_row.updated_at = now_utc()
 
-            self._save_unit_artifacts(ArtifactRepository(session), task_id, state)
             session.add(task_row)
             session.commit()
             session.refresh(task_row)
@@ -172,13 +219,26 @@ class SQLModelTaskRepository:
                 session.expunge(record)
             return records
 
-    def update_export_files(self, task_id: str, export_files: list[ExportFile]) -> ContentGenerationTask | None:
+    def update_export_files(
+        self,
+        task_id: str,
+        export_files: list[ExportFile],
+        *,
+        render_model: RenderModel | None = None,
+    ) -> ContentGenerationTask | None:
         payload = {"files": [file.model_dump(mode="json") for file in export_files]}
         with Session(self.engine) as session:
             task = session.get(ContentGenerationTask, task_id)
             if task is None:
                 return None
-            ArtifactRepository(session).upsert_artifact(task_id, "export_manifest", payload)
+            artifacts = ArtifactRepository(session)
+            artifacts.upsert_artifact(task_id, "export_manifest", payload)
+            if render_model is not None:
+                render_payload = render_model.model_dump(mode="json")
+                artifacts.upsert_artifact(
+                    task_id, "final_render", {"content_type": task.content_type, "render_model": render_payload},
+                )
+                artifacts.upsert_artifact(task_id, "partial_render", render_payload)
             progress = dict(task.progress or {})
             progress["export_files"] = payload["files"]
             task.progress = progress
@@ -199,6 +259,8 @@ class SQLModelTaskRepository:
                     continue
                 if key == "current_node":
                     progress["current_node"] = value
+                elif key == "progress" and isinstance(value, dict):
+                    progress = dict(value)
                 elif key == "errors":
                     errors = [str(item) for item in value] if isinstance(value, list) else [str(value)]
                     task.error_message = errors[-1] if errors else None
@@ -280,20 +342,37 @@ class SQLModelTaskRepository:
                 session.expunge(artifact)
             return artifact
 
-    def _ensure_sqlite_schema(self) -> None:
-        if self.engine.dialect.name != "sqlite":
-            return
-        inspector = inspect(self.engine)
-        if not inspector.has_table("content_generation_task"):
-            return
-        columns = {column["name"] for column in inspector.get_columns("content_generation_task")}
+    def _initialize_sqlite_schema(self) -> None:
+        config = Config()
+        config.set_main_option("script_location", str(Path(__file__).resolve().parents[2] / "alembic"))
         with self.engine.begin() as connection:
-            if "error_message" not in columns:
-                connection.execute(text("ALTER TABLE content_generation_task ADD COLUMN error_message TEXT"))
+            config.attributes["connection"] = connection
+            inspector = inspect(connection)
+            revision = MigrationContext.configure(connection).get_current_revision()
+            # 旧的自动建表流程没有版本记录；五表结构对应 0006。
+            if revision is None and inspector.has_table("knowledge_chunk_cache"):
+                command.stamp(config, "20260630_0006")
+            command.upgrade(config, "head")
+
+    @staticmethod
+    def _apply_retrieval_status(progress: dict[str, Any], state: ContentGenerationState) -> None:
+        status = state.retrieval_status
+        progress["knowledge_base"] = {
+            "used": status.state == "ok" and status.chunk_count > 0,
+            "status": status.state,
+            "chunk_count": status.chunk_count,
+            "message": status.message,
+        }
 
     def to_task_result(self, task: ContentGenerationTask) -> TaskResult:
         progress = dict(task.progress or {})
         export_files = [ExportFile.model_validate(file) for file in progress.get("export_files", []) if isinstance(file, dict)]
+        knowledge_payload = progress.get("knowledge_base")
+        knowledge_base = (
+            KnowledgeBaseStatus.model_validate(knowledge_payload)
+            if isinstance(knowledge_payload, dict)
+            else None
+        )
         return TaskResult(
             task_id=task.task_id,
             status=TaskStatus(task.status),
@@ -303,6 +382,7 @@ class SQLModelTaskRepository:
             errors=[task.error_message] if task.error_message else [],
             current_node=str(progress.get("current_node")) if progress.get("current_node") else None,
             progress=progress,
+            knowledge_base=knowledge_base,
             created_at=task.created_at,
             updated_at=task.updated_at,
         )

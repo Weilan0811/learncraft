@@ -22,17 +22,25 @@ class SocialPostValidator:
         for index, section in enumerate(spec.draft.sections):
             if not section.blocks:
                 issues.append(_error(f"draft.sections[{index}].blocks", "section must have at least one block"))
-            if not section.citation_refs:
-                issues.append(_error(f"draft.sections[{index}].citation_refs", "section must include citation_refs"))
-            for ref in section.citation_refs:
-                if available_chunk_ids and ref.chunk_id not in available_chunk_ids:
-                    issues.append(_error(f"draft.sections[{index}].citation_refs", f"unknown chunk_id: {ref.chunk_id}"))
+            if available_chunk_ids:
+                if not section.citation_refs:
+                    issues.append(_error(f"draft.sections[{index}].citation_refs", "section must include citation_refs"))
+                for ref in section.citation_refs:
+                    if ref.chunk_id not in available_chunk_ids:
+                        issues.append(_error(f"draft.sections[{index}].citation_refs", f"unknown chunk_id: {ref.chunk_id}"))
+            elif section.citation_refs:
+                issues.append(
+                    _error(
+                        f"draft.sections[{index}].citation_refs",
+                        "citation_refs must be empty when retrieval returned no chunks",
+                    )
+                )
         slot_ids = [slot.slot_id for slot in spec.image_slots]
         if len(slot_ids) != len(set(slot_ids)):
             issues.append(_error("image_slots", "image slot ids must be unique"))
         if spec.image_slots and not any(slot.slot_id == "cover" and slot.target_path == "meta.cover_image" for slot in spec.image_slots):
-            # Cover is only mandatory when the task actually plans images; a spec with
-            # no slots is the legitimate "include_images=false" shape.
+            # Cover is only mandatory when the task actually plans images; legacy
+            # specs generated before the fixed image policy may have no slots.
             issues.append(_error("image_slots", "image_slots must include a cover slot"))
         for index, slot in enumerate(spec.image_slots):
             issues.extend(self._validate_slot(slot, index, len(spec.draft.sections)))

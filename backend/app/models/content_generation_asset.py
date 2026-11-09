@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import JSON, Column
 from sqlmodel import Field, SQLModel
 
+from app.core.asset import AssetStatus
 from app.models.content_generation_task import utc_now
 
 
@@ -16,8 +17,12 @@ class ContentGenerationAsset(SQLModel, table=True):
     asset_type: str = Field(index=True, max_length=32)
     uri: str = Field(max_length=512)
     mime_type: str | None = Field(default=None, max_length=128)
+    status: str = Field(default=AssetStatus.generated.value, index=True, max_length=32)
+    error_message: str | None = Field(default=None)
+    retry_count: int = Field(default=0, nullable=False)
     metadata_json: dict[str, Any] | None = Field(default=None, sa_column=Column("metadata", JSON, nullable=True))
     created_at: datetime = Field(default_factory=utc_now, nullable=False)
+    updated_at: datetime = Field(default_factory=utc_now, nullable=False)
 
     @property
     def id(self) -> str:

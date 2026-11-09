@@ -62,8 +62,6 @@ X-Platform-Session-Id: platform_session_001
     "difficulty": "introductory",
     "style": "educational",
     "slide_count": 6,
-    "include_images": true,
-    "include_mindmap": false,
     "citation_policy": "light",
     "allow_fallback": true
   }
@@ -399,7 +397,7 @@ POST /api/content-generation/tasks/{task_id}/export
 | `social_post` | `html` | 导出微信公众号文章 HTML，同时生成 article JSON asset。 |
 | `social_post` | `image_assets` | 打包推文图片资源。 |
 | `podcast_script` | `markdown` | 导出播客脚本文本。 |
-| `podcast_script` | `audio` | 导出完整音频；如果完整音频不存在则回退 audio manifest。 |
+| `podcast_script` | `audio` | 导出完整音频；完整音频缺失且分段齐全时自动重新合成，并保存更新后的预览、音频清单和导出记录。仍有失败分段时返回失败，需先重试对应分段。 |
 
 `interactive_html` 离线讲义导出示例：
 
@@ -587,9 +585,6 @@ GET /api/assets/{asset_id}/download
 | `max_section_count` | 8 | lecture 最大章节数；interactive_html outline prompt 当前建议 4-8 个 units。 |
 | `max_slide_count` | 12 | slide 最大页数。 |
 | `output_depth` | `standard` | `brief` / `standard` / `detailed`。 |
-| `include_images` | true | 是否生成图片。`interactive_html` 当前不走图片元素分支。 |
-| `include_charts` | false | 是否生成图表，当前仍处于预留。 |
-| `include_mindmap` | false | 是否生成 mindmap。`interactive_html` 当前不走 mindmap 元素分支。 |
 | `image_style` | null | 图片风格提示。 |
 | `citation_policy` | `light` | `none` / `light` / `strict`。 |
 | `allow_fallback` | false | provider 或渲染失败时是否允许 fallback。对 interactive_html 的 unit spec / render unit fallback 很重要。 |
@@ -598,6 +593,8 @@ GET /api/assets/{asset_id}/download
 | `pdf_options` | `{}` | PDF 导出配置预留。 |
 
 说明：如果请求体没有显式传 `allow_fallback`，后端使用环境变量 `CONTENT_GENERATOR_ALLOW_FALLBACK` 作为默认值；请求体显式传入时，以请求体为准。
+
+多模态输出由内容类型固定，不再接受 `include_images` / `include_charts` / `include_mindmap` 字段：讲义、幻灯片、图文推文固定生成图片；播客固定生成音频；交互式讲义仅文本；图表和思维导图不再生成。
 
 ## 6. 前端轮询建议
 

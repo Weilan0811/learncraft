@@ -6,3 +6,4 @@ class TaskStatus(StrEnum):
     running = "running"
     completed = "completed"
     failed = "failed"
+    interrupted = "interrupted"

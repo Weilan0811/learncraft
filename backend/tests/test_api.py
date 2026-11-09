@@ -33,9 +33,6 @@ def test_content_generation_task_lifecycle_exposes_stub_result() -> None:
             "generation_options": {
                 "language": "zh-CN",
                 "difficulty": "introductory",
-                "include_images": True,
-                "include_charts": True,
-                "include_mindmap": True,
             },
         },
     )
@@ -85,7 +82,6 @@ def test_asset_endpoint_returns_local_asset_metadata() -> None:
             "content_type": "lecture",
             "topic": "人工智能基础导论",
             "user_prompt": "生成一份讲义",
-            "generation_options": {"include_images": True},
         },
     )
     assert create_response.status_code == 201
@@ -114,7 +110,6 @@ def test_social_post_task_lifecycle_exposes_html_preview_and_export() -> None:
             "knowledge_base_ids": ["kb_ai_basic"],
             "generation_options": {
                 "language": "zh-CN",
-                "include_images": True,
                 "citation_policy": "light",
             },
         },
@@ -166,7 +161,7 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
             "topic": "Artifact API",
             "user_prompt": "Generate a short lecture with references",
             "knowledge_base_ids": ["kb_ai_basic"],
-            "generation_options": {"include_images": False, "include_mindmap": False, "max_section_count": 1},
+            "generation_options": {"max_section_count": 1},
         },
     )
 
@@ -203,11 +198,7 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
     assert references_payload["unit_id"] is None
     assert references_payload["content_type"] == "lecture"
     assert references_payload["title"] == "Artifact API"
-    assert references_payload["chunks"]
-    assert {"chunk_id", "path", "title", "text", "rank", "score"}.issubset(references_payload["chunks"][0])
-    assert references_payload["chunks"][0]["path"]
-    assert references_payload["chunks"][0]["title"]
-    assert references_payload["chunks"][0]["text"]
+    assert references_payload["chunks"] == []
 
     units_response = client.get(f"/api/content-generation/tasks/{task_id}/units")
     assert units_response.status_code == 200
@@ -219,8 +210,7 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
     assert unit_references_payload["unit_id"] == unit_id
     assert unit_references_payload["content_type"] == "lecture"
     assert unit_references_payload["title"]
-    assert unit_references_payload["chunks"]
-    assert {"chunk_id", "path", "title", "text", "rank", "score"}.issubset(unit_references_payload["chunks"][0])
+    assert unit_references_payload["chunks"] == []
 
     metrics_response = client.get(f"/api/content-generation/tasks/{task_id}/metrics")
     assert metrics_response.status_code == 200
@@ -230,4 +220,13 @@ def test_content_generation_api_exposes_artifacts_references_metrics_and_platfor
 
     preview_response = client.get(f"/api/content-generation/tasks/{task_id}/preview")
     assert preview_response.status_code == 200
-    assert preview_response.json()["render_model"]["render_type"] == "lecture_page"
+    preview_payload = preview_response.json()
+    assert preview_payload["render_model"]["render_type"] == "lecture_page"
+    assert preview_payload["knowledge_base"]["status"] == "disabled"
+    assert preview_payload["knowledge_base"]["used"] is False
+    assert preview_payload["knowledge_base"]["chunk_count"] == 0
+
+    task_response = client.get(f"/api/content-generation/tasks/{task_id}")
+    task_payload = task_response.json()
+    assert task_payload["knowledge_base"]["status"] == "disabled"
+    assert task_payload["knowledge_base"]["message"]

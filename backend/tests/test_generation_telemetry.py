@@ -42,7 +42,7 @@ def test_stub_workflow_persists_node_metrics(tmp_path, monkeypatch) -> None:
             content_type="lecture",
             topic="AI basics",
             user_prompt="Generate a short lecture",
-            generation_options={"include_images": False, "include_mindmap": False, "max_section_count": 1},
+            generation_options={"max_section_count": 1},
         )
     )
 

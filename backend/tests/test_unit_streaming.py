@@ -20,7 +20,7 @@ def test_workflow_publishes_unit_render_snapshots_for_lecture(monkeypatch: pytes
             content_type="lecture",
             topic="AI basics",
             user_prompt="Generate a lecture",
-            generation_options=GenerationOptions(include_images=False, include_mindmap=False, max_section_count=2),
+            generation_options=GenerationOptions(max_section_count=2),
         )
     )
 
@@ -43,7 +43,7 @@ def test_workflow_publishes_unit_render_snapshots_for_slide_deck(monkeypatch: py
             content_type="slide_deck",
             topic="AI basics",
             user_prompt="Generate a deck",
-            generation_options=GenerationOptions(include_images=False, include_mindmap=False, max_slide_count=2),
+            generation_options=GenerationOptions(max_slide_count=2),
         )
     )
 
@@ -64,7 +64,7 @@ def test_repository_persists_partial_streaming_state(tmp_path) -> None:
             content_type="lecture",
             topic="AI basics",
             user_prompt="Generate a short lecture",
-            generation_options={"include_images": False, "include_mindmap": False, "max_section_count": 1},
+            generation_options={"max_section_count": 1},
         )
     )
 
@@ -87,7 +87,7 @@ def test_api_exposes_events_partial_preview_and_unit_previews() -> None:
             "content_type": "slide_deck",
             "topic": "AI basics",
             "user_prompt": "Generate a deck",
-            "generation_options": {"include_images": False, "include_mindmap": False, "max_slide_count": 1},
+            "generation_options": {"max_slide_count": 1},
         },
     )
     assert create_response.status_code == 201
@@ -123,7 +123,7 @@ def test_api_exposes_plain_text_for_unit_chunks() -> None:
             content_type="interactive_html",
             topic="Prompt understanding",
             user_prompt="Generate an interactive lesson",
-            generation_options={"include_images": False, "include_mindmap": False, "max_section_count": 1},
+            generation_options={"max_section_count": 1},
         )
     )
     task_service.repository.update_task(

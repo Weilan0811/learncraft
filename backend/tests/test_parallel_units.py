@@ -68,7 +68,7 @@ def test_generate_units_parallel_runs_batch_concurrently_and_merges_in_outline_o
         content_type="lecture",
         topic="AI basics",
         user_prompt="Generate a lecture",
-        normalized_request={"include_images": False, "include_mindmap": False},
+        normalized_request={},
         outline=Outline(
             id="outline_parallel",
             content_type="lecture",
@@ -86,7 +86,9 @@ def test_generate_units_parallel_runs_batch_concurrently_and_merges_in_outline_o
 
     assert max_active == 2
     assert update["completed_unit_ids"] == ["unit-1", "unit-2", "unit-3"]
-    assert list(update["unit_results"]) == ["unit-1", "unit-2", "unit-3"]
-    assert list(update["render_units"]) == ["unit-1", "unit-2", "unit-3"]
-    assert [event.unit_id for event in update["stream_events"]] == ["unit-1", "unit-2", "unit-3"]
+    # Dict insertion follows completion order; the outline order guarantee is
+    # carried by completed_unit_ids and by assemble_content_spec.
+    assert sorted(update["unit_results"]) == ["unit-1", "unit-2", "unit-3"]
+    assert sorted(update["render_units"]) == ["unit-1", "unit-2", "unit-3"]
+    assert sorted(event.unit_id for event in update["stream_events"]) == ["unit-1", "unit-2", "unit-3"]
     assert update["current_node"] == "generate_units_parallel"

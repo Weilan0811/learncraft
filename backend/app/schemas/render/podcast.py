@@ -36,5 +36,6 @@ class PodcastRenderModel(SchemaModel):
     audio_assets: list[AudioFileElement] = Field(default_factory=list)
     audio_manifest_url: str | None = None
     final_audio_url: str | None = None
+    final_audio_duration_seconds: float | None = None
     export_files: list[PodcastExportFile] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)

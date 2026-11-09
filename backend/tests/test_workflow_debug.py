@@ -22,8 +22,6 @@ def test_lecture(monkeypatch: pytest.MonkeyPatch) -> None:
         generation_options={
             "language": "zh-CN",
             "difficulty": "introductory",
-            "include_images": True,
-            "include_mindmap": True,
         },
     )
 
@@ -44,8 +42,6 @@ def test_slides(monkeypatch: pytest.MonkeyPatch) -> None:
         generation_options={
             "language": "zh-CN",
             "difficulty": "introductory",
-            "include_images": True,
-            "include_mindmap": True,
         },
     )
 

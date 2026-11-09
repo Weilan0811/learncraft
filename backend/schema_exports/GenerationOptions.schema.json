@@ -89,21 +89,6 @@
       "title": "Output Depth",
       "type": "string"
     },
-    "include_images": {
-      "default": true,
-      "title": "Include Images",
-      "type": "boolean"
-    },
-    "include_charts": {
-      "default": false,
-      "title": "Include Charts",
-      "type": "boolean"
-    },
-    "include_mindmap": {
-      "default": false,
-      "title": "Include Mindmap",
-      "type": "boolean"
-    },
     "image_style": {
       "anyOf": [
         {

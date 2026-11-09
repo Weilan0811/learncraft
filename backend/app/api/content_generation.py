@@ -12,9 +12,12 @@ from app.schemas.artifacts import (
     GenerationMetricListResponse,
     ReferenceChunksResponse,
 )
+from app.schemas.base import ContentType
 from app.schemas.export import ExportRequest, ExportResult
 from app.schemas.request import ContentGenerationRequest
-from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
+from app.schemas.resources import FailedResourceListResponse, ResourceRetryResponse
+from app.schemas.task import PartialPreviewResponse, TaskEventsResponse, TaskListResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
+from app.services import resource_retry_service as resources
 from app.services.task_service import InMemoryTaskService
 
 
@@ -44,6 +47,21 @@ def create_content_generation_task(
     return task
 
 
+@router.get("/tasks", response_model=TaskListResponse)
+def list_content_generation_tasks(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    content_type: ContentType | None = Query(default=None),
+    task_status: TaskStatus | None = Query(default=None, alias="status"),
+) -> TaskListResponse:
+    return task_service.list_tasks(
+        page=page,
+        page_size=page_size,
+        content_type=str(content_type) if content_type else None,
+        status=str(task_status) if task_status else None,
+    )
+
+
 @router.get("/tasks/{task_id}", response_model=TaskResult)
 def get_content_generation_task(task_id: str) -> TaskResult:
     # TODO(MVP-task): Return node-level progress once workflow execution becomes
@@ -70,6 +88,34 @@ def get_content_generation_events(task_id: str) -> TaskEventsResponse:
     if events is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return events
+
+
+@router.get("/tasks/{task_id}/failed-resources", response_model=FailedResourceListResponse)
+def list_failed_resources(task_id: str) -> FailedResourceListResponse:
+    response = resources.list_failed_resources(task_service.repository, task_id)
+    if response is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    return response
+
+
+@router.post(
+    "/tasks/{task_id}/resources/{resource_id}/retry",
+    response_model=ResourceRetryResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def retry_task_resource(
+    task_id: str,
+    resource_id: str,
+    background_tasks: BackgroundTasks,
+) -> ResourceRetryResponse:
+    try:
+        response = resources.submit_retry(task_service.repository, task_id, resource_id)
+    except resources.ResourceNotFound as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except (resources.RetryNotAllowed, resources.RetryConflict) as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    background_tasks.add_task(resources.execute_retry, task_service.repository, task_id, resource_id)
+    return response
 
 
 @router.get("/tasks/{task_id}/preview/partial", response_model=PartialPreviewResponse)
@@ -192,7 +238,7 @@ def stream_content_generation_task(task_id: str) -> StreamingResponse:
             units_count = len(units.units) if units else 0
             events_count = len(events.events) if events else 0
             progress = task.progress or {}
-            terminal = task.status in {TaskStatus.completed, TaskStatus.failed}
+            terminal = task.status in {TaskStatus.completed, TaskStatus.failed, TaskStatus.interrupted}
             signature = (
                 str(task.status),
                 json.dumps(progress, sort_keys=True, default=str),

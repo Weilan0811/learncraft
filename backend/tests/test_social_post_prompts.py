@@ -92,7 +92,7 @@ def test_social_post_real_mode_generator_uses_structured_prompt_sequence(monkeyp
         topic="Agent workflow",
         user_prompt="Write a WeChat article.",
         raw_request={"content_type": "social_post", "topic": "Agent workflow"},
-        normalized_request={"language": "zh-CN", "include_images": False},
+        normalized_request={"language": "zh-CN"},
         planning_chunks=[chunk],
     )
 
@@ -165,9 +165,27 @@ def test_social_post_real_mode_generator_uses_structured_prompt_sequence(monkeyp
                 )
             raise AssertionError(schema)
 
+    class FakeImageService:
+        def generate_image(self, title: str, description: str, aspect_ratio: str = "16:9", asset_id: str | None = None):
+            from app.schemas.elements import ImageElement
+
+            return ImageElement(
+                id=asset_id or title,
+                title=title,
+                prompt=description,
+                asset_url=f"/api/assets/{asset_id}/download",
+                alt_text=title,
+                width=1024,
+                height=576,
+            )
+
     fake_llm = FakeLLM()
     monkeypatch.setattr("app.generators.social_post_generator.get_settings", lambda: RealSettings())
     monkeypatch.setattr("app.generators.social_post_generator.get_llm_service", lambda: fake_llm)
+    monkeypatch.setattr(
+        "app.generators.social_post_generator.get_image_generation_service",
+        lambda: FakeImageService(),
+    )
 
     spec = SocialPostGenerator().generate(state)
 
@@ -176,14 +194,14 @@ def test_social_post_real_mode_generator_uses_structured_prompt_sequence(monkeyp
     assert fake_llm.schemas == ["WechatBriefOutline", "WechatArticleDraft", "ImageSlotPlan"]
 
 
-def test_social_post_real_mode_normalizes_missing_citations_and_provider_cover_ratio(monkeypatch) -> None:
+def test_social_post_real_mode_strips_citations_when_retrieval_is_empty(monkeypatch) -> None:
     state = ContentGenerationState(
         request_id="task_prompt",
         content_type="social_post",
         topic="Agent workflow",
         user_prompt="Write a WeChat article.",
         raw_request={"content_type": "social_post", "topic": "Agent workflow"},
-        normalized_request={"language": "zh-CN", "include_images": True},
+        normalized_request={"language": "zh-CN"},
         planning_chunks=[],
         retrieved_chunks=[],
     )
@@ -270,8 +288,15 @@ def test_social_post_real_mode_normalizes_missing_citations_and_provider_cover_r
 
     spec = SocialPostGenerator().generate(state)
 
-    assert all(section.citation_refs for section in spec.draft.sections)
-    assert all(block.citation_refs for section in spec.draft.sections for block in section.blocks if hasattr(block, "citation_refs"))
+    assert all(not section.citation_refs for section in spec.draft.sections)
+    assert all(
+        not block.citation_refs
+        for section in spec.draft.sections
+        for block in section.blocks
+        if hasattr(block, "citation_refs")
+    )
+    assert all(not section.evidence_refs for section in spec.outline.sections)
+    assert "stub_chunk" not in spec.model_dump_json()
     assert [asset.status for asset in spec.image_assets] == ["generated", "generated"]
     assert fake_image_service.aspect_ratios == ["21:9", "16:9"]
 
@@ -283,7 +308,7 @@ def test_social_post_real_mode_llm_failure_is_not_silent_fallback(monkeypatch) -
         topic="Agent workflow",
         user_prompt="Write a WeChat article.",
         raw_request={"content_type": "social_post", "topic": "Agent workflow"},
-        normalized_request={"language": "zh-CN", "include_images": False},
+        normalized_request={"language": "zh-CN"},
     )
 
     class RealSettings:

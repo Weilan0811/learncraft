@@ -7,9 +7,18 @@ from app.schemas.base import ContentType, ExportType, SchemaModel
 
 @dataclass(frozen=True)
 class ElementPolicy:
-    allowed_elements: tuple[str, ...] = ("image", "mindmap")
+    allowed_elements: tuple[str, ...] = ("image",)
     default_required_elements: tuple[str, ...] = ("image",)
-    optional_elements: tuple[str, ...] = ("mindmap",)
+    optional_elements: tuple[str, ...] = ()
+
+
+def fixed_element_flags(policy: ElementPolicy) -> dict[str, bool]:
+    """Multimodal output is fixed by content type; request callers cannot override it."""
+    return {
+        "include_images": "image" in policy.default_required_elements,
+        "include_charts": False,
+        "include_mindmap": False,
+    }
 
 
 @dataclass(frozen=True)

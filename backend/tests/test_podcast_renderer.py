@@ -8,6 +8,7 @@ from uuid import uuid4
 from app.renderers.podcast_renderer import PodcastRenderer
 from app.schemas.elements.audio import AudioFileElement
 from app.schemas.specs.podcast import PodcastSegmentSpec, PodcastSpec
+from app.services.audio_assembler_service import AudioAssemblerService
 from app.services.storage_service import LocalStorageService
 
 
@@ -126,6 +127,7 @@ def test_podcast_renderer_retries_failed_segment_and_records_final_audio() -> No
     render_model = PodcastRenderer(
         tts_service=tts_service,
         storage_service=storage,
+        audio_assembler=AudioAssemblerService(output_format="wav"),
         segment_max_retries=1,
         retry_delay_seconds=0,
     ).render(spec, [])

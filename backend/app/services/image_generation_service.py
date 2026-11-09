@@ -8,6 +8,7 @@ from uuid import uuid4
 import httpx
 
 from app.core.config import Settings, get_settings
+from app.core.provider_config import ensure_capability
 from app.schemas.elements import ImageElement
 from app.services.storage_service import LocalStorageService, StorageService
 
@@ -488,6 +489,7 @@ def get_image_generation_service(settings: Settings | None = None, storage_servi
     settings = settings or get_settings()
     if settings.provider_mode == "stub":
         return StubImageGenerationService(storage_service=storage_service)
+    ensure_capability(settings, "image")
     if settings.image_provider == "apimart":
         return APIMartImageGenerationService(
             api_key=settings.apimart_api_key or "",

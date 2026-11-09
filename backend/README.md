@@ -76,18 +76,11 @@ flowchart TB
 | LLM | 返回结构化假数据 | 百炼 OpenAI 兼容接口，JSON schema 约束 + repair + 重试 |
 | 图片 | 本地 SVG 占位图 | APIMart / 百炼 DashScope 原生异步 API（提交 → 轮询 → 下载），429 限流退避 |
 | TTS | 静音音频 | 百炼 `qwen3-tts-instruct-flash` |
-| 检索 | 内置假引用 | 外部知识库 HTTP API |
+| 检索 | 关闭，返回空片段 | 关闭，等待独立知识库模块接入 |
 
 `CONTENT_GENERATOR_PROVIDER_MODE=stub` 时全链路不依赖任何外部服务，可在无 API Key 的环境跑通完整 workflow，用于本地开发、CI 与前端联调。
 
-真实检索需要额外配置：
-
-```env
-CONTENT_GENERATOR_KB_API_BASE_URL=https://your-kb-api.example.com
-CONTENT_GENERATOR_KB_API_KEY=your-api-key
-CONTENT_GENERATOR_KB_RETRIEVAL_TOP_K=5
-CONTENT_GENERATOR_KB_MAX_CHARS_PER_ITEM=8000
-```
+知识库检索当前统一关闭：无论 stub 还是 real 模式都返回空片段，不生成占位引用；任务和预览响应会标记 `knowledge_base.status=disabled`。请求中的 `knowledge_base_ids` 字段保留，等待独立知识库模块接入。
 
 ### Schema 真源
 
@@ -229,7 +222,7 @@ POST /api/interactive-lessons/{lesson_id}/sessions
 
 ## 数据库
 
-任务和产物分布在五张表（见「工程设计 → 任务生命周期与持久化」）。SQLite 本地开发自动建表；MySQL 等数据库使用 Alembic 迁移：
+任务和产物分布在五张表（见「工程设计 → 任务生命周期与持久化」）。SQLite 本地开发在启动时自动执行 Alembic 迁移，初始化表结构并记录版本；重复启动或手动执行迁移不会重复添加字段。MySQL 等数据库启动前执行相同的 Alembic 迁移：
 
 ```bash
 cd backend
@@ -262,7 +255,7 @@ Windows PowerShell 调用 API 时建议使用 `Invoke-RestMethod`，避免把 Li
 `backend/tests/test_workflow_debug.py` 是手动真实生成调试测试，不属于默认稳定测试入口。运行前请确认：
 
 - `.env` 已配置真实 provider 所需 API key，并设置 `CONTENT_GENERATOR_PROVIDER_MODE=real`。
-- 已配置外部知识库 API（`CONTENT_GENERATOR_KB_API_BASE_URL`）。
+- 知识库检索当前关闭，不需要配置外部 KB 服务。
 - 真实图片生成可能产生外部 API 调用和费用。
 
 ```powershell

@@ -1,8 +1,14 @@
+import json
+import re
+import subprocess
+import tempfile
 import wave
-from io import BytesIO
+from pathlib import Path
 
+from app.core.config import get_settings
 from app.schemas.assets import AssetRecord
 from app.schemas.elements.audio import AudioFileElement
+from app.schemas.render.podcast import PodcastExportFile, PodcastRenderModel
 from app.services.storage_service import StorageService
 
 
@@ -11,6 +17,25 @@ class AudioAssemblyError(RuntimeError):
 
 
 class AudioAssemblerService:
+    """Concatenate podcast segments with ffmpeg.
+
+    The ffmpeg executable comes from ``imageio-ffmpeg`` (bundled with the
+    dependency) unless ``CONTENT_GENERATOR_FFMPEG_BINARY`` points at a system
+    installation. Segments are decoded and re-encoded into one clean stream so
+    per-segment MP3/WAV headers, VBR tags and mixed sample rates cannot corrupt
+    playback or the reported duration.
+    """
+
+    def __init__(
+        self,
+        ffmpeg_binary: str | None = None,
+        timeout_seconds: float = 300.0,
+        output_format: str | None = None,
+    ) -> None:
+        self.ffmpeg_binary = ffmpeg_binary
+        self.timeout_seconds = timeout_seconds
+        self.output_format = output_format
+
     def assemble(
         self,
         *,
@@ -23,56 +48,192 @@ class AudioAssemblerService:
         if not ordered_assets:
             return None
 
-        if all(asset.format == "wav" for asset in ordered_assets):
-            content = self._assemble_wav(ordered_assets, storage_service)
-            output_format = "wav"
-            content_type = "audio/wav"
-            assembly_mode = "wav_concat"
-        else:
-            content = b"".join(storage_service.read_bytes(asset.id) for asset in ordered_assets)
-            output_format = ordered_assets[0].format or "mp3"
-            content_type = _content_type(output_format)
-            assembly_mode = "byte_concat"
+        output_format = _normalize_output_format(self.output_format or get_settings().tts_output_format)
+        ffmpeg = self._ffmpeg_executable()
+        with tempfile.TemporaryDirectory(prefix="podcast_assembly_") as temp_dir:
+            temp_path = Path(temp_dir)
+            input_paths: list[Path] = []
+            for index, asset in enumerate(ordered_assets, start=1):
+                suffix = (asset.format or output_format).lstrip(".")
+                path = temp_path / f"{index:03d}.{suffix}"
+                path.write_bytes(storage_service.read_bytes(asset.id))
+                input_paths.append(path)
+            output_path = temp_path / f"final_audio.{output_format}"
+
+            command = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y"]
+            for path in input_paths:
+                command.extend(["-i", str(path)])
+            filter_inputs = "".join(f"[{index}:a]" for index in range(len(input_paths)))
+            command.extend(
+                [
+                    "-filter_complex",
+                    f"{filter_inputs}concat=n={len(input_paths)}:v=0:a=1[out]",
+                    "-map",
+                    "[out]",
+                    "-ar",
+                    "24000",
+                    "-ac",
+                    "1",
+                ]
+            )
+            if output_format == "wav":
+                command.extend(["-c:a", "pcm_s16le"])
+            else:
+                command.extend(["-c:a", "libmp3lame", "-b:a", "96k"])
+            command.append(str(output_path))
+            self._run(command)
+
+            content = output_path.read_bytes()
+            if not content:
+                raise AudioAssemblyError("ffmpeg produced an empty audio file.")
+            duration = _probe_duration(output_path, output_format, ffmpeg)
 
         return storage_service.save_bytes(
             asset_id=asset_id,
             filename=f"{asset_id}.{output_format}",
             content=content,
-            content_type=content_type,
+            content_type=_content_type(output_format),
             kind="audio",
             metadata={
                 "content_type": "podcast_script",
                 "render_type": "final_audio",
                 "title": title,
-                "assembly_mode": assembly_mode,
+                "assembly_mode": "ffmpeg_concat",
+                "output_format": output_format,
+                "duration_seconds": duration,
+                "segment_count": len(ordered_assets),
                 "source_asset_ids": [asset.id for asset in ordered_assets],
             },
         )
 
-    def _assemble_wav(self, audio_assets: list[AudioFileElement], storage_service: StorageService) -> bytes:
-        params = None
-        frames: list[bytes] = []
-        for asset in audio_assets:
-            with wave.open(BytesIO(storage_service.read_bytes(asset.id)), "rb") as audio:
-                current_params = audio.getparams()
-                comparable_params = current_params[:3]
-                if params is None:
-                    params = current_params
-                    expected_comparable = comparable_params
-                elif comparable_params != expected_comparable:
-                    raise AudioAssemblyError("WAV segments must have matching channels, sample width, and frame rate.")
-                frames.append(audio.readframes(audio.getnframes()))
-        if params is None:
-            raise AudioAssemblyError("No WAV segments to assemble.")
+    def recover_podcast_audio(
+        self,
+        render_model: PodcastRenderModel,
+        *,
+        spec_id: str,
+        storage_service: StorageService,
+    ) -> PodcastRenderModel:
+        if not render_model.segments or any(segment.status != "generated" for segment in render_model.segments):
+            raise AudioAssemblyError("仍有语音分段未生成，请先重试失败的分段。")
+        audio_by_order = {asset.order: asset for asset in render_model.audio_assets}
+        if any(segment.order not in audio_by_order for segment in render_model.segments):
+            raise AudioAssemblyError("语音分段文件记录不完整，无法合成完整音频。")
+        record = self.assemble(
+            asset_id=f"{spec_id}_final_audio",
+            title=render_model.title,
+            audio_assets=[audio_by_order[segment.order] for segment in render_model.segments],
+            storage_service=storage_service,
+        )
+        if record is None:
+            raise AudioAssemblyError("没有可合成的语音分段。")
+        duration = record.metadata.get("duration_seconds")
+        duration_seconds = float(duration) if isinstance(duration, (int, float)) else None
+        manifest = storage_service.save_bytes(
+            asset_id=f"{spec_id}_audio_manifest",
+            filename=f"{spec_id}_audio_manifest.json",
+            content=json.dumps(
+                {
+                    "title": render_model.title,
+                    "podcast_name": render_model.podcast_name,
+                    "podcast_tagline": render_model.podcast_tagline,
+                    "final_audio_url": record.url,
+                    "final_audio_duration_seconds": duration_seconds,
+                    "segments": [segment.model_dump(mode="json") for segment in render_model.segments],
+                },
+                ensure_ascii=False,
+                indent=2,
+            ).encode("utf-8"),
+            content_type="application/json",
+            kind="audio",
+            metadata={"content_type": "podcast_script", "render_type": "audio_manifest"},
+        )
+        return render_model.model_copy(update={
+            "final_audio_url": record.url,
+            "final_audio_duration_seconds": duration_seconds,
+            "audio_manifest_url": manifest.url,
+            "export_files": [
+                PodcastExportFile(file_type="audio", url=record.url, label="Full audio"),
+                PodcastExportFile(file_type="manifest", url=manifest.url, label="Audio manifest"),
+                *[file for file in render_model.export_files if file.file_type not in {"audio", "manifest"}],
+            ],
+            "warnings": [
+                warning for warning in render_model.warnings
+                if not warning.startswith("final audio assembly failed:")
+            ],
+        })
 
-        output = BytesIO()
-        with wave.open(output, "wb") as combined:
-            combined.setparams(params)
-            combined.writeframes(b"".join(frames))
-        return output.getvalue()
+    def _ffmpeg_executable(self) -> str:
+        configured = self.ffmpeg_binary or get_settings().ffmpeg_binary
+        if configured:
+            return configured
+        try:
+            import imageio_ffmpeg
+
+            return imageio_ffmpeg.get_ffmpeg_exe()
+        except Exception as exc:
+            raise AudioAssemblyError(
+                "找不到 ffmpeg。请安装 imageio-ffmpeg，或通过 CONTENT_GENERATOR_FFMPEG_BINARY 指定 ffmpeg 路径。"
+            ) from exc
+
+    def _run(self, command: list[str]) -> None:
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=self.timeout_seconds,
+                check=False,
+            )
+        except FileNotFoundError as exc:
+            raise AudioAssemblyError(f"找不到 ffmpeg 可执行文件：{command[0]}") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise AudioAssemblyError(f"ffmpeg 音频合成超时（{self.timeout_seconds:.0f} 秒）。") from exc
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            if len(detail) > 600:
+                detail = detail[-600:]
+            raise AudioAssemblyError(f"ffmpeg 音频合成失败：{detail or '未知错误'}")
+
+
+def _normalize_output_format(value: str) -> str:
+    return "wav" if str(value).strip().lower() == "wav" else "mp3"
 
 
 def _content_type(output_format: str) -> str:
+    return "audio/wav" if output_format == "wav" else "audio/mpeg"
+
+
+_DURATION_PATTERN = re.compile(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")
+
+
+def _probe_duration(path: Path, output_format: str, ffmpeg: str) -> float | None:
     if output_format == "wav":
-        return "audio/wav"
-    return "audio/mpeg"
+        try:
+            with wave.open(str(path), "rb") as audio:
+                frame_rate = audio.getframerate()
+                if frame_rate:
+                    return round(audio.getnframes() / frame_rate, 3)
+        except (wave.Error, OSError):
+            return None
+    try:
+        result = subprocess.run(
+            [ffmpeg, "-hide_banner", "-i", str(path)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    match = _DURATION_PATTERN.search(result.stderr or "")
+    if match is None:
+        return None
+    hours, minutes, seconds = match.groups()
+    return round(int(hours) * 3600 + int(minutes) * 60 + float(seconds), 3)
+
+
+__all__ = ["AudioAssemblerService", "AudioAssemblyError"]
