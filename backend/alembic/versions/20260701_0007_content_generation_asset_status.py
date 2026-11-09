@@ -28,14 +28,22 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=32), nullable=False, server_default="generated"),
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column("retry_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column("updated_at", sa.DateTime(), nullable=True),
     ):
         if column.name not in columns:
             op.add_column("content_generation_asset", column)
+    op.execute("UPDATE content_generation_asset SET updated_at = created_at WHERE updated_at IS NULL")
+    # SQLite 非空表先补充历史时间，再通过批量修改设置非空约束和默认值。
+    with op.batch_alter_table("content_generation_asset") as batch_op:
+        batch_op.alter_column(
+            "updated_at",
+            existing_type=sa.DateTime(),
+            nullable=False,
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+        )
     indexes = {index["name"] for index in inspector.get_indexes("content_generation_asset")}
     if "idx_asset_status" not in indexes:
         op.create_index("idx_asset_status", "content_generation_asset", ["status"])
-    op.execute("UPDATE content_generation_asset SET updated_at = created_at WHERE updated_at IS NULL")
 
 
 def downgrade() -> None:
