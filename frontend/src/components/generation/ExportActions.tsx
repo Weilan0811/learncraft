@@ -56,11 +56,8 @@ export function ExportActions() {
     return null;
   }
 
-  if (task.content_type === "interactive_html" && !interactiveSessionId) {
-    return <span className="export-hint">完成学习会话后可导出</span>;
-  }
-
-  const options = exportOptions[task.content_type] ?? [];
+  const needsLearningSession = task.content_type === "interactive_html" && !interactiveSessionId;
+  const options = needsLearningSession ? [] : exportOptions[task.content_type] ?? [];
   const podcast = preview?.render_model.render_type === "podcast_script" ? preview.render_model : undefined;
   const audioReady = Boolean(podcast?.final_audio_url) || Boolean(
     podcast?.segments.length && podcast.segments.every((segment) =>
@@ -76,6 +73,18 @@ export function ExportActions() {
 
   return (
     <div className="export-toolbar">
+      {preview?.render_model.render_type === "interactive_html_page" ? (
+        <a
+          className="toolbar-button"
+          href={`${window.location.pathname}?fullscreen=${encodeURIComponent(task.task_id)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <LineIcon name="eye" size={14} />
+          在新窗口打开
+        </a>
+      ) : null}
+      {needsLearningSession ? <span className="export-hint">完成学习会话后可导出</span> : null}
       {resourceUpdated ? <span className="export-inline-warning">资源已更新，请重新导出</span> : null}
       {options.map((option) => (
         <button
