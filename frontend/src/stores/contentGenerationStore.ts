@@ -47,6 +47,7 @@ interface ContentGenerationState {
   trackTask: (taskId: string) => void;
   loadFailedResources: () => Promise<void>;
   retryResource: (resourceId: string) => Promise<void>;
+  trackResourceRetry: (resourceId: string) => Promise<void>;
   exportTask: (exportType: ExportType) => Promise<void>;
   setInteractiveSessionId: (sessionId?: string) => void;
   retryStreamRefresh: () => void;
@@ -58,7 +59,7 @@ const MAX_STREAM_REFRESH_RETRIES = 3;
 
 type StreamPart = "events" | "units" | "preview";
 let activeStreamRefresh: { retryFailed: () => void; dispose: () => void } | undefined;
-let activeResourcePolling: { dispose: () => void } | undefined;
+let activeResourcePolling: { taskId: string; resourceId: string; dispose: () => void } | undefined;
 let taskViewVersion = 0;
 let activeGenerationWait: AbortController | undefined;
 let failedResourcesRequestId = 0;
@@ -594,6 +595,8 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       const result = await getTaskFailedResources(taskId);
       if (viewVersion === taskViewVersion && requestId === failedResourcesRequestId && get().task?.task_id === taskId) {
         set({ failedResources: result.resources, resourceRetryError: undefined });
+        const retrying = result.resources.find((resource) => resource.status === "retrying");
+        if (retrying) void get().trackResourceRetry(retrying.resource_id);
       }
     } catch (error) {
       if (viewVersion === taskViewVersion && requestId === failedResourcesRequestId && get().task?.task_id === taskId) {
@@ -632,24 +635,32 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
           : item
       )
     });
+    await get().trackResourceRetry(resourceId);
+  },
 
+  async trackResourceRetry(resourceId) {
+    const taskId = get().task?.task_id;
+    if (!taskId) return;
+    if (activeResourcePolling?.taskId === taskId && activeResourcePolling.resourceId === resourceId) return;
     activeResourcePolling?.dispose();
+    const viewVersion = taskViewVersion;
     const controller = { disposed: false };
+    const isCurrent = () => !controller.disposed && viewVersion === taskViewVersion && get().task?.task_id === taskId;
     const dispose = () => {
       controller.disposed = true;
     };
-    activeResourcePolling = { dispose };
+    activeResourcePolling = { taskId, resourceId, dispose };
     const deadline = Date.now() + 180000;
     let requestErrors = 0;
 
     while (!controller.disposed && Date.now() < deadline) {
       await sleep(1500);
-      if (controller.disposed || get().task?.task_id !== taskId) {
+      if (!isCurrent()) {
         break;
       }
       try {
         const result = await getTaskFailedResources(taskId);
-        if (controller.disposed || get().task?.task_id !== taskId) {
+        if (!isCurrent()) {
           break;
         }
         requestErrors = 0;
@@ -658,19 +669,19 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
         if (!current) {
           try {
             const refreshedTask = await getContentGenerationTask(taskId);
-            if (controller.disposed || get().task?.task_id !== taskId) {
+            if (!isCurrent()) {
               break;
             }
             set({ task: refreshedTask, resourceUpdated: true });
             try {
               const preview = await getContentGenerationPreview(taskId);
-              if (!controller.disposed && get().task?.task_id === taskId) {
+              if (isCurrent()) {
                 set({ preview, partialPreview: undefined });
               }
             } catch {
               try {
                 const partial = await getContentGenerationPartialPreview(taskId);
-                if (!controller.disposed && get().task?.task_id === taskId) {
+                if (isCurrent()) {
                   set({ preview: undefined, partialPreview: partial });
                 }
               } catch {
@@ -678,6 +689,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
               }
             }
           } catch (error) {
+            if (!isCurrent()) break;
             set({
               resourceRetryError: error instanceof Error ? error.message : "资源已更新，但刷新任务失败。"
             });
@@ -686,9 +698,12 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
         }
         if (current.status === "failed" || current.status === "missing") {
           set({ resourceRetryError: current.error_message || "重新生成失败，请稍后重试。" });
+          const refreshedTask = await getContentGenerationTask(taskId);
+          if (isCurrent()) set({ task: refreshedTask });
           break;
         }
       } catch {
+        if (!isCurrent()) break;
         requestErrors += 1;
         if (requestErrors >= 3) {
           set({ resourceRetryError: "无法获取重试状态，请稍后刷新查看结果。" });
@@ -697,7 +712,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       }
     }
 
-    if (!controller.disposed && Date.now() >= deadline) {
+    if (isCurrent() && Date.now() >= deadline) {
       set({ resourceRetryError: "重新生成仍在进行，请稍后刷新查看结果。" });
       void get().loadFailedResources();
     }
