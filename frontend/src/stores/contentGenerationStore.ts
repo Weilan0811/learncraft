@@ -30,11 +30,13 @@ interface ContentGenerationState {
   renderUnits: RenderUnitSnapshot[];
   exportResult?: ExportResult;
   interactiveSessionId?: string;
+  lastRequest?: ContentGenerationRequest;
   loading: boolean;
   previewLookupLoading: boolean;
   error?: string;
   streamRefreshError?: string;
   submitTask: (request: ContentGenerationRequest) => Promise<void>;
+  retryLastTask: () => Promise<void>;
   loadPreviewByTaskId: (taskId: string) => Promise<void>;
   exportTask: (exportType: ExportType) => Promise<void>;
   setInteractiveSessionId: (sessionId?: string) => void;
@@ -60,7 +62,7 @@ async function waitForCompletedTask(
   await onProgress?.(task);
 
   while (true) {
-    if (task.status === "completed" || task.status === "failed") {
+    if (task.status === "completed" || task.status === "failed" || task.status === "interrupted") {
       return task;
     }
     await sleep(POLL_INTERVAL_MS);
@@ -158,6 +160,8 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       loading: true,
       error: undefined,
       streamRefreshError: undefined,
+      task: undefined,
+      lastRequest: request,
       preview: undefined,
       partialPreview: undefined,
       streamEvents: [],
@@ -268,6 +272,10 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
         throw new Error(completedTask.errors.join("; ") || "内容生成任务执行失败。");
       }
 
+      if (completedTask.status === "interrupted") {
+        throw new Error(completedTask.progress?.interrupted_reason || "任务已中断，请重新生成。");
+      }
+
       const preview = await getContentGenerationPreview(completedTask.task_id);
       previewDisabled = true;
       window.clearTimeout(retryTimers.preview);
@@ -278,6 +286,15 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
     } catch (error) {
       set({ error: error instanceof Error ? error.message : "Unknown request error", loading: false });
     }
+  },
+
+  async retryLastTask() {
+    const lastRequest = get().lastRequest;
+    if (!lastRequest) {
+      set({ error: "没有可重试的生成参数，请重新填写表单。" });
+      return;
+    }
+    await get().submitTask(lastRequest);
   },
 
   async loadPreviewByTaskId(taskId) {
@@ -293,6 +310,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       error: undefined,
       streamRefreshError: undefined,
       task: undefined,
+      lastRequest: undefined,
       preview: undefined,
       partialPreview: undefined,
       streamEvents: [],

@@ -21,18 +21,38 @@ export interface TaskProgress {
   completed_units?: number;
   total_units?: number;
   percent?: number;
+  knowledge_base?: {
+    used?: boolean;
+    status?: string;
+    chunk_count?: number;
+    message?: string;
+  };
+  resource_summary?: {
+    total?: number;
+    failed?: number;
+    retrying?: number;
+  };
+  interrupted_reason?: string;
   [key: string]: unknown;
+}
+
+export interface KnowledgeBaseStatus {
+  used: boolean;
+  status: "disabled" | "ok" | "empty" | "failed";
+  chunk_count: number;
+  message: string;
 }
 
 export interface TaskResult {
   task_id: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "interrupted";
   content_type: MvpContentType;
   preview_url?: string | null;
   export_files: ExportFile[];
   errors: string[];
   current_node?: string | null;
   progress?: TaskProgress;
+  knowledge_base?: KnowledgeBaseStatus | null;
   created_at?: string | null;
   updated_at?: string | null;
 }

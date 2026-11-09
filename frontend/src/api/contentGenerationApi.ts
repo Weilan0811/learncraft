@@ -20,18 +20,24 @@ const STREAM_REQUEST_TIMEOUT_MS = 15000;
 
 function getApiErrorMessage(error: unknown): string {
   if (!axios.isAxiosError(error)) {
-    return error instanceof Error ? error.message : "Unknown request error";
+    return error instanceof Error ? error.message : "请求失败，请稍后重试。";
   }
 
   const axiosError = error as AxiosError<unknown>;
   const status = axiosError.response?.status;
   const payload = axiosError.response?.data;
 
-  if (typeof payload === "object" && payload !== null && "detail" in payload) {
-    return `HTTP ${status}: ${JSON.stringify((payload as { detail: unknown }).detail)}`;
+  if (status === undefined) {
+    return "无法连接后端服务，请确认后端已启动。";
   }
 
-  return `HTTP ${status ?? "unknown"}: ${axiosError.message}`;
+  if (typeof payload === "object" && payload !== null && "detail" in payload) {
+    const detail = (payload as { detail: unknown }).detail;
+    const message = typeof detail === "string" ? detail : JSON.stringify(detail);
+    return `请求失败（HTTP ${status}）：${message}`;
+  }
+
+  return `请求失败（HTTP ${status}）：${axiosError.message}`;
 }
 
 async function unwrapApiCall<T>(call: Promise<{ data: T }>): Promise<T> {
