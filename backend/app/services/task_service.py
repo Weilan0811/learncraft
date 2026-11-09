@@ -11,13 +11,15 @@ from app.schemas.artifacts import (
     ReferenceChunksResponse,
 )
 from app.schemas.export import ExportFile, ExportRequest, ExportResult
-from app.schemas.render import RenderModel
-from app.schemas.specs import ContentSpec
+from app.schemas.render import PodcastRenderModel, RenderModel
+from app.schemas.specs import ContentSpec, PodcastSpec
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.task import KnowledgeBaseStatus, PartialPreviewResponse, TaskEventsResponse, TaskListItem, TaskListResponse, TaskResult, TaskUnitsResponse, UnitPreviewResponse, UnitTextResponse, PreviewResponse
 from app.services.task_repository import SQLModelTaskRepository
 from app.services.task_event_store import TaskEventStore
 from app.services.provider_readiness import ensure_request_providers_ready
+from app.services.audio_assembler_service import AudioAssemblerService, AudioAssemblyError
+from app.services.storage_service import LocalStorageService
 from app.services.unit_text_service import build_unit_text_response
 from app.schemas.state import ContentGenerationState
 from app.workflows.content_generation_graph import run_content_generation, stream_content_generation
@@ -252,6 +254,22 @@ class PersistentTaskService:
         content_spec_artifact = self.repository.get_latest_artifact(task_id, "content_spec")
         render_model = render_model_adapter.validate_python(render_payload)
         content_spec = content_spec_adapter.validate_python(content_spec_artifact.payload) if content_spec_artifact else None
+        recovered_model = None
+        if request.export_type == "audio" and isinstance(render_model, PodcastRenderModel) and not render_model.final_audio_url:
+            try:
+                render_model = AudioAssemblerService().recover_podcast_audio(
+                    render_model,
+                    spec_id=content_spec.id if isinstance(content_spec, PodcastSpec) else f"podcast_{task_id}",
+                    storage_service=LocalStorageService(),
+                )
+            except (AudioAssemblyError, OSError) as exc:
+                return ExportResult(
+                    export_type=request.export_type,
+                    file_url="",
+                    status="failed",
+                    metadata={"task_id": task_id, "error": redact_secrets(str(exc))},
+                )
+            recovered_model = render_model
         result = exporter.export(task_id, render_model, request, asset_ids=[], content_spec=content_spec)
         if result.status == "success" and result.file_url:
             existing = [
@@ -262,6 +280,7 @@ class PersistentTaskService:
             self.repository.update_export_files(
                 task_id,
                 [*existing, ExportFile(type=request.export_type, url=result.file_url)],
+                render_model=recovered_model,
             )
         return result
 

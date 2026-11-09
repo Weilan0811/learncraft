@@ -397,7 +397,7 @@ POST /api/content-generation/tasks/{task_id}/export
 | `social_post` | `html` | 导出微信公众号文章 HTML，同时生成 article JSON asset。 |
 | `social_post` | `image_assets` | 打包推文图片资源。 |
 | `podcast_script` | `markdown` | 导出播客脚本文本。 |
-| `podcast_script` | `audio` | 导出完整音频；如果完整音频不存在则回退 audio manifest。 |
+| `podcast_script` | `audio` | 导出完整音频；完整音频缺失且分段齐全时自动重新合成，并保存更新后的预览、音频清单和导出记录。仍有失败分段时返回失败，需先重试对应分段。 |
 
 `interactive_html` 离线讲义导出示例：
 

@@ -1,3 +1,4 @@
+import json
 import re
 import subprocess
 import tempfile
@@ -7,6 +8,7 @@ from pathlib import Path
 from app.core.config import get_settings
 from app.schemas.assets import AssetRecord
 from app.schemas.elements.audio import AudioFileElement
+from app.schemas.render.podcast import PodcastExportFile, PodcastRenderModel
 from app.services.storage_service import StorageService
 
 
@@ -103,6 +105,62 @@ class AudioAssemblerService:
                 "source_asset_ids": [asset.id for asset in ordered_assets],
             },
         )
+
+    def recover_podcast_audio(
+        self,
+        render_model: PodcastRenderModel,
+        *,
+        spec_id: str,
+        storage_service: StorageService,
+    ) -> PodcastRenderModel:
+        if not render_model.segments or any(segment.status != "generated" for segment in render_model.segments):
+            raise AudioAssemblyError("仍有语音分段未生成，请先重试失败的分段。")
+        audio_by_order = {asset.order: asset for asset in render_model.audio_assets}
+        if any(segment.order not in audio_by_order for segment in render_model.segments):
+            raise AudioAssemblyError("语音分段文件记录不完整，无法合成完整音频。")
+        record = self.assemble(
+            asset_id=f"{spec_id}_final_audio",
+            title=render_model.title,
+            audio_assets=[audio_by_order[segment.order] for segment in render_model.segments],
+            storage_service=storage_service,
+        )
+        if record is None:
+            raise AudioAssemblyError("没有可合成的语音分段。")
+        duration = record.metadata.get("duration_seconds")
+        duration_seconds = float(duration) if isinstance(duration, (int, float)) else None
+        manifest = storage_service.save_bytes(
+            asset_id=f"{spec_id}_audio_manifest",
+            filename=f"{spec_id}_audio_manifest.json",
+            content=json.dumps(
+                {
+                    "title": render_model.title,
+                    "podcast_name": render_model.podcast_name,
+                    "podcast_tagline": render_model.podcast_tagline,
+                    "final_audio_url": record.url,
+                    "final_audio_duration_seconds": duration_seconds,
+                    "segments": [segment.model_dump(mode="json") for segment in render_model.segments],
+                },
+                ensure_ascii=False,
+                indent=2,
+            ).encode("utf-8"),
+            content_type="application/json",
+            kind="audio",
+            metadata={"content_type": "podcast_script", "render_type": "audio_manifest"},
+        )
+        return render_model.model_copy(update={
+            "final_audio_url": record.url,
+            "final_audio_duration_seconds": duration_seconds,
+            "audio_manifest_url": manifest.url,
+            "export_files": [
+                PodcastExportFile(file_type="audio", url=record.url, label="Full audio"),
+                PodcastExportFile(file_type="manifest", url=manifest.url, label="Audio manifest"),
+                *[file for file in render_model.export_files if file.file_type not in {"audio", "manifest"}],
+            ],
+            "warnings": [
+                warning for warning in render_model.warnings
+                if not warning.startswith("final audio assembly failed:")
+            ],
+        })
 
     def _ffmpeg_executable(self) -> str:
         configured = self.ffmpeg_binary or get_settings().ffmpeg_binary

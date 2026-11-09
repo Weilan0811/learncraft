@@ -15,6 +15,7 @@ from app.core.task import TaskStatus
 from app.models import ContentGenerationArtifact, ContentGenerationReference, ContentGenerationTask, KnowledgeChunkCache
 from app.schemas.export import ExportFile
 from app.schemas.request import ContentGenerationRequest
+from app.schemas.render import RenderModel
 from app.schemas.task import KnowledgeBaseStatus, TaskResult
 from app.schemas.state import ContentGenerationState
 from app.services.artifact_repository import ArtifactRepository
@@ -218,13 +219,26 @@ class SQLModelTaskRepository:
                 session.expunge(record)
             return records
 
-    def update_export_files(self, task_id: str, export_files: list[ExportFile]) -> ContentGenerationTask | None:
+    def update_export_files(
+        self,
+        task_id: str,
+        export_files: list[ExportFile],
+        *,
+        render_model: RenderModel | None = None,
+    ) -> ContentGenerationTask | None:
         payload = {"files": [file.model_dump(mode="json") for file in export_files]}
         with Session(self.engine) as session:
             task = session.get(ContentGenerationTask, task_id)
             if task is None:
                 return None
-            ArtifactRepository(session).upsert_artifact(task_id, "export_manifest", payload)
+            artifacts = ArtifactRepository(session)
+            artifacts.upsert_artifact(task_id, "export_manifest", payload)
+            if render_model is not None:
+                render_payload = render_model.model_dump(mode="json")
+                artifacts.upsert_artifact(
+                    task_id, "final_render", {"content_type": task.content_type, "render_model": render_payload},
+                )
+                artifacts.upsert_artifact(task_id, "partial_render", render_payload)
             progress = dict(task.progress or {})
             progress["export_files"] = payload["files"]
             task.progress = progress
