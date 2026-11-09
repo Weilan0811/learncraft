@@ -171,7 +171,13 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
   loading: false,
   previewLookupLoading: false,
   retryStreamRefresh() {
-    activeStreamRefresh?.retryFailed();
+    const task = get().task;
+    if (!task) return;
+    if (activeStreamRefresh && (task.status === "queued" || task.status === "running")) {
+      activeStreamRefresh.retryFailed();
+    } else {
+      void get().loadPreviewByTaskId(task.task_id);
+    }
   },
   stopStreamRefresh() {
     taskViewVersion += 1;
