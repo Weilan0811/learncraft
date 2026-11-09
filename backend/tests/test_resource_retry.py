@@ -421,6 +421,24 @@ def test_retry_rejects_duplicate_and_unavailable_resources(tmp_path, monkeypatch
         raise AssertionError("retry should be blocked while the task is running")
 
 
+def test_failed_resource_list_reports_retrying_state(tmp_path, monkeypatch) -> None:
+    repository = make_repository(tmp_path)
+    task_id, resource_id = create_lecture_task_with_failed_image(repository)
+    monkeypatch.setattr(resources, "get_image_generation_service", lambda: FakeImageService())
+
+    resources.submit_retry(repository, task_id, resource_id)
+
+    listing = resources.list_failed_resources(repository, task_id)
+    assert listing is not None
+    assert len(listing.resources) == 1
+    item = listing.resources[0]
+    assert item.status == "retrying"
+    assert item.retryable is False
+    assert item.retry_blocked_reason == "该资源正在重试。"
+    assert item.resource_key == "img_001"
+    resources.execute_retry(repository, task_id, resource_id)
+
+
 def test_retry_rejects_resource_without_parameters(tmp_path) -> None:
     repository = make_repository(tmp_path)
     created = repository.create_task(

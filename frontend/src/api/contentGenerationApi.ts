@@ -4,9 +4,13 @@ import type { ContentGenerationRequest } from "../types/content";
 import type {
   ExportRequest,
   ExportResult,
+  FailedResourceListResponse,
   PartialPreviewResponse,
   PreviewResponse,
+  ResourceRetryResponse,
   TaskEventsResponse,
+  TaskListParams,
+  TaskListResponse,
   TaskResult,
   TaskUnitsResponse
 } from "../types/export";
@@ -20,18 +24,24 @@ const STREAM_REQUEST_TIMEOUT_MS = 15000;
 
 function getApiErrorMessage(error: unknown): string {
   if (!axios.isAxiosError(error)) {
-    return error instanceof Error ? error.message : "Unknown request error";
+    return error instanceof Error ? error.message : "请求失败，请稍后重试。";
   }
 
   const axiosError = error as AxiosError<unknown>;
   const status = axiosError.response?.status;
   const payload = axiosError.response?.data;
 
-  if (typeof payload === "object" && payload !== null && "detail" in payload) {
-    return `HTTP ${status}: ${JSON.stringify((payload as { detail: unknown }).detail)}`;
+  if (status === undefined) {
+    return "无法连接后端服务，请确认后端已启动。";
   }
 
-  return `HTTP ${status ?? "unknown"}: ${axiosError.message}`;
+  if (typeof payload === "object" && payload !== null && "detail" in payload) {
+    const detail = (payload as { detail: unknown }).detail;
+    const message = typeof detail === "string" ? detail : JSON.stringify(detail);
+    return `请求失败（HTTP ${status}）：${message}`;
+  }
+
+  return `请求失败（HTTP ${status}）：${axiosError.message}`;
 }
 
 async function unwrapApiCall<T>(call: Promise<{ data: T }>): Promise<T> {
@@ -49,6 +59,20 @@ export async function createContentGenerationTask(request: ContentGenerationRequ
 
 export async function getContentGenerationTask(taskId: string): Promise<TaskResult> {
   return unwrapApiCall(api.get<TaskResult>(`/api/content-generation/tasks/${taskId}`));
+}
+
+export async function listContentGenerationTasks(params: TaskListParams): Promise<TaskListResponse> {
+  return unwrapApiCall(api.get<TaskListResponse>("/api/content-generation/tasks", { params }));
+}
+
+export async function getTaskFailedResources(taskId: string): Promise<FailedResourceListResponse> {
+  return unwrapApiCall(api.get<FailedResourceListResponse>(`/api/content-generation/tasks/${taskId}/failed-resources`));
+}
+
+export async function retryTaskResource(taskId: string, resourceId: string): Promise<ResourceRetryResponse> {
+  return unwrapApiCall(
+    api.post<ResourceRetryResponse>(`/api/content-generation/tasks/${taskId}/resources/${resourceId}/retry`)
+  );
 }
 
 export async function getContentGenerationPreview(taskId: string): Promise<PreviewResponse> {

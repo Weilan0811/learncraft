@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { SceneRenderer } from "../../../../scene-content-kit";
 import type { KitScene, KitSlideElement, KitSlideBackground, KitTheme } from "../../../../scene-content-kit";
+import { ResourceIssueNotice } from "../../generation/ResourceIssueNotice";
+import { useContentGenerationStore } from "../../../stores/contentGenerationStore";
 import type { SlideRenderModel } from "../../../types/slide";
 
 interface SlidePageData {
@@ -127,6 +129,19 @@ export function SlideDeckPreview({ model }: SlideDeckPreviewProps) {
   const [index, setIndex] = useState(0);
   const pages = model.pages || [];
   const currentPage = pages[index];
+  const failedResources = useContentGenerationStore((state) => state.failedResources);
+  const pageElementIds = new Set(
+    pages.flatMap((page) => {
+      const data = page.page as unknown as SlidePageData;
+      return (data.elements || []).map((element) => element.id);
+    })
+  );
+  const slideIssues = failedResources.filter(
+    (resource) =>
+      resource.asset_type === "image" &&
+      resource.resource_key != null &&
+      pageElementIds.has(resource.resource_key)
+  );
 
   if (!currentPage) {
     return (
@@ -152,6 +167,13 @@ export function SlideDeckPreview({ model }: SlideDeckPreviewProps) {
       <div className="slide-stage">
         <SceneRenderer scene={scene} />
       </div>
+      {slideIssues.length > 0 ? (
+        <div className="slide-issues">
+          {slideIssues.map((resource) => (
+            <ResourceIssueNotice key={resource.resource_id} resource={resource} />
+          ))}
+        </div>
+      ) : null}
       <div className="slide-controls">
         <button type="button" disabled={index === 0} onClick={() => setIndex((v) => v - 1)}>
           上一页

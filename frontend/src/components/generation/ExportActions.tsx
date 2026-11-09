@@ -1,113 +1,126 @@
+import { useState } from "react";
+
 import { useContentGenerationStore } from "../../stores/contentGenerationStore";
-import type { ExportResult } from "../../types/export";
 import type { ExportType, MvpContentType } from "../../types/content";
+import { LineIcon } from "./icons";
 
-function defaultExportType(contentType?: MvpContentType): ExportType {
-  if (contentType === "slide_deck") {
-    return "slide_json";
-  }
-
-  if (contentType === "social_post") {
-    return "html";
-  }
-
-  if (contentType === "podcast_script") {
-    return "markdown";
-  }
-
-  if (contentType === "interactive_html") {
-    return "html";
-  }
-
-  return "pdf";
+interface ExportOption {
+  type: ExportType;
+  label: string;
+  description: string;
 }
 
-function exportLabel(exportType: ExportType) {
-  if (exportType === "slide_json") {
-    return "Slide JSON";
-  }
+const exportOptions: Record<MvpContentType, ExportOption[]> = {
+  lecture: [
+    { type: "pdf", label: "PDF", description: "排版后的中文讲义" },
+    { type: "markdown", label: "Markdown", description: "可继续编辑的文稿" },
+    { type: "html", label: "HTML", description: "包含内嵌图片的网页" },
+    { type: "image_assets", label: "图片", description: "ZIP 打包全部配图" }
+  ],
+  slide_deck: [
+    { type: "slide_json", label: "Slide JSON", description: "结构化幻灯片数据" },
+    { type: "image_assets", label: "图片", description: "幻灯片配图 ZIP" }
+  ],
+  social_post: [
+    { type: "html", label: "HTML", description: "公众号排版预览" },
+    { type: "image_assets", label: "图片", description: "封面与配图 ZIP" }
+  ],
+  podcast_script: [
+    { type: "markdown", label: "文稿", description: "双人对话文本" },
+    { type: "audio", label: "音频", description: "合成后的完整音频" }
+  ],
+  interactive_html: [{ type: "html", label: "HTML", description: "包含互动记录的学习讲义" }]
+};
 
-  if (exportType === "html") {
-    return "HTML";
-  }
-
-  if (exportType === "image_assets") {
-    return "Image Assets";
-  }
-
-  if (exportType === "markdown") {
-    return "Markdown";
-  }
-
-  if (exportType === "audio") {
-    return "Audio";
-  }
-
-  return "PDF";
-}
-
-function articleJsonUrl(result?: ExportResult | null) {
-  const assetId = result?.metadata?.article_json_asset_id;
-  return typeof assetId === "string" ? `/api/assets/${assetId}/download` : undefined;
-}
+const exportLabels: Record<ExportType, string> = {
+  pdf: "PDF",
+  slide_json: "Slide JSON",
+  image_assets: "图片资源包",
+  pptx: "PPTX",
+  markdown: "Markdown",
+  html: "HTML",
+  audio: "音频"
+};
 
 export function ExportActions() {
   const task = useContentGenerationStore((state) => state.task);
+  const preview = useContentGenerationStore((state) => state.preview);
   const exportResult = useContentGenerationStore((state) => state.exportResult);
   const exportTask = useContentGenerationStore((state) => state.exportTask);
   const loading = useContentGenerationStore((state) => state.loading);
   const interactiveSessionId = useContentGenerationStore((state) => state.interactiveSessionId);
+  const resourceUpdated = useContentGenerationStore((state) => state.resourceUpdated);
+  const [pendingType, setPendingType] = useState<ExportType>();
 
-  const exportType = defaultExportType(task?.content_type);
-  const exportName = exportLabel(exportType);
-  const canExport = Boolean(
-    task &&
-      task.status === "completed" &&
-      !loading &&
-      (task.content_type !== "interactive_html" || Boolean(interactiveSessionId))
+  if (!task || task.status === "queued" || task.status === "running" || (task.status !== "completed" && !preview)) {
+    return null;
+  }
+
+  const needsLearningSession = task.content_type === "interactive_html" && !interactiveSessionId;
+  const options = needsLearningSession ? [] : exportOptions[task.content_type] ?? [];
+  const podcast = preview?.render_model.render_type === "podcast_script" ? preview.render_model : undefined;
+  const audioReady = Boolean(podcast?.final_audio_url) || Boolean(
+    podcast?.segments.length && podcast.segments.every((segment) =>
+      segment.status === "generated" && podcast.audio_assets.some((asset) => asset.order === segment.order)
+    )
   );
-  const jsonUrl = articleJsonUrl(exportResult);
-  const podcastExportTypes: ExportType[] = ["markdown", "audio"];
 
-  const canPreviewFullscreen = Boolean(
-    task && task.status === "completed" && task.content_type === "interactive_html"
-  );
-
-  const openFullscreenPreview = () => {
-    if (!task) return;
-    window.open(`/?fullscreen=${encodeURIComponent(task.task_id)}`, "_blank");
-  };
+  async function handleExport(type: ExportType) {
+    setPendingType(type);
+    await exportTask(type);
+    setPendingType(undefined);
+  }
 
   return (
-    <section className="export-actions">
-      {canPreviewFullscreen && (
-        <button type="button" className="fullscreen-preview-btn" onClick={openFullscreenPreview}>
-          Open in New Window
+    <div className="export-toolbar">
+      {preview?.render_model.render_type === "interactive_html_page" ? (
+        <a
+          className="toolbar-button"
+          href={`${window.location.pathname}?fullscreen=${encodeURIComponent(task.task_id)}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <LineIcon name="eye" size={14} />
+          在新窗口打开
+        </a>
+      ) : null}
+      {needsLearningSession ? <span className="export-hint">完成学习会话后可导出</span> : null}
+      {resourceUpdated ? <span className="export-inline-warning">资源已更新，请重新导出</span> : null}
+      {options.map((option) => (
+        <button
+          type="button"
+          className="toolbar-button"
+          title={option.type === "audio" && !audioReady ? "请先完成所有语音分段的重新生成。" : option.description}
+          disabled={loading || Boolean(pendingType) || (option.type === "audio" && !audioReady)}
+          onClick={() => void handleExport(option.type)}
+          key={option.type}
+        >
+          <LineIcon name="download" size={14} />
+          {pendingType === option.type ? "导出中…" : option.label}
         </button>
-      )}
-      {task?.content_type === "podcast_script" ? (
-        podcastExportTypes.map((type) => (
-          <button type="button" disabled={!canExport} onClick={() => exportTask(type)} key={type}>
-            Export {exportLabel(type)}
-          </button>
-        ))
-      ) : (
-        <button type="button" disabled={!canExport} onClick={() => exportTask(exportType)}>
-          Export {exportName}
-        </button>
-      )}
+      ))}
       {exportResult?.status === "failed" ? (
-        <p className="error-text">Export failed: {String(exportResult.metadata?.error ?? "unsupported")}</p>
+        <span className="export-inline-error">
+          导出失败：{String(exportResult.metadata.error ?? "服务端未返回原因")}
+        </span>
       ) : null}
       {exportResult?.status === "success" && exportResult.file_url ? (
-        <>
-          {task?.content_type === "interactive_html" ? (
-            <a href={exportResult.file_url} target="_blank" rel="noreferrer">Preview Offline Handout</a>
-          ) : null}
-          <a href={exportResult.file_url}>Download {exportLabel(exportResult.export_type)}</a>
-        </>
+        <a className="export-inline-success" href={exportResult.file_url} target="_blank" rel="noreferrer">
+          已导出，下载
+        </a>
       ) : null}
-      {jsonUrl ? <a href={jsonUrl}>Download Article JSON</a> : null}
-    </section>
+      {task.export_files.length > 0 ? (
+        <details className="export-history-inline">
+          <summary>已导出 {task.export_files.length}</summary>
+          <div>
+            {task.export_files.map((file) => (
+              <a key={`${file.type}-${file.url}`} href={file.url} target="_blank" rel="noreferrer">
+                {exportLabels[file.type] ?? file.type}
+              </a>
+            ))}
+          </div>
+        </details>
+      ) : null}
+    </div>
   );
 }

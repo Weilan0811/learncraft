@@ -6,5 +6,12 @@ interface ImageBlockProps {
 }
 
 export function ImageBlock({ block }: ImageBlockProps) {
-  return <ImageElement title={block.title ?? "图片"} assetUrl={block.asset_url} altText={block.title ?? "图片占位"} />;
+  return (
+    <ImageElement
+      title={block.title ?? "图片"}
+      assetUrl={block.asset_url}
+      altText={block.title ?? "图片占位"}
+      resourceKey={block.id}
+    />
+  );
 }
