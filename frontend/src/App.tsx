@@ -50,6 +50,12 @@ function WorkbenchApp() {
         stopStreamRefresh();
       } else if (next.taskId) {
         void loadPreviewByTaskId(next.taskId);
+      } else {
+        const state = useContentGenerationStore.getState();
+        if (state.task?.status === "queued" || state.task?.status === "running") {
+          state.trackTask(state.task.task_id);
+        }
+        void state.loadFailedResources();
       }
     };
     applyRoute();

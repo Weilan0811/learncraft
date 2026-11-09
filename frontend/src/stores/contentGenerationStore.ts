@@ -59,7 +59,8 @@ const MAX_STREAM_REFRESH_RETRIES = 3;
 type StreamPart = "events" | "units" | "preview";
 let activeStreamRefresh: { retryFailed: () => void; dispose: () => void } | undefined;
 let activeResourcePolling: { dispose: () => void } | undefined;
-let previewLookupRequestId = 0;
+let taskViewVersion = 0;
+let activeGenerationWait: AbortController | undefined;
 let failedResourcesRequestId = 0;
 
 function sleep(ms: number) {
@@ -68,9 +69,11 @@ function sleep(ms: number) {
 
 async function waitForCompletedTask(
   taskId: string,
+  signal: AbortSignal,
   onProgress?: (task: TaskResult) => Promise<void> | void
 ): Promise<TaskResult> {
   let task = await getContentGenerationTask(taskId);
+  signal.throwIfAborted();
   await onProgress?.(task);
 
   while (true) {
@@ -78,7 +81,9 @@ async function waitForCompletedTask(
       return task;
     }
     await sleep(POLL_INTERVAL_MS);
+    signal.throwIfAborted();
     task = await getContentGenerationTask(taskId);
+    signal.throwIfAborted();
     await onProgress?.(task);
   }
 }
@@ -96,17 +101,24 @@ interface SseWaitHandlers {
  * (including the backend closing the stream before a terminal frame) falls
  * back to interval polling exactly once.
  */
-async function waitForCompletedTaskSse(taskId: string, handlers: SseWaitHandlers): Promise<TaskResult> {
+async function waitForCompletedTaskSse(taskId: string, handlers: SseWaitHandlers, signal: AbortSignal): Promise<TaskResult> {
+  signal.throwIfAborted();
   return new Promise<TaskResult>((resolve, reject) => {
     let settled = false;
     let lastUnitsCount = -1;
     let lastEventsCount = -1;
     let unsubscribe: (() => void) | undefined;
+    const onAbort = () => {
+      settled = true;
+      unsubscribe?.();
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
 
     const finish = (taskPromise: Promise<TaskResult>) => {
       settled = true;
       unsubscribe?.();
-      taskPromise.then(resolve, reject);
+      taskPromise.then(resolve, reject).finally(() => signal.removeEventListener("abort", onAbort));
     };
 
     unsubscribe = subscribeContentGenerationStream(
@@ -161,17 +173,24 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
     activeStreamRefresh?.retryFailed();
   },
   stopStreamRefresh() {
+    taskViewVersion += 1;
+    activeGenerationWait?.abort();
+    activeGenerationWait = undefined;
     activeStreamRefresh?.dispose();
     activeStreamRefresh = undefined;
     activeResourcePolling?.dispose();
     activeResourcePolling = undefined;
-    set({ streamRefreshError: undefined });
+    set({ streamRefreshError: undefined, loading: false, previewLookupLoading: false });
   },
   setInteractiveSessionId(sessionId) {
     set({ interactiveSessionId: sessionId });
   },
   async submitTask(request) {
     get().stopStreamRefresh();
+    const viewVersion = taskViewVersion;
+    const isActiveView = () => viewVersion === taskViewVersion;
+    const generationWait = new AbortController();
+    activeGenerationWait = generationWait;
     set({
       loading: true,
       error: undefined,
@@ -190,6 +209,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
     });
     try {
       const createdTask = await createContentGenerationTask(request);
+      if (!isActiveView()) return;
       set({ task: createdTask });
 
       let disposed = false;
@@ -199,7 +219,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       const lastAppliedRefresh = { events: 0, units: 0, preview: 0 };
       const retryTimers: Partial<Record<StreamPart, number>> = {};
       const failedParts = new Set<StreamPart>();
-      const isCurrent = () => !disposed && get().task?.task_id === createdTask.task_id;
+      const isCurrent = () => isActiveView() && !disposed && get().task?.task_id === createdTask.task_id;
       const updateRefreshError = () => {
         if (isCurrent()) {
           set({ streamRefreshError: failedParts.size ? "部分进度或预览暂时无法更新。" : undefined });
@@ -269,7 +289,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       const completedTask = await waitForCompletedTaskSse(createdTask.task_id, {
         onTaskPatch: (patch) => {
           const current = get().task;
-          if (current && current.task_id === createdTask.task_id) {
+          if (isCurrent() && current) {
             set({ task: { ...current, ...patch } });
           }
         },
@@ -277,14 +297,16 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
           void refreshStreamingState(unitsCount);
         },
         onPollFallback: async () => {
-          const polled = await waitForCompletedTask(createdTask.task_id, async (task) => {
+          const polled = await waitForCompletedTask(createdTask.task_id, generationWait.signal, async (task) => {
+            if (!isCurrent()) return;
             set({ task });
             await refreshStreamingState(task.progress?.completed_units ?? 0);
           });
-          set({ task: polled });
+          if (isCurrent()) set({ task: polled });
           return polled;
         }
-      });
+      }, generationWait.signal);
+      if (!isCurrent()) return;
       set({ task: completedTask });
       void get().loadFailedResources();
 
@@ -297,14 +319,19 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       }
 
       const preview = await getContentGenerationPreview(completedTask.task_id);
+      if (!isCurrent()) return;
       previewDisabled = true;
       window.clearTimeout(retryTimers.preview);
       failedParts.delete("preview");
       updateRefreshError();
       await refreshStreamingState(0);
+      if (!isCurrent()) return;
       set({ preview, loading: false });
     } catch (error) {
+      if (!isActiveView()) return;
       set({ error: error instanceof Error ? error.message : "Unknown request error", loading: false });
+    } finally {
+      if (activeGenerationWait === generationWait) activeGenerationWait = undefined;
     }
   },
 
@@ -324,10 +351,9 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       return;
     }
 
-    const requestId = ++previewLookupRequestId;
-    const isCurrent = () => requestId === previewLookupRequestId;
-
     get().stopStreamRefresh();
+    const viewVersion = taskViewVersion;
+    const isCurrent = () => viewVersion === taskViewVersion;
     set({
       previewLookupLoading: true,
       error: undefined,
@@ -563,13 +589,14 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       return;
     }
     const requestId = ++failedResourcesRequestId;
+    const viewVersion = taskViewVersion;
     try {
       const result = await getTaskFailedResources(taskId);
-      if (requestId === failedResourcesRequestId && get().task?.task_id === taskId) {
+      if (viewVersion === taskViewVersion && requestId === failedResourcesRequestId && get().task?.task_id === taskId) {
         set({ failedResources: result.resources, resourceRetryError: undefined });
       }
     } catch (error) {
-      if (requestId === failedResourcesRequestId && get().task?.task_id === taskId) {
+      if (viewVersion === taskViewVersion && requestId === failedResourcesRequestId && get().task?.task_id === taskId) {
         set({ resourceRetryError: error instanceof Error ? error.message : "无法获取资源状态。" });
       }
     }
@@ -584,11 +611,15 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       return;
     }
     const taskId = task.task_id;
+    const viewVersion = taskViewVersion;
+    const isCurrent = () => viewVersion === taskViewVersion && get().task?.task_id === taskId;
     set({ resourceRetryError: undefined });
 
     try {
       await retryTaskResource(taskId, resourceId);
+      if (!isCurrent()) return;
     } catch (error) {
+      if (!isCurrent()) return;
       set({ resourceRetryError: error instanceof Error ? error.message : "提交重试失败。" });
       void get().loadFailedResources();
       return;
@@ -681,6 +712,8 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       set({ error: "No task is available to export." });
       return;
     }
+    const viewVersion = taskViewVersion;
+    const isCurrent = () => viewVersion === taskViewVersion && get().task?.task_id === taskId;
     set({ loading: true, error: undefined });
     try {
       const task = get().task;
@@ -692,6 +725,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
             ? { session_id: interactiveSessionId }
             : undefined
       });
+      if (!isCurrent()) return;
       const currentTask = get().task;
       if (exportResult.status === "success" && currentTask) {
         set({
@@ -710,6 +744,7 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
         set({ exportResult, loading: false });
       }
     } catch (error) {
+      if (!isCurrent()) return;
       set({ error: error instanceof Error ? error.message : "导出失败，请稍后重试。", loading: false });
     }
   }
