@@ -102,6 +102,7 @@ def submit_retry(
             raise RetryConflict("该任务已有资源正在重试，请稍后再试。")
         if not assets.mark_retrying(task_id, resource_id):
             raise RetryConflict("资源状态已变化，请刷新后重试。")
+        _refresh_summary(session, task)
         session.commit()
         retry_count = int(asset.retry_count or 0)
     return ResourceRetryResponse(task_id=task_id, resource_id=resource_id, retry_count=retry_count)
