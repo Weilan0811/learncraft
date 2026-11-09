@@ -311,6 +311,18 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
       set({ task: completedTask });
       void get().loadFailedResources();
 
+      if (completedTask.status === "failed" || completedTask.status === "interrupted") {
+        const availablePreview = await getContentGenerationPreview(completedTask.task_id)
+          .catch(() => getContentGenerationPartialPreview(completedTask.task_id))
+          .catch(() => undefined);
+        if (!isCurrent()) return;
+        if (availablePreview) {
+          set("is_partial" in availablePreview
+            ? { partialPreview: availablePreview }
+            : { preview: availablePreview, partialPreview: undefined });
+        }
+      }
+
       if (completedTask.status === "failed") {
         throw new Error(completedTask.errors.join("; ") || "内容生成任务执行失败。");
       }

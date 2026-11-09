@@ -44,6 +44,7 @@ const exportLabels: Record<ExportType, string> = {
 
 export function ExportActions() {
   const task = useContentGenerationStore((state) => state.task);
+  const preview = useContentGenerationStore((state) => state.preview);
   const exportResult = useContentGenerationStore((state) => state.exportResult);
   const exportTask = useContentGenerationStore((state) => state.exportTask);
   const loading = useContentGenerationStore((state) => state.loading);
@@ -51,7 +52,7 @@ export function ExportActions() {
   const resourceUpdated = useContentGenerationStore((state) => state.resourceUpdated);
   const [pendingType, setPendingType] = useState<ExportType>();
 
-  if (!task || task.status !== "completed") {
+  if (!task || task.status === "queued" || task.status === "running" || (task.status !== "completed" && !preview)) {
     return null;
   }
 
@@ -60,6 +61,12 @@ export function ExportActions() {
   }
 
   const options = exportOptions[task.content_type] ?? [];
+  const podcast = preview?.render_model.render_type === "podcast_script" ? preview.render_model : undefined;
+  const audioReady = Boolean(podcast?.final_audio_url) || Boolean(
+    podcast?.segments.length && podcast.segments.every((segment) =>
+      segment.status === "generated" && podcast.audio_assets.some((asset) => asset.order === segment.order)
+    )
+  );
 
   async function handleExport(type: ExportType) {
     setPendingType(type);
@@ -74,8 +81,8 @@ export function ExportActions() {
         <button
           type="button"
           className="toolbar-button"
-          title={option.description}
-          disabled={loading || Boolean(pendingType)}
+          title={option.type === "audio" && !audioReady ? "请先完成所有语音分段的重新生成。" : option.description}
+          disabled={loading || Boolean(pendingType) || (option.type === "audio" && !audioReady)}
           onClick={() => void handleExport(option.type)}
           key={option.type}
         >
