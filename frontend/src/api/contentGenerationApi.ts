@@ -4,9 +4,13 @@ import type { ContentGenerationRequest } from "../types/content";
 import type {
   ExportRequest,
   ExportResult,
+  FailedResourceListResponse,
   PartialPreviewResponse,
   PreviewResponse,
+  ResourceRetryResponse,
   TaskEventsResponse,
+  TaskListParams,
+  TaskListResponse,
   TaskResult,
   TaskUnitsResponse
 } from "../types/export";
@@ -55,6 +59,20 @@ export async function createContentGenerationTask(request: ContentGenerationRequ
 
 export async function getContentGenerationTask(taskId: string): Promise<TaskResult> {
   return unwrapApiCall(api.get<TaskResult>(`/api/content-generation/tasks/${taskId}`));
+}
+
+export async function listContentGenerationTasks(params: TaskListParams): Promise<TaskListResponse> {
+  return unwrapApiCall(api.get<TaskListResponse>("/api/content-generation/tasks", { params }));
+}
+
+export async function getTaskFailedResources(taskId: string): Promise<FailedResourceListResponse> {
+  return unwrapApiCall(api.get<FailedResourceListResponse>(`/api/content-generation/tasks/${taskId}/failed-resources`));
+}
+
+export async function retryTaskResource(taskId: string, resourceId: string): Promise<ResourceRetryResponse> {
+  return unwrapApiCall(
+    api.post<ResourceRetryResponse>(`/api/content-generation/tasks/${taskId}/resources/${resourceId}/retry`)
+  );
 }
 
 export async function getContentGenerationPreview(taskId: string): Promise<PreviewResponse> {

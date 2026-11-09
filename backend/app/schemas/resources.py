@@ -14,7 +14,10 @@ class TaskResource(SchemaModel):
     resource_id: str
     asset_type: ResourceType
     status: ResourceStatus
+    resource_key: str | None = None
     unit_id: str | None = None
+    slot_id: str | None = None
+    segment_id: str | None = None
     title: str | None = None
     error_message: str | None = None
     retry_count: int = 0

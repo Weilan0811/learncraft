@@ -11,17 +11,25 @@ export function ContentPreviewPage() {
   const partialPreview = useContentGenerationStore((state) => state.partialPreview);
   const task = useContentGenerationStore((state) => state.task);
   const loading = useContentGenerationStore((state) => state.loading);
+  const previewLookupLoading = useContentGenerationStore((state) => state.previewLookupLoading);
   const activePreview = preview ?? partialPreview;
 
   if (!activePreview) {
     const running = loading || task?.status === "queued" || task?.status === "running";
+    const busy = running || previewLookupLoading;
     return (
       <section className="empty-preview">
         <span className="empty-preview-icon">
-          <LineIcon name={running ? "clock" : "fileText"} size={56} />
+          <LineIcon name={busy ? "clock" : "fileText"} size={56} />
         </span>
-        <h2>{running ? "正在生成内容" : "暂无生成内容"}</h2>
-        <p>{running ? "章节完成后会逐步显示预览。" : "完成左侧配置后，生成结果会显示在这里。"}</p>
+        <h2>{running ? "正在生成内容" : previewLookupLoading ? "正在加载任务" : "暂无生成内容"}</h2>
+        <p>
+          {running
+            ? "章节完成后会逐步显示预览。"
+            : previewLookupLoading
+              ? "正在读取任务状态与预览。"
+              : "完成左侧配置后，生成结果会显示在这里。"}
+        </p>
       </section>
     );
   }

@@ -48,6 +48,7 @@ export function ExportActions() {
   const exportTask = useContentGenerationStore((state) => state.exportTask);
   const loading = useContentGenerationStore((state) => state.loading);
   const interactiveSessionId = useContentGenerationStore((state) => state.interactiveSessionId);
+  const resourceUpdated = useContentGenerationStore((state) => state.resourceUpdated);
   const [pendingType, setPendingType] = useState<ExportType>();
 
   if (!task || task.status !== "completed") {
@@ -68,6 +69,7 @@ export function ExportActions() {
 
   return (
     <div className="export-toolbar">
+      {resourceUpdated ? <span className="export-inline-warning">资源已更新，请重新导出</span> : null}
       {options.map((option) => (
         <button
           type="button"

@@ -43,9 +43,11 @@ export interface KnowledgeBaseStatus {
   message: string;
 }
 
+export type TaskStatus = "queued" | "running" | "completed" | "failed" | "interrupted";
+
 export interface TaskResult {
   task_id: string;
-  status: "queued" | "running" | "completed" | "failed" | "interrupted";
+  status: TaskStatus;
   content_type: MvpContentType;
   preview_url?: string | null;
   export_files: ExportFile[];
@@ -55,6 +57,61 @@ export interface TaskResult {
   knowledge_base?: KnowledgeBaseStatus | null;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export interface TaskListItem {
+  task_id: string;
+  topic?: string | null;
+  content_type: MvpContentType;
+  status: TaskStatus;
+  created_at: string;
+  updated_at: string;
+  failed_resource_count: number;
+}
+
+export interface TaskListResponse {
+  items: TaskListItem[];
+  page: number;
+  page_size: number;
+  total: number;
+}
+
+export interface TaskListParams {
+  page?: number;
+  page_size?: number;
+  content_type?: MvpContentType;
+  status?: TaskStatus;
+}
+
+export type ResourceAssetType = "image" | "audio";
+export type ResourceStatus = "pending" | "generating" | "generated" | "failed" | "missing" | "retrying";
+
+export interface TaskResource {
+  resource_id: string;
+  asset_type: ResourceAssetType;
+  status: ResourceStatus;
+  resource_key?: string | null;
+  unit_id?: string | null;
+  slot_id?: string | null;
+  segment_id?: string | null;
+  title?: string | null;
+  error_message?: string | null;
+  retry_count: number;
+  retryable: boolean;
+  retry_blocked_reason?: string | null;
+  updated_at?: string | null;
+}
+
+export interface FailedResourceListResponse {
+  task_id: string;
+  resources: TaskResource[];
+}
+
+export interface ResourceRetryResponse {
+  task_id: string;
+  resource_id: string;
+  status: "retrying";
+  retry_count: number;
 }
 
 export interface PreviewResponse {

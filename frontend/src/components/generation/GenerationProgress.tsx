@@ -79,6 +79,8 @@ export function GenerationProgress() {
   const retryStreamRefresh = useContentGenerationStore((state) => state.retryStreamRefresh);
   const retryLastTask = useContentGenerationStore((state) => state.retryLastTask);
   const lastRequest = useContentGenerationStore((state) => state.lastRequest);
+  const resourceList = useContentGenerationStore((state) => state.failedResources);
+  const resourceRetryError = useContentGenerationStore((state) => state.resourceRetryError);
 
   const status: UiStatus = task?.status ?? (loading ? "running" : "idle");
   const meta = statusMeta[status];
@@ -95,8 +97,12 @@ export function GenerationProgress() {
       ? `${progress.completed_units} / ${progress.total_units}`
       : "";
   const renderedUnits = renderUnits.filter((unit) => unit.status === "rendered").length;
-  const failedResources = progress?.resource_summary?.failed ?? 0;
-  const retryingResources = progress?.resource_summary?.retrying ?? 0;
+  const failedResourceCount = resourceList.filter(
+    (resource) => resource.status === "failed" || resource.status === "missing"
+  ).length;
+  const retryingResourceCount = resourceList.filter((resource) => resource.status === "retrying").length;
+  const failedResources = resourceList.length > 0 ? failedResourceCount : progress?.resource_summary?.failed ?? 0;
+  const retryingResources = retryingResourceCount > 0 ? retryingResourceCount : progress?.resource_summary?.retrying ?? 0;
   const latestEvent = streamEvents.at(-1);
   const latestEventLabel = latestEvent ? eventLabels[latestEvent.type] ?? latestEvent.type : "-";
   const currentNode = task?.current_node || progress?.current_node || "-";
@@ -142,6 +148,10 @@ export function GenerationProgress() {
         </div>
       ) : null}
 
+      {status === "completed" && failedResources > 0 ? (
+        <p className="task-status-hint">部分图片或语音未能生成，可在预览中对应位置重新生成。</p>
+      ) : null}
+
       {taskError ? (
         <div className="task-status-error">
           <span>{taskError}</span>
@@ -150,6 +160,12 @@ export function GenerationProgress() {
               {loading ? "正在重试…" : "重新生成"}
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {resourceRetryError ? (
+        <div className="task-status-error">
+          <span>{resourceRetryError}</span>
         </div>
       ) : null}
 

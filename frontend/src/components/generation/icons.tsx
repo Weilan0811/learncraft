@@ -20,7 +20,8 @@ export type IconName =
   | "refresh"
   | "eye"
   | "search"
-  | "chevronDown";
+  | "chevronDown"
+  | "chevronRight";
 
 const paths: Record<IconName, ReactNode> = {
   brand: (
@@ -153,7 +154,8 @@ const paths: Record<IconName, ReactNode> = {
       <path d="m21 21-4.3-4.3" />
     </>
   ),
-  chevronDown: <path d="m6 9 6 6 6-6" />
+  chevronDown: <path d="m6 9 6 6 6-6" />,
+  chevronRight: <path d="m9 18 6-6-6-6" />
 };
 
 interface LineIconProps {

@@ -1,3 +1,5 @@
+import { ResourceIssueNotice } from "../../generation/ResourceIssueNotice";
+import { useContentGenerationStore } from "../../../stores/contentGenerationStore";
 import type { PodcastRenderModel } from "../../../types/podcast";
 
 interface PodcastRendererProps {
@@ -9,6 +11,7 @@ function speakerLabel(speaker: "Person1" | "Person2", voice: "Ethan" | "Cherry")
 }
 
 export function PodcastRenderer({ model }: PodcastRendererProps) {
+  const failedResources = useContentGenerationStore((state) => state.failedResources);
   return (
     <article className="podcast-renderer">
       <header className="podcast-header">
@@ -34,20 +37,29 @@ export function PodcastRenderer({ model }: PodcastRendererProps) {
 
       <section className="podcast-segments">
         <h3>分段音频</h3>
-        {model.segments.map((segment) => (
-          <div className="podcast-segment" key={segment.segment_id}>
-            <div className="segment-meta">
-              <strong>{speakerLabel(segment.speaker, segment.voice)}</strong>
-              <span>
-                {segment.status}
-                {segment.retry_count ? ` · retry ${segment.retry_count}` : ""}
-              </span>
+        {model.segments.map((segment) => {
+          const issue = failedResources.find(
+            (resource) => resource.asset_type === "audio" && resource.segment_id === segment.segment_id
+          );
+          return (
+            <div className="podcast-segment" key={segment.segment_id}>
+              <div className="segment-meta">
+                <strong>{speakerLabel(segment.speaker, segment.voice)}</strong>
+                <span>
+                  {segment.status}
+                  {segment.retry_count ? ` · retry ${segment.retry_count}` : ""}
+                </span>
+              </div>
+              <p>{segment.text}</p>
+              {segment.audio_url ? <audio controls src={segment.audio_url} /> : null}
+              {issue ? (
+                <ResourceIssueNotice resource={issue} />
+              ) : segment.error_message ? (
+                <p className="error-text">{segment.error_message}</p>
+              ) : null}
             </div>
-            <p>{segment.text}</p>
-            {segment.audio_url ? <audio controls src={segment.audio_url} /> : null}
-            {segment.error_message ? <p className="error-text">{segment.error_message}</p> : null}
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       {model.audio_manifest_url ? (

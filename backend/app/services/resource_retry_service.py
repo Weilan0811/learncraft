@@ -32,6 +32,7 @@ RETRYABLE_TASK_STATUSES = {
     TaskStatus.interrupted.value,
 }
 RETRYABLE_ASSET_STATUSES = {AssetStatus.failed.value, AssetStatus.missing.value}
+LISTED_ASSET_STATUSES = RETRYABLE_ASSET_STATUSES | {AssetStatus.retrying.value}
 
 
 class ResourceNotFound(LookupError):
@@ -73,7 +74,7 @@ def list_failed_resources(
         task = session.get(ContentGenerationTask, task_id)
         if task is None:
             return None
-        assets = AssetRepository(session).list_assets(task_id, statuses=RETRYABLE_ASSET_STATUSES)
+        assets = AssetRepository(session).list_assets(task_id, statuses=LISTED_ASSET_STATUSES)
         return FailedResourceListResponse(
             task_id=task_id,
             resources=[_to_resource(task, asset) for asset in assets],
@@ -505,7 +506,10 @@ def _to_resource(task: ContentGenerationTask, asset: ContentGenerationAsset) -> 
         resource_id=asset.asset_id,
         asset_type=asset.asset_type,
         status=asset.status,
+        resource_key=str(metadata.get("base_asset_id")) if metadata.get("base_asset_id") else None,
         unit_id=asset.unit_id,
+        slot_id=str(metadata.get("slot_id")) if metadata.get("slot_id") else None,
+        segment_id=str(metadata.get("segment_id")) if metadata.get("segment_id") else None,
         title=str(metadata.get("title")) if metadata.get("title") else None,
         error_message=asset.error_message,
         retry_count=int(asset.retry_count or 0),
@@ -518,6 +522,10 @@ def _to_resource(task: ContentGenerationTask, asset: ContentGenerationAsset) -> 
 def _blocked_reason(task: ContentGenerationTask, asset: ContentGenerationAsset) -> str | None:
     if str(task.status) not in RETRYABLE_TASK_STATUSES:
         return "任务仍在生成中，暂时无法重试。"
+    if asset.status == AssetStatus.retrying.value:
+        return "该资源正在重试。"
+    if asset.status not in RETRYABLE_ASSET_STATUSES:
+        return "该资源当前不是失败状态。"
     metadata = asset.metadata_json or {}
     if not metadata.get("base_asset_id"):
         return "该资源缺少重试所需的生成参数。"
