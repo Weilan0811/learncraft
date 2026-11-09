@@ -500,19 +500,26 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
         }
         set({ task });
         void get().loadFailedResources();
-        if (task.status === "completed") {
+        try {
+          const preview = await getContentGenerationPreview(taskId);
+          if (isCurrent()) {
+            set({ preview, partialPreview: undefined, streamRefreshError: undefined });
+          }
+        } catch {
           try {
-            const preview = await getContentGenerationPreview(taskId);
+            const partialPreview = await getContentGenerationPartialPreview(taskId);
             if (isCurrent()) {
-              set({ preview, partialPreview: undefined, streamRefreshError: undefined });
+              set({
+                preview: undefined,
+                partialPreview,
+                streamRefreshError: task.status === "completed" ? "最终预览暂时无法加载，当前显示已生成的部分。" : undefined
+              });
             }
           } catch {
             if (isCurrent()) {
-              set({ streamRefreshError: "最终预览暂时无法加载。" });
+              set({ streamRefreshError: "任务预览暂时无法加载。" });
             }
           }
-        } else {
-          await refreshDetails();
         }
       } catch {
         if (isCurrent()) {
