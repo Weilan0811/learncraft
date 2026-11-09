@@ -685,6 +685,12 @@ export const useContentGenerationStore = create<ContentGenerationState>((set, ge
         set({ failedResources: result.resources, resourceRetryError: undefined });
         const current = result.resources.find((item) => item.resource_id === resourceId);
         if (!current) {
+          const task = get().task;
+          set({
+            resourceUpdated: true,
+            exportResult: undefined,
+            task: task ? { ...task, export_files: [] } : undefined
+          });
           try {
             const refreshedTask = await getContentGenerationTask(taskId);
             if (!isCurrent()) {
