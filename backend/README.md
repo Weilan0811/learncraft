@@ -222,7 +222,7 @@ POST /api/interactive-lessons/{lesson_id}/sessions
 
 ## 数据库
 
-任务和产物分布在五张表（见「工程设计 → 任务生命周期与持久化」）。SQLite 本地开发自动建表；MySQL 等数据库使用 Alembic 迁移：
+任务和产物分布在五张表（见「工程设计 → 任务生命周期与持久化」）。SQLite 本地开发在启动时自动执行 Alembic 迁移，初始化表结构并记录版本；重复启动或手动执行迁移不会重复添加字段。MySQL 等数据库启动前执行相同的 Alembic 迁移：
 
 ```bash
 cd backend

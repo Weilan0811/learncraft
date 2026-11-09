@@ -1,9 +1,13 @@
 from collections.abc import Iterable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import func, inspect, text
+from alembic import command
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from sqlalchemy import func, inspect
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from app.core.config import ensure_sqlite_parent_directory, get_settings
@@ -35,8 +39,10 @@ class SQLModelTaskRepository:
         if create_tables is None:
             create_tables = resolved_url.startswith("sqlite")
         if create_tables:
-            SQLModel.metadata.create_all(self.engine)
-            self._ensure_sqlite_schema()
+            if self.engine.dialect.name == "sqlite":
+                self._initialize_sqlite_schema()
+            else:
+                SQLModel.metadata.create_all(self.engine)
 
     def create_task(
         self,
@@ -322,35 +328,17 @@ class SQLModelTaskRepository:
                 session.expunge(artifact)
             return artifact
 
-    def _ensure_sqlite_schema(self) -> None:
-        if self.engine.dialect.name != "sqlite":
-            return
-        inspector = inspect(self.engine)
-        if inspector.has_table("content_generation_task"):
-            columns = {column["name"] for column in inspector.get_columns("content_generation_task")}
-            with self.engine.begin() as connection:
-                if "error_message" not in columns:
-                    connection.execute(text("ALTER TABLE content_generation_task ADD COLUMN error_message TEXT"))
-        if inspector.has_table("content_generation_asset"):
-            asset_columns = {column["name"] for column in inspector.get_columns("content_generation_asset")}
-            with self.engine.begin() as connection:
-                if "status" not in asset_columns:
-                    connection.execute(
-                        text(
-                            "ALTER TABLE content_generation_asset ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'generated'"
-                        )
-                    )
-                if "error_message" not in asset_columns:
-                    connection.execute(text("ALTER TABLE content_generation_asset ADD COLUMN error_message TEXT"))
-                if "retry_count" not in asset_columns:
-                    connection.execute(
-                        text("ALTER TABLE content_generation_asset ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0")
-                    )
-                if "updated_at" not in asset_columns:
-                    connection.execute(text("ALTER TABLE content_generation_asset ADD COLUMN updated_at DATETIME"))
-                    connection.execute(
-                        text("UPDATE content_generation_asset SET updated_at = created_at WHERE updated_at IS NULL")
-                    )
+    def _initialize_sqlite_schema(self) -> None:
+        config = Config()
+        config.set_main_option("script_location", str(Path(__file__).resolve().parents[2] / "alembic"))
+        with self.engine.begin() as connection:
+            config.attributes["connection"] = connection
+            inspector = inspect(connection)
+            revision = MigrationContext.configure(connection).get_current_revision()
+            # 旧的自动建表流程没有版本记录；五表结构对应 0006。
+            if revision is None and inspector.has_table("knowledge_chunk_cache"):
+                command.stamp(config, "20260630_0006")
+            command.upgrade(config, "head")
 
     @staticmethod
     def _apply_retrieval_status(progress: dict[str, Any], state: ContentGenerationState) -> None:

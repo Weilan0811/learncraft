@@ -21,23 +21,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "content_generation_asset",
+    inspector = sa.inspect(op.get_bind())
+    columns = {column["name"] for column in inspector.get_columns("content_generation_asset")}
+    # 接纳此前启动代码已经添加字段、但尚未更新版本记录的数据库。
+    for column in (
         sa.Column("status", sa.String(length=32), nullable=False, server_default="generated"),
-    )
-    op.add_column(
-        "content_generation_asset",
         sa.Column("error_message", sa.Text(), nullable=True),
-    )
-    op.add_column(
-        "content_generation_asset",
         sa.Column("retry_count", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "content_generation_asset",
         sa.Column("updated_at", sa.DateTime(), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
-    )
-    op.create_index("idx_asset_status", "content_generation_asset", ["status"])
+    ):
+        if column.name not in columns:
+            op.add_column("content_generation_asset", column)
+    indexes = {index["name"] for index in inspector.get_indexes("content_generation_asset")}
+    if "idx_asset_status" not in indexes:
+        op.create_index("idx_asset_status", "content_generation_asset", ["status"])
     op.execute("UPDATE content_generation_asset SET updated_at = created_at WHERE updated_at IS NULL")
 
 

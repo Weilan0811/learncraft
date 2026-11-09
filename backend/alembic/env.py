@@ -17,8 +17,9 @@ config = context.config
 if config.config_file_name is not None and config.file_config.has_section("formatters"):
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", get_settings().DATABASE_URL)
-ensure_sqlite_parent_directory(config.get_main_option("sqlalchemy.url"))
+if config.attributes.get("connection") is None:
+    config.set_main_option("sqlalchemy.url", get_settings().DATABASE_URL)
+    ensure_sqlite_parent_directory(config.get_main_option("sqlalchemy.url"))
 target_metadata = SQLModel.metadata
 
 
@@ -45,6 +46,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    connection = config.attributes.get("connection")
+    if connection is not None:
+        context.configure(connection=connection, target_metadata=target_metadata, render_item=render_item)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
