@@ -6,9 +6,16 @@ import type {
   InteractiveHtmlRenderedUnit,
   LearningEventPayload,
   LearningEventType,
+  SessionSummaryResponse,
   SubmitEventRequest,
 } from "../../../types/interactiveHtml";
-import { createLearningSession, getSessionState, submitLearningEvent } from "../../../api/learningApi";
+import {
+  createAdaptiveBrief,
+  createLearningSession,
+  getSessionState,
+  getSessionSummary,
+  submitLearningEvent,
+} from "../../../api/learningApi";
 import { useContentGenerationStore } from "../../../stores/contentGenerationStore";
 import "./styles.css";
 
@@ -85,6 +92,13 @@ function clearStoredSession(lessonId: string): void {
   window.localStorage.removeItem(sessionStorageKey(lessonId));
 }
 
+function formatDuration(seconds: number): string {
+  if (!seconds) return "—";
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return minutes > 0 ? `${minutes} 分 ${rest} 秒` : `${rest} 秒`;
+}
+
 function optionIds(container: Element, selector = ".selected,[aria-pressed='true']"): string[] {
   return Array.from(container.querySelectorAll<HTMLElement>(selector))
     .map((el) => el.dataset.optionId || el.dataset.itemId || "")
@@ -156,6 +170,12 @@ function useScopedStyles(sections: InteractiveHtmlRenderedUnit[]) {
 export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = false }) => {
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
   const setInteractiveSessionId = useContentGenerationStore((state) => state.setInteractiveSessionId);
+  const submitTask = useContentGenerationStore((state) => state.submitTask);
+  const lastRequest = useContentGenerationStore((state) => state.lastRequest);
+  const [summary, setSummary] = useState<SessionSummaryResponse | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [briefError, setBriefError] = useState<string | null>(null);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
   const [activeSectionId, setActiveSectionId] = useState<string | null>(model.sections[0]?.section_id ?? null);
   const selectedOptionsRef = useRef<Map<string, Set<string>>>(new Map());
@@ -202,6 +222,22 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     setActiveSectionId(model.sections[0]?.section_id ?? null);
   }, [model.lesson_id, model.sections]);
 
+  const loadSummary = useCallback(async () => {
+    if (!session) return;
+    setSummaryLoading(true);
+    try {
+      setSummary(await getSessionSummary(model.lesson_id, session.session_id));
+    } catch (err) {
+      console.error("Failed to load learning summary:", err);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [model.lesson_id, session]);
+
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
+
   const sanitizedSections = useMemo(
     () =>
       model.sections.map((section) => ({
@@ -215,10 +251,37 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     if (!session) return;
     try {
       await submitLearningEvent(model.lesson_id, session.session_id, event);
+      await loadSummary();
     } catch (err) {
       console.error("Failed to submit learning event:", err);
     }
-  }, [model.lesson_id, session]);
+  }, [loadSummary, model.lesson_id, session]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!session || briefLoading) return;
+    setBriefLoading(true);
+    setBriefError(null);
+    try {
+      const brief = await createAdaptiveBrief(model.lesson_id, session.session_id);
+      const baseRequest = lastRequest?.content_type === "interactive_html" ? lastRequest : undefined;
+      await submitTask({
+        content_type: "interactive_html",
+        topic: brief.topic_suggestion,
+        user_prompt: [baseRequest?.user_prompt, brief.focus_prompt].filter(Boolean).join("\n\n"),
+        system_prompt: baseRequest?.system_prompt ?? null,
+        knowledge_base_ids: baseRequest?.knowledge_base_ids ?? [],
+        generation_options: {
+          ...(baseRequest?.generation_options ?? {}),
+          difficulty: brief.suggested_difficulty,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to create adaptive brief:", err);
+      setBriefError("暂时无法生成复习建议，请稍后重试。");
+    } finally {
+      setBriefLoading(false);
+    }
+  }, [briefLoading, lastRequest, model.lesson_id, session, submitTask]);
 
   const markComplete = useCallback((sectionId: string) => {
     if (!sectionId) return;
@@ -525,6 +588,79 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
               </button>
             </div>
           </article>
+        )}
+
+        {summary && summary.total_answered > 0 && (
+          <section className="ih-learning-summary">
+            <div className="ih-learning-summary__header">
+              <div>
+                <div className="ih-eyebrow">学习摘要</div>
+                <h2 className="ih-learning-summary__title">根据本次答题生成的复习建议</h2>
+              </div>
+              <span className={`ih-learning-summary-badge ${summary.review_sections.length > 0 ? "is-warn" : "is-ok"}`}>
+                {summary.review_sections.length > 0
+                  ? `${summary.review_sections.length} 个章节需复习`
+                  : "掌握良好"}
+              </span>
+            </div>
+            <div className="ih-learning-summary-metrics">
+              <div>
+                <span>完成度</span>
+                <strong>{Math.round(summary.completion_rate * 100)}%</strong>
+              </div>
+              <div>
+                <span>正确率</span>
+                <strong>{summary.accuracy == null ? "—" : `${Math.round(summary.accuracy * 100)}%`}</strong>
+              </div>
+              <div>
+                <span>求助次数</span>
+                <strong>{summary.help_requested_count}</strong>
+              </div>
+              <div>
+                <span>学习用时</span>
+                <strong>{formatDuration(summary.total_time_spent_seconds)}</strong>
+              </div>
+            </div>
+            <p className="ih-learning-summary-text">{summary.summary_text}</p>
+            {summary.weak_concepts.length > 0 && (
+              <div className="ih-learning-summary-block">
+                <h3>薄弱概念</h3>
+                <div className="ih-learning-summary-tags">
+                  {summary.weak_concepts.map((item) => (
+                    <span key={item.concept} className="ih-learning-summary-tag">{item.concept}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {summary.review_sections.length > 0 && (
+              <div className="ih-learning-summary-block">
+                <h3>建议复习</h3>
+                <ul className="ih-learning-summary-sections">
+                  {summary.review_sections.map((sectionId) => {
+                    const section = summary.section_progress.find((item) => item.section_id === sectionId);
+                    const accuracy = section?.accuracy;
+                    return (
+                      <li key={sectionId}>
+                        <span>{section?.title || sectionId}</span>
+                        {accuracy != null && <em>正确率 {Math.round(accuracy * 100)}%</em>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+            <div className="ih-learning-summary-actions">
+              <button
+                type="button"
+                className="ih-btn ih-btn--primary"
+                onClick={() => void handleRegenerate()}
+                disabled={briefLoading || summaryLoading}
+              >
+                {briefLoading ? "正在生成复习讲义…" : "针对薄弱点再生成"}
+              </button>
+              {briefError && <p className="ih-learning-summary-error">{briefError}</p>}
+            </div>
+          </section>
         )}
 
         {model.citations.length > 0 && (

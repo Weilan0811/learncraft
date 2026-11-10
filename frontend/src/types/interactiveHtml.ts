@@ -158,3 +158,59 @@ export interface SessionStateResponse {
   total_events: number;
   interaction_summary: Record<string, unknown>;
 }
+
+export interface SectionProgress {
+  section_id: string;
+  title?: string | null;
+  answered_count: number;
+  correct_count: number;
+  scored_count: number;
+  accuracy?: number | null;
+  help_requested_count: number;
+  time_spent_seconds: number;
+  is_weak: boolean;
+}
+
+export interface WeakConcept {
+  concept: string;
+  score: number;
+  sections: string[];
+}
+
+export interface SessionSummaryResponse {
+  session_id: string;
+  lesson_id: string;
+  total_events: number;
+  total_answered: number;
+  total_correct: number;
+  total_scored: number;
+  accuracy?: number | null;
+  help_requested_count: number;
+  total_time_spent_seconds: number;
+  answered_sections: number;
+  total_sections: number;
+  completion_rate: number;
+  section_progress: SectionProgress[];
+  weak_concepts: WeakConcept[];
+  review_sections: string[];
+  summary_text: string;
+}
+
+export interface AdaptiveBriefEvidence {
+  accuracy?: number | null;
+  total_answered: number;
+  help_requested_count: number;
+  weak_concepts: string[];
+  review_sections: string[];
+}
+
+export interface AdaptiveBriefResponse {
+  lesson_id: string;
+  session_id: string;
+  topic_suggestion: string;
+  focus_prompt: string;
+  weak_concepts: string[];
+  review_sections: string[];
+  suggested_difficulty: "introductory" | "intermediate" | "advanced";
+  evidence: AdaptiveBriefEvidence;
+}
