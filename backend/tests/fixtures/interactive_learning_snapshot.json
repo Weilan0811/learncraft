@@ -525,5 +525,111 @@
       },
       "citations": []
     }
+  },
+  "outline": {
+    "id": "outline_few_shot_prompting",
+    "content_type": "interactive_html",
+    "title": "少样本示例入门：用例子教会模型做任务",
+    "audience": "零基础学习者，无需提示工程或机器学习背景",
+    "learning_objectives": [
+      "用自己的话解释什么是少样本示例，并区分零样本提示与少样本提示。",
+      "说明少样本示例为什么能帮助模型理解任务、输出格式和表达风格。",
+      "根据相关性、代表性、多样性和一致性等标准挑选合适的示例。",
+      "识别少样本示例的常见误区，并形成检查示例质量的基本思路。"
+    ],
+    "units": [
+      {
+        "id": "unit_1_what_is_few_shot",
+        "order": 1,
+        "unit_type": "interactive_section",
+        "title": "先看例子：什么是少样本示例？",
+        "goal": "让零基础学习者理解少样本示例的基本形式，并能区分零样本提示、少样本提示和简单堆砌例子。",
+        "core_message": "少样本示例是在提示中放入少量“输入—期望输出”样例，让模型模仿样例完成任务，而不是重新训练模型。",
+        "key_points": [
+          "少样本示例的常见形式：任务说明、若干输入输出示例、待处理输入。",
+          "与零样本提示的区别：零样本只给任务说明，少样本额外给出可模仿样例。",
+          "示例数量通常很少，重点在示范任务模式，而不是提供大规模数据。",
+          "示例不是训练数据，其作用发生在当前提示的上下文中。"
+        ],
+        "visual_strategy": null,
+        "module_type": null,
+        "retrieval_queries": [
+          "少样本示例 定义 few-shot prompting",
+          "zero-shot 与 few-shot 提示 区别",
+          "提示中的输入输出示例 格式"
+        ],
+        "source_chunk_ids": []
+      },
+      {
+        "id": "unit_2_why_it_works",
+        "order": 2,
+        "unit_type": "interactive_section",
+        "title": "为什么有效：例子如何给模型“打样”",
+        "goal": "帮助学习者理解少样本示例通过模式示范、格式约束和意图澄清影响输出，并认识其局限性。",
+        "core_message": "少样本示例把抽象任务变成可模仿的模式，帮助模型对齐输出格式、标签体系和任务意图，但不能保证事实正确。",
+        "key_points": [
+          "模型会从上下文中寻找输入到输出的对应关系。",
+          "示例能帮助稳定输出格式、字段、语气和标签空间。",
+          "合适示例能减少任务说明中的歧义。",
+          "示例效果受模型能力、任务难度和示例质量影响。"
+        ],
+        "visual_strategy": null,
+        "module_type": null,
+        "retrieval_queries": [
+          "few-shot prompting 为什么有效 上下文学习",
+          "in-context learning 示例 作用",
+          "少样本示例 输出格式 约束 模型"
+        ],
+        "source_chunk_ids": []
+      },
+      {
+        "id": "unit_3_how_to_choose_examples",
+        "order": 3,
+        "unit_type": "interactive_section",
+        "title": "怎么挑例子：相关性、代表性与一致性",
+        "goal": "让学习者掌握挑选少样本示例的基本判断标准，能避免明显不相关或格式混乱的示例。",
+        "core_message": "好示例应贴近真实输入、覆盖常见变化、代表任务边界，并保持输入输出格式一致。",
+        "key_points": [
+          "相关性：示例输入应接近真实待处理输入。",
+          "代表性：示例应覆盖常见类型和关键边界情况。",
+          "多样性：避免所有示例都过于相似，导致模型只学会局部模式。",
+          "一致性：示例的格式、标签和判断标准要统一。",
+          "顺序与平衡：示例顺序和类别分布可能影响输出。"
+        ],
+        "visual_strategy": null,
+        "module_type": null,
+        "retrieval_queries": [
+          "少样本示例 选择 原则 相关性 代表性",
+          "few-shot example selection 多样性 顺序",
+          "示例 标签平衡 格式一致"
+        ],
+        "source_chunk_ids": []
+      },
+      {
+        "id": "unit_4_pitfalls_and_summary",
+        "order": 4,
+        "unit_type": "interactive_section",
+        "title": "常见误区与小结：少样本不是万能药",
+        "goal": "帮助学习者识别少样本示例的常见误区，并在课程结束时形成“先定义任务、再挑示例、后验证效果”的基本检查思路。",
+        "core_message": "少样本示例能提升任务对齐，但质量比数量更重要，示例不能替代清晰指令、事实依据和效果验证。",
+        "key_points": [
+          "误区：示例越多越好，导致提示臃肿和相互矛盾。",
+          "误区：示例与真实输入不匹配，模型学到错误模式。",
+          "误区：格式不统一、标签不平衡或顺序随意。",
+          "误区：把示例当作知识库，忽视事实核查与评估。",
+          "小结：明确任务、精选示例、统一格式、验证效果。"
+        ],
+        "visual_strategy": null,
+        "module_type": null,
+        "retrieval_queries": [
+          "few-shot prompting 常见误区",
+          "少样本示例 过多 不相关 格式不一致",
+          "few-shot 示例 标签偏差 顺序敏感 评估"
+        ],
+        "source_chunk_ids": []
+      }
+    ],
+    "sections": [],
+    "metadata": {}
   }
 }

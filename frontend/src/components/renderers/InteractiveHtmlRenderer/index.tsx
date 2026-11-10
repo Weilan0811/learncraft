@@ -17,6 +17,7 @@ import {
   submitLearningEvent,
 } from "../../../api/learningApi";
 import { useContentGenerationStore } from "../../../stores/contentGenerationStore";
+import { clearStoredSession, normalizeLessonId, readStoredSession, storeSession } from "../../../utils/interactiveLessonSession";
 import "./styles.css";
 
 interface Props {
@@ -66,32 +67,6 @@ const SANITIZE_CONFIG = {
   FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "meta", "svg"],
   FORBID_ATTR: ["onclick", "onchange", "oninput", "onkeydown", "onkeyup", "onmouseover"],
 };
-
-function sessionStorageKey(lessonId: string): string {
-  return `interactive-html-session:${lessonId}`;
-}
-
-function readStoredSession(lessonId: string): CreateSessionResponse | null {
-  try {
-    const raw = window.localStorage.getItem(sessionStorageKey(lessonId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<CreateSessionResponse>;
-    if (parsed.session_id && parsed.lesson_id === lessonId) {
-      return { session_id: parsed.session_id, lesson_id: parsed.lesson_id, state: parsed.state ?? {} };
-    }
-  } catch {
-    window.localStorage.removeItem(sessionStorageKey(lessonId));
-  }
-  return null;
-}
-
-function storeSession(session: CreateSessionResponse): void {
-  window.localStorage.setItem(sessionStorageKey(session.lesson_id), JSON.stringify(session));
-}
-
-function clearStoredSession(lessonId: string): void {
-  window.localStorage.removeItem(sessionStorageKey(lessonId));
-}
 
 function formatDuration(seconds: number): string {
   if (!seconds) return "—";
@@ -169,6 +144,7 @@ function useScopedStyles(sections: InteractiveHtmlRenderedUnit[]) {
 }
 
 export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = false, onRegenerateStart }) => {
+  const lessonId = normalizeLessonId(model.lesson_id);
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
   const setInteractiveSessionId = useContentGenerationStore((state) => state.setInteractiveSessionId);
   const submitTask = useContentGenerationStore((state) => state.submitTask);
@@ -193,16 +169,16 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     };
 
     const createAndUseSession = async () => {
-      const createdSession = await createLearningSession(model.lesson_id);
+      const createdSession = await createLearningSession(lessonId);
       useSession(createdSession);
     };
 
-    const storedSession = readStoredSession(model.lesson_id);
+    const storedSession = readStoredSession(lessonId);
     if (storedSession) {
-      getSessionState(model.lesson_id, storedSession.session_id)
+      getSessionState(lessonId, storedSession.session_id)
         .then(() => useSession(storedSession))
         .catch(() => {
-          clearStoredSession(model.lesson_id);
+          clearStoredSession(lessonId);
           void createAndUseSession();
         });
     } else {
@@ -212,7 +188,7 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     return () => {
       cancelled = true;
     };
-  }, [model.lesson_id, setInteractiveSessionId]);
+  }, [lessonId, setInteractiveSessionId]);
 
   useEffect(() => {
     return () => setInteractiveSessionId(undefined);
@@ -226,13 +202,13 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     if (!session) return;
     setSummaryLoading(true);
     try {
-      setSummary(await getSessionSummary(model.lesson_id, session.session_id));
+      setSummary(await getSessionSummary(lessonId, session.session_id));
     } catch (err) {
       console.error("Failed to load learning summary:", err);
     } finally {
       setSummaryLoading(false);
     }
-  }, [model.lesson_id, session]);
+  }, [lessonId, session]);
 
   useEffect(() => {
     void loadSummary();
@@ -250,19 +226,19 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
   const handleSubmitEvent = useCallback(async (event: SubmitEventRequest) => {
     if (!session) return;
     try {
-      await submitLearningEvent(model.lesson_id, session.session_id, event);
+      await submitLearningEvent(lessonId, session.session_id, event);
       await loadSummary();
     } catch (err) {
       console.error("Failed to submit learning event:", err);
     }
-  }, [loadSummary, model.lesson_id, session]);
+  }, [loadSummary, lessonId, session]);
 
   const handleRegenerate = useCallback(async () => {
     if (!session || briefLoading) return;
     setBriefLoading(true);
     setBriefError(null);
     try {
-      const brief = await createAdaptiveBrief(model.lesson_id, session.session_id);
+      const brief = await createAdaptiveBrief(lessonId, session.session_id);
       const baseRequest = brief.source_request;
       if (!baseRequest || baseRequest.content_type !== "interactive_html") {
         setBriefError("原讲义的生成参数不可用，暂时无法生成复习讲义。");
@@ -286,7 +262,7 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     } finally {
       setBriefLoading(false);
     }
-  }, [briefLoading, model.lesson_id, onRegenerateStart, session, submitTask]);
+  }, [briefLoading, lessonId, onRegenerateStart, session, submitTask]);
 
   const markComplete = useCallback((sectionId: string) => {
     if (!sectionId) return;

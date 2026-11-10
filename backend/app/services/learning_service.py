@@ -10,6 +10,7 @@ the event contract (for example the offline handout exporter).
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from app.core.lesson import normalize_lesson_id
 from app.schemas.learning import (
     CreateSessionRequest,
     EventFeedback,
@@ -69,6 +70,7 @@ class LearningService:
         self.repository = repository
 
     def create_session(self, lesson_id: str, _request: CreateSessionRequest) -> SessionResponse:
+        lesson_id = normalize_lesson_id(lesson_id)
         session = self.repository.create_session(lesson_id)
         return SessionResponse(
             session_id=session["session_id"],
@@ -77,6 +79,7 @@ class LearningService:
         )
 
     def submit_event(self, lesson_id: str, session_id: str, request: SubmitEventRequest) -> EventResponse:
+        lesson_id = normalize_lesson_id(lesson_id)
         self._require_session(lesson_id, session_id)
         event = self.repository.add_event(
             session_id=session_id,
@@ -97,6 +100,7 @@ class LearningService:
         )
 
     def get_session_state(self, lesson_id: str, session_id: str) -> SessionStateResponse:
+        lesson_id = normalize_lesson_id(lesson_id)
         self._require_session(lesson_id, session_id)
         events = self.repository.list_events(session_id)
         return SessionStateResponse(
@@ -118,6 +122,7 @@ class LearningService:
         section_titles: dict[str, str] | None = None,
         concept_map: dict[str, list[str]] | None = None,
     ) -> SessionSummaryResponse:
+        lesson_id = normalize_lesson_id(lesson_id)
         self._require_session(lesson_id, session_id)
         events = self.repository.list_events(session_id)
         titles = dict(section_titles or {})
@@ -222,7 +227,7 @@ class LearningService:
         session = self.repository.get_session(session_id)
         if session is None:
             raise ValueError(f"Session not found: {session_id}")
-        if session["lesson_id"] != lesson_id:
+        if normalize_lesson_id(session["lesson_id"]) != normalize_lesson_id(lesson_id):
             raise ValueError(f"Session {session_id} does not belong to lesson {lesson_id}")
         return session
 

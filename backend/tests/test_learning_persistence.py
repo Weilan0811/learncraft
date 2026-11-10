@@ -51,3 +51,32 @@ def test_learning_service_rejects_foreign_lesson_session(tmp_path) -> None:
 
     with pytest.raises(ValueError):
         service.get_session_state("lesson_2", session.session_id)
+
+
+@pytest.mark.parametrize("existing_partial_session", [False, True])
+def test_partial_and_final_ids_access_same_session_only(tmp_path, existing_partial_session) -> None:
+    engine = _engine(tmp_path)
+    repository = SQLModelLearningRepository(engine)
+    service = LearningService(repository)
+    partial_id = "partial_lesson_task_learning"
+    final_id = "lesson_task_learning"
+    if existing_partial_session:
+        session_id = repository.create_session(partial_id)["session_id"]
+    else:
+        created = service.create_session(partial_id, CreateSessionRequest())
+        session_id = created.session_id
+        assert created.lesson_id == final_id
+
+    service.submit_event(partial_id, session_id, SubmitEventRequest(
+        section_id="unit_1", interaction_id="i_q1", event_type="single_choice_answered",
+        payload=LearningEventPayload(is_correct=True),
+    ))
+
+    restarted = _service(create_engine(f"sqlite:///{tmp_path / 'learning.db'}", future=True))
+    assert restarted.build_summary(final_id, session_id).total_answered == 1
+    assert len(restarted.list_events(final_id, session_id)) == 1
+    assert restarted.get_session_state(final_id, session_id).lesson_id == final_id
+    with pytest.raises(ValueError):
+        restarted.list_events("partial_lesson_task_foreign", session_id)
+    restarted.repository.engine.dispose()
+    engine.dispose()

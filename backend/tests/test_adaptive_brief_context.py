@@ -1,18 +1,28 @@
 import json
 from functools import partial
 from pathlib import Path
+from html import escape
 
 import pytest
 from sqlmodel import Session
 
 from app.models import ContentGenerationArtifact
+from app.exporters.html_exporter import HTMLExporter
+from app.schemas.export import ExportRequest
 from app.schemas.learning import CreateSessionRequest, LearningEventPayload, SubmitEventRequest
 from app.schemas.request import ContentGenerationRequest
+from app.schemas.outline import Outline
+from app.schemas.specs.interactive_html import InteractiveHtmlSectionSpec
+from app.schemas.state import ContentGenerationState, RenderUnitSnapshot, UnitGenerationResult
 from app.services.adaptive_brief_service import AdaptiveBriefService, load_lesson_context
 from app.services.artifact_repository import ArtifactRepository
 from app.services.learning_repository import SQLModelLearningRepository
 from app.services.learning_service import LearningService
 from app.services.task_repository import SQLModelTaskRepository
+from app.services.storage_service import LocalStorageService
+from app.workflows.nodes.assembler_node import assemble_content_spec
+from app.workflows.nodes.renderer_node import interactive_html_renderer
+from app.workflows.nodes.unit_renderer_node import _build_partial_render_model
 
 
 @pytest.fixture
@@ -30,6 +40,72 @@ def saved_lesson(tmp_path):
         session.commit()
     yield snapshot, repository, database_url
     repository.engine.dispose()
+
+
+@pytest.fixture
+def lesson_state(saved_lesson):
+    snapshot, _, _ = saved_lesson
+    request = ContentGenerationRequest.model_validate(snapshot["request"])
+    section = InteractiveHtmlSectionSpec.model_validate(snapshot["spec"]["sections"][0])
+    unit = RenderUnitSnapshot(
+        unit_id=section.section_id, order=1, content_type=request.content_type, status="rendered",
+        render_fragment=snapshot["final_render"]["render_model"]["sections"][0],
+    )
+    return ContentGenerationState(
+        request_id=snapshot["task_id"], content_type=request.content_type, topic=request.topic,
+        user_prompt=request.user_prompt, raw_request=request.model_dump(mode="json"),
+        normalized_request=request.generation_options.model_dump(mode="json"),
+        outline=Outline.model_validate(snapshot["outline"]), pending_unit_ids=[section.section_id],
+        unit_results={section.section_id: UnitGenerationResult(unit_id=section.section_id, unit_spec=section)},
+        render_units={section.section_id: unit},
+    )
+
+
+def test_partial_answers_survive_final_render_restart_and_export(saved_lesson, lesson_state, tmp_path) -> None:
+    snapshot, repository, database_url = saved_lesson
+    state = lesson_state
+    state.partial_render_model = _build_partial_render_model(state, state.render_units)
+    repository.save_unit_snapshot(state.request_id, state)
+    partial_id = state.partial_render_model.lesson_id
+    learning = LearningService(SQLModelLearningRepository(repository.engine))
+    session = learning.create_session(partial_id, CreateSessionRequest())
+    section = next(iter(state.unit_results.values())).unit_spec
+    interaction = section.interaction_specs[0]
+    answer = next(option for option in interaction.options if option.is_correct is False)
+    learning.submit_event(partial_id, session.session_id, SubmitEventRequest(
+        section_id=section.section_id, interaction_id=interaction.interaction_id,
+        event_type=interaction.event_type,
+        payload=LearningEventPayload(selected_option_ids=[answer.id], is_correct=answer.is_correct),
+    ))
+
+    state.content_spec = assemble_content_spec(state)["content_spec"]
+    state.render_model = interactive_html_renderer(state)["render_model"]
+    repository.save_state(state.request_id, state)
+    repository.engine.dispose()
+
+    restarted = SQLModelTaskRepository(database_url)
+    try:
+        learning = LearningService(SQLModelLearningRepository(restarted.engine))
+        final_id = state.render_model.lesson_id
+        assert partial_id == final_id == snapshot["spec"]["lesson_id"]
+        assert learning.get_session_state(final_id, session.session_id).total_events == 1
+        assert learning.build_summary(final_id, session.session_id).total_answered == 1
+        second_session = learning.create_session(final_id, CreateSessionRequest())
+        assert second_session.session_id != session.session_id
+        assert learning.get_session_state(final_id, second_session.session_id).total_events == 0
+
+        storage = LocalStorageService(storage_root=tmp_path / "exports")
+        result = HTMLExporter(storage_service=storage, learning_service=learning).export(
+            state.request_id, state.render_model,
+            ExportRequest(export_type="html", export_options={"session_id": session.session_id}),
+            content_spec=state.content_spec,
+        )
+        assert result.status == "success"
+        html = storage.read_bytes(result.metadata["asset_id"]).decode("utf-8")
+        assert session.session_id in html
+        assert f"<strong>学生回答：</strong>{escape(answer.text)}" in html
+    finally:
+        restarted.engine.dispose()
 
 
 def test_load_lesson_context_reads_saved_spec(saved_lesson) -> None:

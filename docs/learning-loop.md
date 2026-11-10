@@ -9,7 +9,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `session_id` | string(64) PK | `session_` + 12 位随机串 |
-| `lesson_id` | string(128) index | `lesson_{task_id}` 或 `partial_lesson_{task_id}` |
+| `lesson_id` | string(128) index | `lesson_{task_id}`，部分预览与最终讲义共用；已有 `partial_lesson_{task_id}` 会话也可用于同一任务 |
 | `state` | JSON | 预留的会话状态 |
 | `created_at` / `updated_at` | datetime | 事件提交时刷新 `updated_at` |
 
