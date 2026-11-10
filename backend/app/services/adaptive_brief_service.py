@@ -98,6 +98,9 @@ def _load_render(repository: object, task_id: str) -> InteractiveHtmlRenderModel
     payload = getattr(artifact, "payload", None)
     if not isinstance(payload, dict):
         return None
+    payload = payload.get("render_model", payload)
+    if not isinstance(payload, dict):
+        return None
     try:
         return InteractiveHtmlRenderModel.model_validate(payload)
     except ValidationError:

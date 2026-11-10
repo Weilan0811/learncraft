@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from sqlmodel import Session
 
+from app.models import ContentGenerationArtifact
 from app.schemas.learning import CreateSessionRequest, LearningEventPayload, SubmitEventRequest
 from app.schemas.request import ContentGenerationRequest
 from app.services.adaptive_brief_service import AdaptiveBriefService, load_lesson_context
@@ -77,3 +78,29 @@ def test_adaptive_brief_restores_original_request_after_restart(saved_lesson) ->
         assert brief.model_dump(mode="json")["source_request"] == snapshot["request"]
     finally:
         restarted.engine.dispose()
+
+
+@pytest.mark.parametrize("spec_state", ["missing", "invalid"])
+def test_load_lesson_context_falls_back_to_saved_final_render(saved_lesson, spec_state) -> None:
+    snapshot, repository, _ = saved_lesson
+    artifact = repository.get_latest_artifact(snapshot["task_id"], "content_spec")
+    with Session(repository.engine) as session:
+        stored = session.get(ContentGenerationArtifact, artifact.artifact_id)
+        if spec_state == "missing":
+            session.delete(stored)
+        else:
+            stored.payload = {key: value for key, value in stored.payload.items() if key != "title"}
+            session.add(stored)
+        session.commit()
+
+    render = snapshot["final_render"]["render_model"]
+    section = render["sections"][0]
+    context = load_lesson_context(f"partial_lesson_{snapshot['task_id']}", repository=repository)
+
+    assert context.title == render["title"]
+    assert context.section_titles == {section["section_id"]: section["title"]}
+    assert context.concept_map == {
+        interaction["interaction_id"]: interaction["target_concepts"]
+        for interaction in section["interaction_manifest"] if interaction["target_concepts"]
+    }
+    assert context.source_request.model_dump(mode="json") == snapshot["request"]
