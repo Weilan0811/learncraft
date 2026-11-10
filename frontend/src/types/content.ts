@@ -45,6 +45,7 @@ export interface GenerationOptions {
 
   image_style?: string | null;
   citation_policy?: CitationPolicy;
+  allow_fallback?: boolean;
 
   slide_theme?: string | null;
   speaker_notes?: boolean;
@@ -58,4 +59,5 @@ export interface ContentGenerationRequest {
   system_prompt?: string | null;
   knowledge_base_ids?: string[];
   generation_options?: GenerationOptions;
+  generation_options_fields_set?: string[];
 }

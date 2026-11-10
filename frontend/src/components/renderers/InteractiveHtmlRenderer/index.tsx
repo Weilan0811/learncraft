@@ -255,6 +255,10 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
           ...baseRequest.generation_options,
           difficulty: brief.suggested_difficulty,
         },
+        generation_options_fields_set: [...new Set([
+          ...(baseRequest.generation_options_fields_set ?? []),
+          "difficulty",
+        ])],
       });
     } catch (err) {
       console.error("Failed to create adaptive brief:", err);
