@@ -187,6 +187,8 @@ POST /api/interactive-lessons/{lesson_id}/sessions/{session_id}/events
   4. `accuracy >= 0.85` 且求助 ≤ 1 → `advanced`；
   5. 其它 → 沿用原讲义难度。
 
+原讲义难度优先读取数据库保存的原始请求；原请求无法解析时才使用规格中的难度。新生成规格也会记录请求难度，已有规格中固定写入的入门难度不会覆盖有效原请求。
+
 ## 前端
 
 摘要面板只在 `InteractiveHtmlRenderer` 内渲染，因此只出现在互动讲义预览（工作台预览区与全屏预览）。当 `total_answered > 0` 时显示完成度、正确率、求助、用时、薄弱概念与建议复习章节。

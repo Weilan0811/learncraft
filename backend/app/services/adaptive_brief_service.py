@@ -51,13 +51,14 @@ def load_lesson_context(
     if task is not None and isinstance(task.request_payload, dict):
         try:
             context.source_request = ContentGenerationRequest.model_validate(task.request_payload)
+            context.difficulty = context.source_request.generation_options.difficulty
         except ValidationError:
             context.source_request = None
 
     spec = _load_spec(repository, task_id)
     if spec is not None:
         context.title = spec.title or context.title
-        context.difficulty = spec.meta.difficulty
+        context.difficulty = context.difficulty or spec.meta.difficulty
         for section in spec.sections:
             if not section.interaction_specs:
                 continue

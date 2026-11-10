@@ -1,26 +1,26 @@
 import json
 from functools import partial
-from pathlib import Path
 from html import escape
+from pathlib import Path
 
 import pytest
 from sqlmodel import Session
 
-from app.models import ContentGenerationArtifact
 from app.core.task import TaskStatus
 from app.exporters.html_exporter import HTMLExporter
+from app.models import ContentGenerationArtifact
 from app.schemas.export import ExportRequest
 from app.schemas.learning import CreateSessionRequest, LearningEventPayload, SubmitEventRequest
-from app.schemas.request import ContentGenerationRequest
 from app.schemas.outline import Outline
+from app.schemas.request import ContentGenerationRequest
 from app.schemas.specs.interactive_html import InteractiveHtmlSectionSpec
 from app.schemas.state import ContentGenerationState, RenderUnitSnapshot, UnitGenerationResult
 from app.services.adaptive_brief_service import AdaptiveBriefService, load_lesson_context
 from app.services.artifact_repository import ArtifactRepository
 from app.services.learning_repository import SQLModelLearningRepository
 from app.services.learning_service import LearningService
-from app.services.task_repository import SQLModelTaskRepository
 from app.services.storage_service import LocalStorageService
+from app.services.task_repository import SQLModelTaskRepository
 from app.workflows.nodes.assembler_node import assemble_content_spec
 from app.workflows.nodes.renderer_node import interactive_html_renderer
 from app.workflows.nodes.unit_renderer_node import _build_partial_render_model
@@ -230,3 +230,55 @@ def test_partial_render_supplies_context_and_weak_concepts(saved_lesson, lesson_
     assert brief.review_sections == [section.section_id]
     assert section.title in brief.focus_prompt
     assert brief.source_request.model_dump(mode="json") == snapshot["request"]
+
+
+@pytest.mark.parametrize("difficulty", ["intermediate", "advanced"])
+def test_assembly_preserves_requested_difficulty(lesson_state, difficulty) -> None:
+    state = lesson_state
+    state.normalized_request["difficulty"] = difficulty
+
+    spec = assemble_content_spec(state)["content_spec"]
+
+    assert spec.meta.difficulty == difficulty
+
+
+@pytest.mark.parametrize("original", ["intermediate", "advanced"])
+@pytest.mark.parametrize("outcomes,override,expected", [
+    ([True, True, False], None, None),
+    ([None], None, None),
+    ([True], None, "advanced"),
+    ([False], None, "introductory"),
+    ([False], "advanced", "advanced"),
+])
+def test_brief_difficulty_uses_saved_request_with_historical_spec(saved_lesson, original, outcomes, override, expected) -> None:
+    snapshot, repository, _ = saved_lesson
+    request = ContentGenerationRequest.model_validate(snapshot["request"])
+    request.generation_options.difficulty = original
+    repository.update_task(snapshot["task_id"], request_payload=request.model_dump(mode="json"))
+    assert repository.get_latest_artifact(snapshot["task_id"], "content_spec").payload["meta"]["difficulty"] == "introductory"
+    lesson_id = snapshot["spec"]["lesson_id"]
+    section = InteractiveHtmlSectionSpec.model_validate(snapshot["spec"]["sections"][0])
+    interaction = section.interaction_specs[0]
+    learning = LearningService(SQLModelLearningRepository(repository.engine))
+    session = learning.create_session(lesson_id, CreateSessionRequest())
+    for correctness in outcomes:
+        if correctness is None:
+            payload = LearningEventPayload()
+        else:
+            answer = next(option for option in interaction.options if option.is_correct is correctness)
+            payload = LearningEventPayload(selected_option_ids=[answer.id], is_correct=correctness)
+        learning.submit_event(lesson_id, session.session_id, SubmitEventRequest(
+            section_id=section.section_id, interaction_id=interaction.interaction_id,
+            event_type=interaction.event_type, payload=payload,
+        ))
+
+    context = load_lesson_context(lesson_id, repository=repository)
+    brief = AdaptiveBriefService(learning, partial(load_lesson_context, repository=repository)).build(
+        lesson_id, session.session_id, difficulty=override,
+    )
+
+    assert context.difficulty == original
+    assert brief.source_request.generation_options.difficulty == original
+    assert brief.suggested_difficulty == (expected or original)
+    if outcomes == [True, True, False]:
+        assert brief.evidence.accuracy == 0.667
