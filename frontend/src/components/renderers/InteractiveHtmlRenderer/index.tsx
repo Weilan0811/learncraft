@@ -22,6 +22,7 @@ import "./styles.css";
 interface Props {
   model: InteractiveHtmlRenderModel;
   fullscreen?: boolean;
+  onRegenerateStart?: () => void;
 }
 
 const ACTION_EVENT_TYPE: Partial<Record<string, LearningEventType>> = {
@@ -167,7 +168,7 @@ function useScopedStyles(sections: InteractiveHtmlRenderedUnit[]) {
   }, [sections]);
 }
 
-export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = false }) => {
+export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = false, onRegenerateStart }) => {
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
   const setInteractiveSessionId = useContentGenerationStore((state) => state.setInteractiveSessionId);
   const submitTask = useContentGenerationStore((state) => state.submitTask);
@@ -264,6 +265,7 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     try {
       const brief = await createAdaptiveBrief(model.lesson_id, session.session_id);
       const baseRequest = lastRequest?.content_type === "interactive_html" ? lastRequest : undefined;
+      onRegenerateStart?.();
       await submitTask({
         content_type: "interactive_html",
         topic: brief.topic_suggestion,
@@ -281,7 +283,7 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     } finally {
       setBriefLoading(false);
     }
-  }, [briefLoading, lastRequest, model.lesson_id, session, submitTask]);
+  }, [briefLoading, lastRequest, model.lesson_id, onRegenerateStart, session, submitTask]);
 
   const markComplete = useCallback((sectionId: string) => {
     if (!sectionId) return;
