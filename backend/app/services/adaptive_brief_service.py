@@ -94,17 +94,19 @@ def _load_spec(repository: object, task_id: str) -> InteractiveHtmlSpec | None:
 
 
 def _load_render(repository: object, task_id: str) -> InteractiveHtmlRenderModel | None:
-    artifact = repository.get_latest_artifact(task_id, "final_render")
-    payload = getattr(artifact, "payload", None)
-    if not isinstance(payload, dict):
-        return None
-    payload = payload.get("render_model", payload)
-    if not isinstance(payload, dict):
-        return None
-    try:
-        return InteractiveHtmlRenderModel.model_validate(payload)
-    except ValidationError:
-        return None
+    for artifact_type in ("final_render", "partial_render"):
+        artifact = repository.get_latest_artifact(task_id, artifact_type)
+        payload = getattr(artifact, "payload", None)
+        if not isinstance(payload, dict):
+            continue
+        payload = payload.get("render_model", payload)
+        if not isinstance(payload, dict):
+            continue
+        try:
+            return InteractiveHtmlRenderModel.model_validate(payload)
+        except ValidationError:
+            continue
+    return None
 
 
 class AdaptiveBriefService:

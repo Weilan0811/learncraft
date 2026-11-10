@@ -166,7 +166,7 @@ POST /api/interactive-lessons/{lesson_id}/sessions/{session_id}/events
 - 每个错误/低分答题，为其 `interaction_id` 对应的 `target_concepts` 各加 2 分；
 - 每个带 `interaction_id` 的求助事件，各加 1 分；
 - 按分数降序取前 5；
-- 概念映射优先读 `content_spec`，缺失时回退 `final_render`；映射不到时跳过，不编造概念名。
+- 概念映射优先读 `content_spec`，缺失时读取 `final_render`；最终渲染缺失或无法解析时读取 `partial_render`，支持生成期间和失败任务中的已有章节；映射不到时跳过，不编造概念名。
 
 ### 复习章节
 

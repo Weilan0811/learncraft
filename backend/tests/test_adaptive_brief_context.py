@@ -7,6 +7,7 @@ import pytest
 from sqlmodel import Session
 
 from app.models import ContentGenerationArtifact
+from app.core.task import TaskStatus
 from app.exporters.html_exporter import HTMLExporter
 from app.schemas.export import ExportRequest
 from app.schemas.learning import CreateSessionRequest, LearningEventPayload, SubmitEventRequest
@@ -180,3 +181,52 @@ def test_load_lesson_context_falls_back_to_saved_final_render(saved_lesson, spec
         for interaction in section["interaction_manifest"] if interaction["target_concepts"]
     }
     assert context.source_request.model_dump(mode="json") == snapshot["request"]
+
+
+@pytest.mark.parametrize("task_status", ["running", "failed"])
+@pytest.mark.parametrize("final_state", ["missing", "invalid"])
+def test_partial_render_supplies_context_and_weak_concepts(saved_lesson, lesson_state, task_status, final_state) -> None:
+    snapshot, repository, _ = saved_lesson
+    state = lesson_state
+    state.status = TaskStatus(task_status)
+    state.partial_render_model = _build_partial_render_model(state, state.render_units)
+    repository.save_state(state.request_id, state)
+    spec_artifact = repository.get_latest_artifact(state.request_id, "content_spec")
+    final_artifact = repository.get_latest_artifact(state.request_id, "final_render")
+    with Session(repository.engine) as session:
+        session.delete(session.get(ContentGenerationArtifact, spec_artifact.artifact_id))
+        final = session.get(ContentGenerationArtifact, final_artifact.artifact_id)
+        if final_state == "missing":
+            session.delete(final)
+        else:
+            payload = final.payload.copy()
+            payload["render_model"] = {
+                key: value for key, value in payload["render_model"].items() if key != "lesson_id"
+            }
+            final.payload = payload
+            session.add(final)
+        session.commit()
+
+    lesson_id = state.partial_render_model.lesson_id
+    section = next(iter(state.unit_results.values())).unit_spec
+    interaction = section.interaction_specs[0]
+    answer = next(option for option in interaction.options if option.is_correct is False)
+    learning = LearningService(SQLModelLearningRepository(repository.engine))
+    session = learning.create_session(lesson_id, CreateSessionRequest())
+    learning.submit_event(lesson_id, session.session_id, SubmitEventRequest(
+        section_id=section.section_id, interaction_id=interaction.interaction_id,
+        event_type=interaction.event_type,
+        payload=LearningEventPayload(selected_option_ids=[answer.id], is_correct=answer.is_correct),
+    ))
+    context = load_lesson_context(lesson_id, repository=repository)
+    brief = AdaptiveBriefService(learning, partial(load_lesson_context, repository=repository)).build(
+        lesson_id, session.session_id,
+    )
+
+    assert context.title == state.partial_render_model.title
+    assert context.section_titles == {section.section_id: section.title}
+    assert context.concept_map[interaction.interaction_id] == interaction.target_concepts
+    assert set(brief.weak_concepts) == set(interaction.target_concepts)
+    assert brief.review_sections == [section.section_id]
+    assert section.title in brief.focus_prompt
+    assert brief.source_request.model_dump(mode="json") == snapshot["request"]
