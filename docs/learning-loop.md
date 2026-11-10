@@ -145,6 +145,8 @@ POST /api/interactive-lessons/{lesson_id}/sessions/{session_id}/events
 
 无答题记录时返回 `409`；会话不存在或不属于该讲义时返回 `404`。
 
+响应还包含 `source_request`，即从原任务数据库读取的完整生成请求，结构与 `POST /api/content-generation/tasks` 的请求相同。原请求缺失或无法解析时为 `null`，前端会提示无法生成复习讲义。
+
 ## 摘要算法
 
 ### 正确性判定
@@ -191,10 +193,10 @@ POST /api/interactive-lessons/{lesson_id}/sessions/{session_id}/events
 
 点击“针对薄弱点再生成”：
 
-1. 调用 adaptive brief；
+1. 调用 adaptive brief，读取响应中的 `source_request` 作为原始配置，支持刷新后和历史记录中的讲义；
 2. 以 `topic_suggestion` 作为新主题；
 3. 把 `focus_prompt` 追加到原 `user_prompt`；
-4. 沿用 `system_prompt`、`knowledge_base_ids`，并写入建议难度；
+4. 沿用 `system_prompt`、`knowledge_base_ids` 和全部 `generation_options`，更新其中的建议难度；
 5. 提交新的 `interactive_html` 任务。
 
 ## 演进方向

@@ -6,9 +6,11 @@ from typing import Callable, Literal
 from pydantic import ValidationError
 
 from app.schemas.learning import AdaptiveBriefEvidence, AdaptiveBriefResponse, SessionSummaryResponse
+from app.schemas.request import ContentGenerationRequest
 from app.schemas.render.interactive_html import InteractiveHtmlRenderModel
 from app.schemas.specs.interactive_html import InteractiveHtmlSpec
 from app.services.learning_service import LearningService
+from app.services.task_repository import SQLModelTaskRepository
 
 
 Difficulty = Literal["introductory", "intermediate", "advanced"]
@@ -25,6 +27,7 @@ class LessonContext:
     difficulty: str | None = None
     section_titles: dict[str, str] = field(default_factory=dict)
     concept_map: dict[str, list[str]] = field(default_factory=dict)
+    source_request: ContentGenerationRequest | None = None
 
 
 def resolve_task_id(lesson_id: str) -> str:
@@ -34,15 +37,22 @@ def resolve_task_id(lesson_id: str) -> str:
     return lesson_id
 
 
-def load_lesson_context(lesson_id: str) -> LessonContext:
+def load_lesson_context(
+    lesson_id: str, *, repository: SQLModelTaskRepository | None = None,
+) -> LessonContext:
     """Read lesson title, section titles and interaction concepts from artifacts."""
-    # Imported lazily to avoid a module cycle with the content-generation API.
-    from app.api.content_generation import task_service
+    if repository is None:
+        from app.api.content_generation import task_service
 
-    repository = task_service.repository
+        repository = task_service.repository
     task_id = resolve_task_id(lesson_id)
     task = repository.get_task(task_id)
     context = LessonContext()
+    if task is not None and isinstance(task.request_payload, dict):
+        try:
+            context.source_request = ContentGenerationRequest.model_validate(task.request_payload)
+        except ValidationError:
+            context.source_request = None
 
     spec = _load_spec(repository, task_id)
     if spec is not None:
@@ -130,6 +140,7 @@ class AdaptiveBriefService:
             session_id=session_id,
             topic_suggestion=_topic_suggestion(context.title, concept_names, bool(review_titles)),
             focus_prompt=_focus_prompt(concept_names, review_titles),
+            source_request=context.source_request,
             weak_concepts=concept_names,
             review_sections=summary.review_sections,
             suggested_difficulty=suggested,

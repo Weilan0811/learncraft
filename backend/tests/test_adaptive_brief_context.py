@@ -1,108 +1,79 @@
-from types import SimpleNamespace
+import json
+from functools import partial
+from pathlib import Path
 
-from app.services.adaptive_brief_service import load_lesson_context
+import pytest
+from sqlmodel import Session
+
+from app.schemas.learning import CreateSessionRequest, LearningEventPayload, SubmitEventRequest
+from app.schemas.request import ContentGenerationRequest
+from app.services.adaptive_brief_service import AdaptiveBriefService, load_lesson_context
+from app.services.artifact_repository import ArtifactRepository
+from app.services.learning_repository import SQLModelLearningRepository
+from app.services.learning_service import LearningService
+from app.services.task_repository import SQLModelTaskRepository
 
 
-class FakeRepository:
-    def __init__(self, task, artifacts: dict[tuple[str, str], object]) -> None:
-        self._task = task
-        self._artifacts = artifacts
+@pytest.fixture
+def saved_lesson(tmp_path):
+    snapshot = json.loads(
+        (Path(__file__).parent / "fixtures" / "interactive_learning_snapshot.json").read_text(encoding="utf-8")
+    )
+    database_url = f"sqlite:///{tmp_path / 'tasks.db'}"
+    repository = SQLModelTaskRepository(database_url)
+    repository.create_task(ContentGenerationRequest.model_validate(snapshot["request"]), task_id=snapshot["task_id"])
+    with Session(repository.engine) as session:
+        artifacts = ArtifactRepository(session)
+        artifacts.upsert_artifact(snapshot["task_id"], "content_spec", snapshot["spec"])
+        artifacts.upsert_artifact(snapshot["task_id"], "final_render", snapshot["final_render"])
+        session.commit()
+    yield snapshot, repository, database_url
+    repository.engine.dispose()
 
-    def get_task(self, task_id: str):
-        return self._task if task_id == "task_1" else None
 
-    def get_latest_artifact(self, task_id: str, artifact_type: str):
-        return self._artifacts.get((task_id, artifact_type))
+def test_load_lesson_context_reads_saved_spec(saved_lesson) -> None:
+    snapshot, repository, _ = saved_lesson
+    spec = snapshot["spec"]
+    section = spec["sections"][0]
 
+    context = load_lesson_context(spec["lesson_id"], repository=repository)
 
-def _spec_payload() -> dict:
-    return {
-        "content_type": "interactive_html",
-        "lesson_id": "lesson_task_1",
-        "title": "提示工程入门",
-        "meta": {"language": "zh-CN", "audience": "初学者", "difficulty": "intermediate"},
-        "sections": [
-            {
-                "section_id": "s1",
-                "title": "第一节 基础",
-                "learning_goal": "理解提示结构",
-                "teaching_flow": [
-                    {
-                        "block_id": "b1",
-                        "block_type": "single_choice",
-                        "title": "小测",
-                        "teaching_role": "check",
-                        "content_goal": "检查理解",
-                        "interaction_id": "i1",
-                    }
-                ],
-                "interaction_specs": [
-                    {
-                        "interaction_id": "i1",
-                        "block_id": "b1",
-                        "type": "single_choice",
-                        "event_type": "single_choice_answered",
-                        "target_concepts": ["提示结构", "角色设定"],
-                    }
-                ],
-            }
-        ],
+    assert context.title == spec["title"]
+    assert context.difficulty == spec["meta"]["difficulty"]
+    assert context.section_titles == {section["section_id"]: section["title"]}
+    assert context.concept_map == {
+        interaction["interaction_id"]: interaction["target_concepts"]
+        for interaction in section["interaction_specs"] if interaction["target_concepts"]
     }
 
 
-def test_load_lesson_context_reads_spec(monkeypatch) -> None:
-    from app.api import content_generation
-
-    artifact = SimpleNamespace(payload=_spec_payload())
-    repository = FakeRepository(
-        task=SimpleNamespace(topic="提示工程"),
-        artifacts={("task_1", "content_spec"): artifact},
+def test_adaptive_brief_restores_original_request_after_restart(saved_lesson) -> None:
+    snapshot, repository, database_url = saved_lesson
+    lesson_id = snapshot["spec"]["lesson_id"]
+    section = snapshot["spec"]["sections"][0]
+    interaction = section["interaction_specs"][0]
+    learning = LearningService(SQLModelLearningRepository(repository.engine))
+    session = learning.create_session(lesson_id, CreateSessionRequest())
+    learning.submit_event(
+        lesson_id, session.session_id,
+        SubmitEventRequest(
+            section_id=section["section_id"],
+            interaction_id=interaction["interaction_id"],
+            event_type=interaction["event_type"],
+            payload=LearningEventPayload(),
+        ),
     )
-    monkeypatch.setattr(content_generation.task_service, "repository", repository)
+    repository.engine.dispose()
 
-    context = load_lesson_context("lesson_task_1")
+    restarted = SQLModelTaskRepository(database_url)
+    try:
+        service = AdaptiveBriefService(
+            LearningService(SQLModelLearningRepository(restarted.engine)),
+            partial(load_lesson_context, repository=restarted),
+        )
+        brief = service.build(lesson_id, session.session_id)
 
-    assert context.title == "提示工程入门"
-    assert context.difficulty == "intermediate"
-    assert context.section_titles == {"s1": "第一节 基础"}
-    assert context.concept_map == {"i1": ["提示结构", "角色设定"]}
-
-
-def test_load_lesson_context_falls_back_to_render(monkeypatch) -> None:
-    from app.api import content_generation
-
-    render_payload = {
-        "render_type": "interactive_html_page",
-        "lesson_id": "lesson_task_1",
-        "title": "渲染标题",
-        "sections": [
-            {
-                "section_id": "s1",
-                "title": "第一节",
-                "learning_goal": "目标",
-                "style_scope_id": "scope_s1",
-                "html_fragment": "<p>内容</p>",
-                "css_fragment": "",
-                "interaction_manifest": [
-                    {
-                        "interaction_id": "i1",
-                        "section_id": "s1",
-                        "type": "single_choice",
-                        "target_concepts": ["概念A"],
-                        "event_type": "single_choice_answered",
-                    }
-                ],
-            }
-        ],
-    }
-    repository = FakeRepository(
-        task=SimpleNamespace(topic="任务主题"),
-        artifacts={("task_1", "final_render"): SimpleNamespace(payload=render_payload)},
-    )
-    monkeypatch.setattr(content_generation.task_service, "repository", repository)
-
-    context = load_lesson_context("partial_lesson_task_1")
-
-    assert context.title == "渲染标题"
-    assert context.section_titles == {"s1": "第一节"}
-    assert context.concept_map == {"i1": ["概念A"]}
+        assert brief.evidence.total_answered == 1
+        assert brief.model_dump(mode="json")["source_request"] == snapshot["request"]
+    finally:
+        restarted.engine.dispose()

@@ -172,7 +172,6 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
   const setInteractiveSessionId = useContentGenerationStore((state) => state.setInteractiveSessionId);
   const submitTask = useContentGenerationStore((state) => state.submitTask);
-  const lastRequest = useContentGenerationStore((state) => state.lastRequest);
   const [summary, setSummary] = useState<SessionSummaryResponse | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [briefLoading, setBriefLoading] = useState(false);
@@ -264,16 +263,20 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     setBriefError(null);
     try {
       const brief = await createAdaptiveBrief(model.lesson_id, session.session_id);
-      const baseRequest = lastRequest?.content_type === "interactive_html" ? lastRequest : undefined;
+      const baseRequest = brief.source_request;
+      if (!baseRequest || baseRequest.content_type !== "interactive_html") {
+        setBriefError("原讲义的生成参数不可用，暂时无法生成复习讲义。");
+        return;
+      }
       onRegenerateStart?.();
       await submitTask({
         content_type: "interactive_html",
         topic: brief.topic_suggestion,
-        user_prompt: [baseRequest?.user_prompt, brief.focus_prompt].filter(Boolean).join("\n\n"),
-        system_prompt: baseRequest?.system_prompt ?? null,
-        knowledge_base_ids: baseRequest?.knowledge_base_ids ?? [],
+        user_prompt: [baseRequest.user_prompt, brief.focus_prompt].join("\n\n"),
+        system_prompt: baseRequest.system_prompt,
+        knowledge_base_ids: baseRequest.knowledge_base_ids,
         generation_options: {
-          ...(baseRequest?.generation_options ?? {}),
+          ...baseRequest.generation_options,
           difficulty: brief.suggested_difficulty,
         },
       });
@@ -283,7 +286,7 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     } finally {
       setBriefLoading(false);
     }
-  }, [briefLoading, lastRequest, model.lesson_id, onRegenerateStart, session, submitTask]);
+  }, [briefLoading, model.lesson_id, onRegenerateStart, session, submitTask]);
 
   const markComplete = useCallback((sectionId: string) => {
     if (!sectionId) return;

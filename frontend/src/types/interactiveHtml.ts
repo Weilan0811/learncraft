@@ -209,6 +209,7 @@ export interface AdaptiveBriefResponse {
   session_id: string;
   topic_suggestion: string;
   focus_prompt: string;
+  source_request: import("./content").ContentGenerationRequest | null;
   weak_concepts: string[];
   review_sections: string[];
   suggested_difficulty: "introductory" | "intermediate" | "advanced";

@@ -5,6 +5,7 @@ P0 Learning Session and LearningEvent schemas.
 from typing import Literal
 from pydantic import Field
 from app.schemas.base import SchemaModel
+from app.schemas.request import ContentGenerationRequest
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +140,7 @@ class AdaptiveBriefResponse(SchemaModel):
     session_id: str
     topic_suggestion: str
     focus_prompt: str
+    source_request: ContentGenerationRequest | None = None
     weak_concepts: list[str] = Field(default_factory=list)
     review_sections: list[str] = Field(default_factory=list)
     suggested_difficulty: Literal["introductory", "intermediate", "advanced"] = "introductory"
