@@ -212,7 +212,7 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
 
   useEffect(() => {
     void loadSummary();
-  }, [loadSummary]);
+  }, [loadSummary, model.sections]);
 
   const sanitizedSections = useMemo(
     () =>
