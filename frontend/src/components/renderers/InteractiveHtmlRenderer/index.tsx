@@ -6,15 +6,24 @@ import type {
   InteractiveHtmlRenderedUnit,
   LearningEventPayload,
   LearningEventType,
+  SessionSummaryResponse,
   SubmitEventRequest,
 } from "../../../types/interactiveHtml";
-import { createLearningSession, getSessionState, submitLearningEvent } from "../../../api/learningApi";
+import {
+  createAdaptiveBrief,
+  createLearningSession,
+  getSessionState,
+  getSessionSummary,
+  submitLearningEvent,
+} from "../../../api/learningApi";
 import { useContentGenerationStore } from "../../../stores/contentGenerationStore";
+import { clearStoredSession, normalizeLessonId, readStoredSession, storeSession } from "../../../utils/interactiveLessonSession";
 import "./styles.css";
 
 interface Props {
   model: InteractiveHtmlRenderModel;
   fullscreen?: boolean;
+  onRegenerateStart?: () => void;
 }
 
 const ACTION_EVENT_TYPE: Partial<Record<string, LearningEventType>> = {
@@ -59,30 +68,11 @@ const SANITIZE_CONFIG = {
   FORBID_ATTR: ["onclick", "onchange", "oninput", "onkeydown", "onkeyup", "onmouseover"],
 };
 
-function sessionStorageKey(lessonId: string): string {
-  return `interactive-html-session:${lessonId}`;
-}
-
-function readStoredSession(lessonId: string): CreateSessionResponse | null {
-  try {
-    const raw = window.localStorage.getItem(sessionStorageKey(lessonId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<CreateSessionResponse>;
-    if (parsed.session_id && parsed.lesson_id === lessonId) {
-      return { session_id: parsed.session_id, lesson_id: parsed.lesson_id, state: parsed.state ?? {} };
-    }
-  } catch {
-    window.localStorage.removeItem(sessionStorageKey(lessonId));
-  }
-  return null;
-}
-
-function storeSession(session: CreateSessionResponse): void {
-  window.localStorage.setItem(sessionStorageKey(session.lesson_id), JSON.stringify(session));
-}
-
-function clearStoredSession(lessonId: string): void {
-  window.localStorage.removeItem(sessionStorageKey(lessonId));
+function formatDuration(seconds: number): string {
+  if (!seconds) return "—";
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return minutes > 0 ? `${minutes} 分 ${rest} 秒` : `${rest} 秒`;
 }
 
 function optionIds(container: Element, selector = ".selected,[aria-pressed='true']"): string[] {
@@ -153,9 +143,15 @@ function useScopedStyles(sections: InteractiveHtmlRenderedUnit[]) {
   }, [sections]);
 }
 
-export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = false }) => {
+export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = false, onRegenerateStart }) => {
+  const lessonId = normalizeLessonId(model.lesson_id);
   const [session, setSession] = useState<CreateSessionResponse | null>(null);
   const setInteractiveSessionId = useContentGenerationStore((state) => state.setInteractiveSessionId);
+  const submitTask = useContentGenerationStore((state) => state.submitTask);
+  const [summary, setSummary] = useState<SessionSummaryResponse | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [briefError, setBriefError] = useState<string | null>(null);
   const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
   const [activeSectionId, setActiveSectionId] = useState<string | null>(model.sections[0]?.section_id ?? null);
   const selectedOptionsRef = useRef<Map<string, Set<string>>>(new Map());
@@ -173,16 +169,16 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     };
 
     const createAndUseSession = async () => {
-      const createdSession = await createLearningSession(model.lesson_id);
+      const createdSession = await createLearningSession(lessonId);
       useSession(createdSession);
     };
 
-    const storedSession = readStoredSession(model.lesson_id);
+    const storedSession = readStoredSession(lessonId);
     if (storedSession) {
-      getSessionState(model.lesson_id, storedSession.session_id)
+      getSessionState(lessonId, storedSession.session_id)
         .then(() => useSession(storedSession))
         .catch(() => {
-          clearStoredSession(model.lesson_id);
+          clearStoredSession(lessonId);
           void createAndUseSession();
         });
     } else {
@@ -192,7 +188,7 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
     return () => {
       cancelled = true;
     };
-  }, [model.lesson_id, setInteractiveSessionId]);
+  }, [lessonId, setInteractiveSessionId]);
 
   useEffect(() => {
     return () => setInteractiveSessionId(undefined);
@@ -201,6 +197,22 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
   useEffect(() => {
     setActiveSectionId(model.sections[0]?.section_id ?? null);
   }, [model.lesson_id, model.sections]);
+
+  const loadSummary = useCallback(async () => {
+    if (!session) return;
+    setSummaryLoading(true);
+    try {
+      setSummary(await getSessionSummary(lessonId, session.session_id));
+    } catch (err) {
+      console.error("Failed to load learning summary:", err);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [lessonId, session]);
+
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary, model.sections]);
 
   const sanitizedSections = useMemo(
     () =>
@@ -214,11 +226,47 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
   const handleSubmitEvent = useCallback(async (event: SubmitEventRequest) => {
     if (!session) return;
     try {
-      await submitLearningEvent(model.lesson_id, session.session_id, event);
+      await submitLearningEvent(lessonId, session.session_id, event);
+      await loadSummary();
     } catch (err) {
       console.error("Failed to submit learning event:", err);
     }
-  }, [model.lesson_id, session]);
+  }, [loadSummary, lessonId, session]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!session || briefLoading) return;
+    setBriefLoading(true);
+    setBriefError(null);
+    try {
+      const brief = await createAdaptiveBrief(lessonId, session.session_id);
+      const baseRequest = brief.source_request;
+      if (!baseRequest || baseRequest.content_type !== "interactive_html") {
+        setBriefError("原讲义的生成参数不可用，暂时无法生成复习讲义。");
+        return;
+      }
+      onRegenerateStart?.();
+      await submitTask({
+        content_type: "interactive_html",
+        topic: brief.topic_suggestion,
+        user_prompt: [baseRequest.user_prompt, brief.focus_prompt].join("\n\n"),
+        system_prompt: baseRequest.system_prompt,
+        knowledge_base_ids: baseRequest.knowledge_base_ids,
+        generation_options: {
+          ...baseRequest.generation_options,
+          difficulty: brief.suggested_difficulty,
+        },
+        generation_options_fields_set: [...new Set([
+          ...(baseRequest.generation_options_fields_set ?? []),
+          "difficulty",
+        ])],
+      });
+    } catch (err) {
+      console.error("Failed to create adaptive brief:", err);
+      setBriefError("暂时无法生成复习建议，请稍后重试。");
+    } finally {
+      setBriefLoading(false);
+    }
+  }, [briefLoading, lessonId, onRegenerateStart, session, submitTask]);
 
   const markComplete = useCallback((sectionId: string) => {
     if (!sectionId) return;
@@ -525,6 +573,79 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
               </button>
             </div>
           </article>
+        )}
+
+        {summary && summary.total_answered > 0 && (
+          <section className="ih-learning-summary">
+            <div className="ih-learning-summary__header">
+              <div>
+                <div className="ih-eyebrow">学习摘要</div>
+                <h2 className="ih-learning-summary__title">根据本次答题生成的复习建议</h2>
+              </div>
+              <span className={`ih-learning-summary-badge ${summary.review_sections.length > 0 ? "is-warn" : "is-ok"}`}>
+                {summary.review_sections.length > 0
+                  ? `${summary.review_sections.length} 个章节需复习`
+                  : "掌握良好"}
+              </span>
+            </div>
+            <div className="ih-learning-summary-metrics">
+              <div>
+                <span>完成度</span>
+                <strong>{Math.round(summary.completion_rate * 100)}%</strong>
+              </div>
+              <div>
+                <span>正确率</span>
+                <strong>{summary.accuracy == null ? "—" : `${Math.round(summary.accuracy * 100)}%`}</strong>
+              </div>
+              <div>
+                <span>求助次数</span>
+                <strong>{summary.help_requested_count}</strong>
+              </div>
+              <div>
+                <span>学习用时</span>
+                <strong>{formatDuration(summary.total_time_spent_seconds)}</strong>
+              </div>
+            </div>
+            <p className="ih-learning-summary-text">{summary.summary_text}</p>
+            {summary.weak_concepts.length > 0 && (
+              <div className="ih-learning-summary-block">
+                <h3>薄弱概念</h3>
+                <div className="ih-learning-summary-tags">
+                  {summary.weak_concepts.map((item) => (
+                    <span key={item.concept} className="ih-learning-summary-tag">{item.concept}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {summary.review_sections.length > 0 && (
+              <div className="ih-learning-summary-block">
+                <h3>建议复习</h3>
+                <ul className="ih-learning-summary-sections">
+                  {summary.review_sections.map((sectionId) => {
+                    const section = summary.section_progress.find((item) => item.section_id === sectionId);
+                    const accuracy = section?.accuracy;
+                    return (
+                      <li key={sectionId}>
+                        <span>{section?.title || sectionId}</span>
+                        {accuracy != null && <em>正确率 {Math.round(accuracy * 100)}%</em>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+            <div className="ih-learning-summary-actions">
+              <button
+                type="button"
+                className="ih-btn ih-btn--primary"
+                onClick={() => void handleRegenerate()}
+                disabled={briefLoading || summaryLoading}
+              >
+                {briefLoading ? "正在生成复习讲义…" : "针对薄弱点再生成"}
+              </button>
+              {briefError && <p className="ih-learning-summary-error">{briefError}</p>}
+            </div>
+          </section>
         )}
 
         {model.citations.length > 0 && (

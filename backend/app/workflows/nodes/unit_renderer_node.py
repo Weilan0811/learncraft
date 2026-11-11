@@ -140,7 +140,7 @@ def _build_partial_render_model(state: ContentGenerationState, render_units: dic
         ]
         style_guide = get_or_build_style_guide(state)
         return InteractiveHtmlRenderer().assemble(
-            lesson_id=f"partial_lesson_{state.request_id}",
+            lesson_id=f"lesson_{state.request_id}",
             title=state.outline.title if state.outline else state.topic,
             rendered_units=rendered_units,
             style_guide=style_guide,

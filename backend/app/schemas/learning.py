@@ -5,6 +5,7 @@ P0 Learning Session and LearningEvent schemas.
 from typing import Literal
 from pydantic import Field
 from app.schemas.base import SchemaModel
+from app.schemas.request import ContentGenerationRequest
 
 
 # ---------------------------------------------------------------------------
@@ -79,3 +80,68 @@ class SessionStateResponse(SchemaModel):
     lesson_id: str
     total_events: int = 0
     interaction_summary: dict = Field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Learning summary and adaptive brief
+# ---------------------------------------------------------------------------
+
+class SectionProgress(SchemaModel):
+    section_id: str
+    title: str | None = None
+    answered_count: int = 0
+    correct_count: int = 0
+    scored_count: int = 0
+    accuracy: float | None = None
+    help_requested_count: int = 0
+    time_spent_seconds: int = 0
+    is_weak: bool = False
+
+
+class WeakConcept(SchemaModel):
+    concept: str
+    score: int = 0
+    sections: list[str] = Field(default_factory=list)
+
+
+class SessionSummaryResponse(SchemaModel):
+    session_id: str
+    lesson_id: str
+    total_events: int = 0
+    total_answered: int = 0
+    total_correct: int = 0
+    total_scored: int = 0
+    accuracy: float | None = None
+    help_requested_count: int = 0
+    total_time_spent_seconds: int = 0
+    answered_sections: int = 0
+    total_sections: int = 0
+    completion_rate: float = 0.0
+    section_progress: list[SectionProgress] = Field(default_factory=list)
+    weak_concepts: list[WeakConcept] = Field(default_factory=list)
+    review_sections: list[str] = Field(default_factory=list)
+    summary_text: str = ""
+
+
+class AdaptiveBriefRequest(SchemaModel):
+    difficulty: Literal["introductory", "intermediate", "advanced"] | None = None
+
+
+class AdaptiveBriefEvidence(SchemaModel):
+    accuracy: float | None = None
+    total_answered: int = 0
+    help_requested_count: int = 0
+    weak_concepts: list[str] = Field(default_factory=list)
+    review_sections: list[str] = Field(default_factory=list)
+
+
+class AdaptiveBriefResponse(SchemaModel):
+    lesson_id: str
+    session_id: str
+    topic_suggestion: str
+    focus_prompt: str
+    source_request: ContentGenerationRequest | None = None
+    weak_concepts: list[str] = Field(default_factory=list)
+    review_sections: list[str] = Field(default_factory=list)
+    suggested_difficulty: Literal["introductory", "intermediate", "advanced"] = "introductory"
+    evidence: AdaptiveBriefEvidence = Field(default_factory=AdaptiveBriefEvidence)

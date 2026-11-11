@@ -26,7 +26,7 @@ def assemble_content_spec(state: ContentGenerationState) -> dict[str, object]:
             meta=InteractiveHtmlMeta(
                 language=(state.normalized_request or {}).get("language", "zh-CN"),
                 audience=state.outline.audience or "general",
-                difficulty="introductory",
+                difficulty=(state.normalized_request or {}).get("difficulty", "introductory"),
             ),
             sections=sections,
         )

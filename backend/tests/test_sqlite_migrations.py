@@ -21,7 +21,7 @@ def migration_config(connection) -> Config:
 
 def assert_current_schema(repository: SQLModelTaskRepository) -> None:
     with repository.engine.begin() as connection:
-        assert MigrationContext.configure(connection).get_current_revision() == "20260701_0007"
+        assert MigrationContext.configure(connection).get_current_revision() == "20260702_0008"
         command.upgrade(migration_config(connection), "head")
         assert "status" in {
             column["name"] for column in inspect(connection).get_columns("content_generation_asset")

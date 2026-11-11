@@ -1,0 +1,635 @@
+{
+  "task_id": "task_50d8ee6ad2ac",
+  "request": {
+    "content_type": "interactive_html",
+    "topic": "提示工程中的少样本示例",
+    "user_prompt": "面向零基础学员，用 4 个章节讲解什么是少样本示例、为什么有效、如何挑选示例、常见误区。每节包含一段讲解、一个选择题或反思题，并在最后给出小结。",
+    "system_prompt": null,
+    "knowledge_base_ids": [],
+    "generation_options": {
+      "language": "zh-CN",
+      "audience": "零基础学习者",
+      "difficulty": "introductory",
+      "style": "educational",
+      "duration_minutes": null,
+      "section_count": 4,
+      "slide_count": null,
+      "max_section_count": 4,
+      "max_slide_count": 12,
+      "output_depth": "standard",
+      "image_style": null,
+      "citation_policy": "light",
+      "allow_fallback": false,
+      "slide_theme": null,
+      "speaker_notes": true,
+      "pdf_options": {}
+    },
+    "generation_options_fields_set": [
+      "audience",
+      "difficulty",
+      "language",
+      "max_section_count",
+      "section_count"
+    ]
+  },
+  "spec": {
+    "content_type": "interactive_html",
+    "lesson_id": "lesson_task_50d8ee6ad2ac",
+    "title": "少样本示例入门：用例子教会模型做任务",
+    "subtitle": null,
+    "meta": {
+      "language": "zh-CN",
+      "audience": "零基础学习者，无需提示工程或机器学习背景",
+      "difficulty": "introductory",
+      "estimated_minutes": null
+    },
+    "pedagogy": {
+      "tutor_tone": "guided",
+      "interaction_density": "medium",
+      "terminology_level": "medium"
+    },
+    "sections": [
+      {
+        "section_id": "unit_1_what_is_few_shot",
+        "title": "先看例子：什么是少样本示例？",
+        "learning_goal": "让零基础学习者理解少样本示例的基本形式，并能区分零样本提示、少样本提示和简单堆砌例子。",
+        "narrative_goal": "从一个“教同事填表”的日常经验出发，先看清少样本提示长什么样，再把它和零样本提示、堆砌例子并排比较，最后亲手把一段模糊需求改写成一条带示例的提示。",
+        "teaching_flow": [
+          {
+            "block_id": "unit_1_what_is_few_shot_intro",
+            "block_type": "intro",
+            "title": "教同事填表：为什么我们天然会“给个例子”",
+            "teaching_role": "set_context",
+            "content_goal": "用一个不涉及技术的生活场景，让学习者先体会“给例子”是一种天然的沟通方式，为理解提示中的示例做铺垫。",
+            "must_cover": [
+              "日常沟通中，只讲规则往往不够，对方会追问“能不能给我看个样子”",
+              "给一个已填好的样子，对方就能照着模仿格式和判断标准",
+              "这种“照着样例做”的经验，正是少样本示例的来源"
+            ],
+            "suggested_expression": "左右对比：左边只有一句“请把客户反馈整理成表格”，右边额外附上一行已整理好的示例行；用一句旁白点出“差别就在有没有样子可照着做”。",
+            "interaction_id": null,
+            "source_refs": []
+          },
+          {
+            "block_id": "unit_1_what_is_few_shot_explained",
+            "block_type": "concept_explanation",
+            "title": "少样本示例的三件套：任务说明、示例对、待处理输入",
+            "teaching_role": "explain_core",
+            "content_goal": "让学习者能认出少样本提示的基本骨架，并明确示例数量很少、位置在提示里、作用在当下这一次对话中。",
+            "must_cover": [
+              "结构通常是：一段任务说明 + 若干“输入→期望输出”的示例 + 一条等待模型处理的输入",
+              "示例数量通常只有一两个到几个，重点在示范任务模式，不是提供大规模数据",
+              "示例不是拿去训练或修改模型权重的数据，模型参数不会因为这次提示而改变",
+              "模型做的是模仿示例里的格式、口径和判断方式，然后产出待处理输入对应的结果"
+            ],
+            "suggested_expression": "用三层堆叠卡片呈现提示结构：最上层任务说明，中间两到三张“输入→输出”对照卡，最下层待处理输入；旁边标注“这些示例只在本次提示里生效”。",
+            "interaction_id": null,
+            "source_refs": []
+          },
+          {
+            "block_id": "unit_1_what_is_few_shot_compare",
+            "block_type": "case_compare",
+            "title": "同一个情感分类任务：零样本提示与少样本提示并排看",
+            "teaching_role": "compare_cases",
+            "content_goal": "通过同一任务的两版提示，让学习者直接看出零样本只给任务说明、少样本额外给可模仿样例，并理解样例带来的具体约束。",
+            "must_cover": [
+              "零样本版本：只有任务说明，例如“判断下面这句话是正面还是负面评价”，然后给出待判断句子",
+              "少样本版本：在任务说明之后，补上两条“句子→标签”的示例，再给出待判断句子",
+              "示例的作用是让标签写法、判断颗粒度、输出格式变得具体可模仿",
+              "少样本不等于给得多，两三条对齐任务模式的示例通常就够起步"
+            ],
+            "suggested_expression": "双栏对照卡：左栏零样本提示全文，右栏少样本提示全文，用高亮区分“任务说明区”和“示例区”，并在示例区旁标注“多出来的就是这两条可模仿样例”。",
+            "interaction_id": null,
+            "source_refs": []
+          },
+          {
+            "block_id": "unit_1_what_is_few_shot_check",
+            "block_type": "single_choice",
+            "title": "判断：哪一条才是真正的少样本提示",
+            "teaching_role": "diagnose_understanding",
+            "content_goal": "检验学习者能否把“任务说明 + 少量输入输出示例 + 待处理输入”这一结构，与零样本提示、模型训练、无序堆砌区分开。",
+            "must_cover": [
+              "正确项同时具备任务说明、少量输入输出示例和待处理输入",
+              "只给任务说明属于零样本提示",
+              "要求用大量数据修改模型权重属于训练或微调，不属于提示中的少样本示例",
+              "罗列一堆无对应输出、无任务说明的素材属于堆砌，不构成可模仿的示例"
+            ],
+            "suggested_expression": "诊断卡片：四个提示片段并排展示，学习者点选后立即看到每项的结构判断反馈。",
+            "interaction_id": "unit_1_what_is_few_shot_choice",
+            "source_refs": []
+          },
+          {
+            "block_id": "unit_1_what_is_few_shot_write",
+            "block_type": "short_answer",
+            "title": "动手改：把一段模糊需求补成少样本提示",
+            "teaching_role": "prompt_reflection",
+            "content_goal": "让学习者把结构知识落到一次真实书写中，自己判断该补哪几条示例、示例要示范什么，从而巩固“示例是示范任务模式”的理解。",
+            "must_cover": [
+              "写出清晰的任务说明",
+              "补上至少一条“输入→期望输出”的示例，且示例格式与待处理输入一致",
+              "保留一条待处理输入，不要把答案提前写在里面"
+            ],
+            "suggested_expression": "写作框上方给出原始模糊需求与一个待处理输入，提交后按参考要点做轻量自检提示。",
+            "interaction_id": "unit_1_what_is_few_shot_short_answer",
+            "source_refs": []
+          },
+          {
+            "block_id": "unit_1_what_is_few_shot_wrap",
+            "block_type": "summary",
+            "title": "收束：示例是这一次对话里的“临摹范本”",
+            "teaching_role": "wrap_up",
+            "content_goal": "用一句话把本单元的核心锁住：少样本示例是在提示中放入少量输入输出样例让模型模仿，而不是重新训练模型。",
+            "must_cover": [
+              "少样本示例＝任务说明 + 少量输入输出样例 + 待处理输入",
+              "与零样本的区别只在“有没有可模仿的样例”",
+              "示例数量少、作用在当前提示的上下文中，模型本身没有被改动",
+              "堆砌大量无对应输出的素材不算少样本示例"
+            ],
+            "suggested_expression": "三行要点卡收尾，最后一行用一句反例提醒“素材多但不成对，不等于有示例”。",
+            "interaction_id": null,
+            "source_refs": []
+          }
+        ],
+        "interaction_specs": [
+          {
+            "interaction_id": "unit_1_what_is_few_shot_choice",
+            "block_id": "unit_1_what_is_few_shot_check",
+            "type": "single_choice",
+            "event_type": "single_choice_answered",
+            "target_concepts": [
+              "few_shot_prompting",
+              "zero_shot_prompting",
+              "demonstration_examples"
+            ],
+            "prompt": "下面四条描述中，哪一条才属于“少样本提示”？",
+            "options": [
+              {
+                "id": "a",
+                "text": "“请判断下面这句话是正面还是负面评价：这家店出餐很快，但味道一般。”",
+                "is_correct": false,
+                "feedback": "这只有任务说明和待处理输入，属于零样本提示，没有可模仿的样例。"
+              },
+              {
+                "id": "b",
+                "text": "“请判断评价是正面还是负面。例1：‘包装很用心，好评’→正面；例2：‘等了一小时还没上菜’→负面。现在判断：‘汤很好喝，就是有点咸’。”",
+                "is_correct": true,
+                "feedback": "正确。它有任务说明、两条‘输入→输出’示例，还有一条待处理输入，是标准的少样本提示结构。"
+              },
+              {
+                "id": "c",
+                "text": "“这是十万条带标签的评价数据，请用它们调整模型参数，让它学会判断情感。”",
+                "is_correct": false,
+                "feedback": "这描述的是用数据训练或微调模型，会改变模型参数，不属于提示中的少样本示例。"
+              },
+              {
+                "id": "d",
+                "text": "“这里有很多用户评论、产品说明书和几条客服记录，请参考它们回答问题。”",
+                "is_correct": false,
+                "feedback": "素材虽多，但没有成对的‘输入→期望输出’，模型没有可模仿的示范，属于堆砌材料而不是少样本示例。"
+              }
+            ],
+            "feedback_policy": "local_and_submit",
+            "placeholder": null,
+            "reference_points": [],
+            "min_length": null,
+            "scenario": {},
+            "visual_variant": "diagnostic_card",
+            "allow_adaptive_followup": true
+          },
+          {
+            "interaction_id": "unit_1_what_is_few_shot_short_answer",
+            "block_id": "unit_1_what_is_few_shot_write",
+            "type": "short_answer",
+            "event_type": "short_answer_submitted",
+            "target_concepts": [
+              "few_shot_prompting",
+              "demonstration_examples"
+            ],
+            "prompt": "原始需求是：“帮我把商品评论整理成一句话摘要。”待处理输入是：“电池续航不错，但屏幕在太阳下看不清。”请把它改写成一条少样本提示：补上任务说明、至少一条‘输入→期望输出’示例，并保留这条待处理输入。",
+            "options": [],
+            "feedback_policy": "local_and_submit",
+            "placeholder": "例如：请把商品评论压缩成一句不超过20字的摘要……\n示例——输入：…… 输出：……\n现在处理：电池续航不错，但屏幕在太阳下看不清。",
+            "reference_points": [
+              "包含明确的任务说明，如摘要长度、语气或格式要求",
+              "至少有一条完整的‘输入→期望输出’示例，示例格式与待处理输入一致",
+              "示例示范了摘要的写法（如保留优缺点、控制字数），而不是随便写一句评论",
+              "待处理输入保留为问题，没有把答案提前写进去"
+            ],
+            "min_length": 60,
+            "scenario": {},
+            "visual_variant": "challenge_box",
+            "allow_adaptive_followup": true
+          }
+        ],
+        "concepts": [
+          {
+            "concept_id": "few_shot_prompting",
+            "name": "少样本提示",
+            "description": "在提示中放入少量“输入—期望输出”示例，让模型模仿样例完成当前任务的做法。"
+          },
+          {
+            "concept_id": "zero_shot_prompting",
+            "name": "零样本提示",
+            "description": "只给任务说明和待处理输入，不提供任何可模仿示例的提示方式。"
+          },
+          {
+            "concept_id": "demonstration_examples",
+            "name": "示范示例",
+            "description": "成对的输入与期望输出，用来示范任务模式、输出格式和判断口径。"
+          },
+          {
+            "concept_id": "in_context_learning",
+            "name": "上下文内模仿",
+            "description": "模型不改变参数，只在当前提示的上下文中依据示例调整输出方式。"
+          }
+        ],
+        "citations": []
+      }
+    ],
+    "citations": [],
+    "assets": [],
+    "export_options": {
+      "interactive_html": true,
+      "zip": false
+    }
+  },
+  "final_render": {
+    "content_type": "interactive_html",
+    "render_model": {
+      "render_type": "interactive_html_page",
+      "lesson_id": "lesson_task_50d8ee6ad2ac",
+      "title": "少样本示例入门：用例子教会模型做任务",
+      "subtitle": null,
+      "layout": "vertical_lesson_with_tutor",
+      "theme": {
+        "style_id": "warm_tutor_card_v1",
+        "layout_mode": "vertical_lesson_with_tutor",
+        "visual_keywords": [
+          "温和",
+          "卡片式",
+          "流程清晰",
+          "轻量动画"
+        ],
+        "color_tokens": {
+          "background": "#f7f4ef",
+          "surface": "#ffffff",
+          "primary": "#5b6cff",
+          "accent": "#ffb86b",
+          "text": "#1f2937"
+        },
+        "spacing_density": "medium"
+      },
+      "navigation": [
+        {
+          "section_id": "unit_1_what_is_few_shot",
+          "title": "先看例子：什么是少样本示例？",
+          "anchor": "#unit_1_what_is_few_shot"
+        },
+        {
+          "section_id": "unit_3_how_to_choose_examples",
+          "title": "怎么挑例子：相关性、代表性与一致性",
+          "anchor": "#unit_3_how_to_choose_examples"
+        },
+        {
+          "section_id": "unit_2_why_it_works",
+          "title": "为什么有效：例子如何给模型“打样”",
+          "anchor": "#unit_2_why_it_works"
+        },
+        {
+          "section_id": "unit_4_pitfalls_and_summary",
+          "title": "常见误区与小结：少样本不是万能药",
+          "anchor": "#unit_4_pitfalls_and_summary"
+        }
+      ],
+      "interactions": [
+        {
+          "interaction_id": "unit_1_what_is_few_shot_choice",
+          "section_id": "unit_1_what_is_few_shot",
+          "type": "single_choice",
+          "target_concepts": [
+            "few_shot_prompting",
+            "zero_shot_prompting",
+            "demonstration_examples"
+          ],
+          "event_type": "single_choice_answered"
+        },
+        {
+          "interaction_id": "unit_1_what_is_few_shot_short_answer",
+          "section_id": "unit_1_what_is_few_shot",
+          "type": "short_answer",
+          "target_concepts": [
+            "few_shot_prompting",
+            "demonstration_examples"
+          ],
+          "event_type": "short_answer_submitted"
+        },
+        {
+          "interaction_id": "unit_3_how_to_choose_examples_choice",
+          "section_id": "unit_3_how_to_choose_examples",
+          "type": "single_choice",
+          "target_concepts": [
+            "relevance",
+            "representativeness",
+            "consistency",
+            "balance"
+          ],
+          "event_type": "single_choice_answered"
+        },
+        {
+          "interaction_id": "unit_3_how_to_choose_examples_scenario",
+          "section_id": "unit_3_how_to_choose_examples",
+          "type": "scenario_discussion",
+          "target_concepts": [
+            "relevance",
+            "representativeness",
+            "diversity",
+            "consistency"
+          ],
+          "event_type": "scenario_discussion_submitted"
+        },
+        {
+          "interaction_id": "unit_2_why_it_works_choice",
+          "section_id": "unit_2_why_it_works",
+          "type": "single_choice",
+          "target_concepts": [
+            "少样本示例",
+            "格式约束",
+            "示例的局限性"
+          ],
+          "event_type": "single_choice_answered"
+        },
+        {
+          "interaction_id": "unit_2_why_it_works_discussion",
+          "section_id": "unit_2_why_it_works",
+          "type": "scenario_discussion",
+          "target_concepts": [
+            "示例质量",
+            "示例的局限性",
+            "人工复核"
+          ],
+          "event_type": "scenario_discussion_submitted"
+        },
+        {
+          "interaction_id": "unit_4_pitfalls_and_summary_choice",
+          "section_id": "unit_4_pitfalls_and_summary",
+          "type": "single_choice",
+          "target_concepts": [
+            "少样本示例的常见误区",
+            "示例标签不平衡",
+            "示例格式一致性"
+          ],
+          "event_type": "single_choice_answered"
+        },
+        {
+          "interaction_id": "unit_4_pitfalls_and_summary_scenario",
+          "section_id": "unit_4_pitfalls_and_summary",
+          "type": "scenario_discussion",
+          "target_concepts": [
+            "少样本示例的常见误区",
+            "检查链：定义任务、精选示例、统一格式、验证效果"
+          ],
+          "event_type": "scenario_discussion_submitted"
+        }
+      ],
+      "runtime": {
+        "progress_tracking": true,
+        "scoring_enabled": true,
+        "session_required": true,
+        "event_endpoint_template": "/api/interactive-lessons/{lesson_id}/sessions/{session_id}/events"
+      },
+      "meta": {},
+      "pedagogy": {},
+      "sections": [
+        {
+          "section_id": "unit_1_what_is_few_shot",
+          "title": "先看例子：什么是少样本示例？",
+          "learning_goal": "让零基础学习者理解少样本示例的基本形式，并能区分零样本提示、少样本提示和简单堆砌例子。",
+          "style_scope_id": "ih-scope-unit_1_what_is_few_shot",
+          "html_fragment": "<section id=\"unit_1_what_is_few_shot\" class=\"ih-unit ih-scope-unit_1_what_is_few_shot\" data-section-id=\"unit_1_what_is_few_shot\">\n<article class=\"ih-block ih-explanation-fallback\" data-block-id=\"unit_1_what_is_few_shot_intro\" data-block-type=\"concept_explanation\"><h3>教同事填表：为什么我们天然会“给个例子”</h3><p>用一个不涉及技术的生活场景，让学习者先体会“给例子”是一种天然的沟通方式，为理解提示中的示例做铺垫。</p></article>\n<article class=\"ih-block ih-explanation-fallback\" data-block-id=\"unit_1_what_is_few_shot_explained\" data-block-type=\"concept_explanation\"><h3>少样本示例的三件套：任务说明、示例对、待处理输入</h3><p>让学习者能认出少样本提示的基本骨架，并明确示例数量很少、位置在提示里、作用在当下这一次对话中。</p></article>\n<article class=\"ih-block ih-explanation-fallback\" data-block-id=\"unit_1_what_is_few_shot_compare\" data-block-type=\"concept_explanation\"><h3>同一个情感分类任务：零样本提示与少样本提示并排看</h3><p>通过同一任务的两版提示，让学习者直接看出零样本只给任务说明、少样本额外给可模仿样例，并理解样例带来的具体约束。</p></article>\n<article class=\"ih-block ih-interaction ih-quiz ih-quiz--single ih-variant-diagnostic_card\" data-block-id=\"unit_1_what_is_few_shot_check\" data-block-type=\"single_choice\">\n  <div class=\"ih-block-header\"><div><div class=\"ih-block-kicker\">单选题</div><h3>判断：哪一条才是真正的少样本提示</h3></div></div>\n  <p class=\"ih-question\">下面四条描述中，哪一条才属于“少样本提示”？</p>\n  <div class=\"ih-options\" role=\"group\" aria-label=\"单选题选项\">\n    <button type=\"button\" class=\"ih-option\" data-option-label=\"A\" data-ih-action=\"single-choice\" data-interaction-id=\"unit_1_what_is_few_shot_choice\" data-option-id=\"a\" data-correct=\"false\" data-feedback=\"这只有任务说明和待处理输入，属于零样本提示，没有可模仿的样例。\">“请判断下面这句话是正面还是负面评价：这家店出餐很快，但味道一般。”</button>\n<button type=\"button\" class=\"ih-option\" data-option-label=\"B\" data-ih-action=\"single-choice\" data-interaction-id=\"unit_1_what_is_few_shot_choice\" data-option-id=\"b\" data-correct=\"true\" data-feedback=\"正确。它有任务说明、两条‘输入→输出’示例，还有一条待处理输入，是标准的少样本提示结构。\">“请判断评价是正面还是负面。例1：‘包装很用心，好评’→正面；例2：‘等了一小时还没上菜’→负面。现在判断：‘汤很好喝，就是有点咸’。”</button>\n<button type=\"button\" class=\"ih-option\" data-option-label=\"C\" data-ih-action=\"single-choice\" data-interaction-id=\"unit_1_what_is_few_shot_choice\" data-option-id=\"c\" data-correct=\"false\" data-feedback=\"这描述的是用数据训练或微调模型，会改变模型参数，不属于提示中的少样本示例。\">“这是十万条带标签的评价数据，请用它们调整模型参数，让它学会判断情感。”</button>\n<button type=\"button\" class=\"ih-option\" data-option-label=\"D\" data-ih-action=\"single-choice\" data-interaction-id=\"unit_1_what_is_few_shot_choice\" data-option-id=\"d\" data-correct=\"false\" data-feedback=\"素材虽多，但没有成对的‘输入→期望输出’，模型没有可模仿的示范，属于堆砌材料而不是少样本示例。\">“这里有很多用户评论、产品说明书和几条客服记录，请参考它们回答问题。”</button>\n  </div>\n  <div class=\"ih-feedback\" data-ih-feedback-for=\"unit_1_what_is_few_shot_choice\" aria-live=\"polite\"></div>\n</article>\n<article class=\"ih-block ih-interaction ih-short-answer ih-variant-challenge_box\" data-block-id=\"unit_1_what_is_few_shot_write\" data-block-type=\"short_answer\">\n  <div class=\"ih-block-header\"><div><div class=\"ih-block-kicker\">简答题</div><h3>动手改：把一段模糊需求补成少样本提示</h3></div></div>\n  <p class=\"ih-question\">原始需求是：“帮我把商品评论整理成一句话摘要。”待处理输入是：“电池续航不错，但屏幕在太阳下看不清。”请把它改写成一条少样本提示：补上任务说明、至少一条‘输入→期望输出’示例，并保留这条待处理输入。</p>\n  <textarea class=\"ih-textarea\" data-ih-input-for=\"unit_1_what_is_few_shot_short_answer\" placeholder=\"例如：请把商品评论压缩成一句不超过20字的摘要……\n示例——输入：…… 输出：……\n现在处理：电池续航不错，但屏幕在太阳下看不清。\"></textarea>\n  <div class=\"ih-actions\">\n    <button type=\"button\" class=\"ih-submit\" data-ih-action=\"short-answer-submit\" data-interaction-id=\"unit_1_what_is_few_shot_short_answer\" data-min-length=\"60\" data-reference-points=\"包含明确的任务说明，如摘要长度、语气或格式要求|至少有一条完整的‘输入→期望输出’示例，示例格式与待处理输入一致|示例示范了摘要的写法（如保留优缺点、控制字数），而不是随便写一句评论|待处理输入保留为问题，没有把答案提前写进去\">提交简答</button>\n  </div>\n  <div class=\"ih-feedback\" data-ih-feedback-for=\"unit_1_what_is_few_shot_short_answer\" aria-live=\"polite\"></div>\n</article>\n<article class=\"ih-block ih-explanation-fallback\" data-block-id=\"unit_1_what_is_few_shot_wrap\" data-block-type=\"concept_explanation\"><h3>收束：示例是这一次对话里的“临摹范本”</h3><p>用一句话把本单元的核心锁住：少样本示例是在提示中放入少量输入输出样例让模型模仿，而不是重新训练模型。</p></article>\n</section>",
+          "css_fragment": ".ih-scope-unit_1_what_is_few_shot { --ih-accent: #5b6cff; --ih-surface: #ffffff; --ih-text: #1f2937; max-width: 920px; margin: 0 auto; padding: 24px; overflow-wrap: break-word; }}\n.ih-scope-unit_1_what_is_few_shot .ih-block { background: var(--ih-surface); border: 1px solid rgba(36,48,68,.12); border-radius: 20px; padding: 22px; margin-bottom: 18px; }}\n\n.ih-scope-unit_1_what_is_few_shot .ih-options { display: grid; gap: 12px; margin: 16px 0; }\n.ih-scope-unit_1_what_is_few_shot .ih-option { width: 100%; text-align: left; border: 1px solid rgba(36,48,68,.14); background: #fff; color: var(--ih-text, #243044); border-radius: 16px; padding: 13px 15px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }\n.ih-scope-unit_1_what_is_few_shot .ih-option::before { content: attr(data-option-label); display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 999px; background: rgba(92,109,246,.12); color: var(--ih-accent, #5c6df6); font-weight: 800; }\n.ih-scope-unit_1_what_is_few_shot .ih-option.is-selected, .ih-scope-unit_1_what_is_few_shot .ih-option.selected, .ih-scope-unit_1_what_is_few_shot .ih-option.active { border-color: var(--ih-accent, #5c6df6); background: rgba(92,109,246,.10); }\n.ih-scope-unit_1_what_is_few_shot .ih-option.is-correct { border-color: rgba(22,163,74,.55); background: rgba(22,163,74,.08); }\n.ih-scope-unit_1_what_is_few_shot .ih-option.is-wrong { border-color: rgba(220,38,38,.46); background: rgba(220,38,38,.06); }\n.ih-scope-unit_1_what_is_few_shot .ih-submit { border: 0; border-radius: 999px; padding: 10px 18px; background: var(--ih-accent, #5c6df6); color: #fff; font-weight: 800; cursor: pointer; }\n.ih-scope-unit_1_what_is_few_shot .ih-submit.secondary { background: #243044; }\n.ih-scope-unit_1_what_is_few_shot .ih-textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid rgba(36,48,68,.14); border-radius: 16px; padding: 14px 16px; background: #fff; color: var(--ih-text, #243044); }\n.ih-scope-unit_1_what_is_few_shot .ih-feedback { display: none; margin-top: 14px; border-radius: 16px; padding: 14px 16px; background: rgba(255,255,255,.78); border: 1px solid rgba(36,48,68,.12); }\n.ih-scope-unit_1_what_is_few_shot .ih-feedback.is-visible { display: block; }\n.ih-scope-unit_1_what_is_few_shot .ih-feedback.success { border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08); }\n.ih-scope-unit_1_what_is_few_shot .ih-feedback.warn { border-color: rgba(255,184,107,.55); background: rgba(255,184,107,.12); }\n.ih-scope-unit_1_what_is_few_shot .scenario-box { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 16px; }\n.ih-scope-unit_1_what_is_few_shot .scenario-card { border-radius: 18px; padding: 18px; background: #243044; color: #fff; }\n.ih-scope-unit_1_what_is_few_shot .scenario-card .tag { display: inline-block; background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 10px; font-size: 12px; margin-bottom: 10px; }\n@media (max-width: 760px) { .ih-scope-unit_1_what_is_few_shot .scenario-box { grid-template-columns: 1fr; } }",
+          "block_manifest": [
+            {
+              "block_id": "unit_1_what_is_few_shot_intro",
+              "type": "intro",
+              "title": "教同事填表：为什么我们天然会“给个例子”",
+              "teaching_role": "set_context",
+              "interaction_ids": []
+            },
+            {
+              "block_id": "unit_1_what_is_few_shot_explained",
+              "type": "concept_explanation",
+              "title": "少样本示例的三件套：任务说明、示例对、待处理输入",
+              "teaching_role": "explain_core",
+              "interaction_ids": []
+            },
+            {
+              "block_id": "unit_1_what_is_few_shot_compare",
+              "type": "case_compare",
+              "title": "同一个情感分类任务：零样本提示与少样本提示并排看",
+              "teaching_role": "compare_cases",
+              "interaction_ids": []
+            },
+            {
+              "block_id": "unit_1_what_is_few_shot_check",
+              "type": "single_choice",
+              "title": "判断：哪一条才是真正的少样本提示",
+              "teaching_role": "diagnose_understanding",
+              "interaction_ids": [
+                "unit_1_what_is_few_shot_choice"
+              ]
+            },
+            {
+              "block_id": "unit_1_what_is_few_shot_write",
+              "type": "short_answer",
+              "title": "动手改：把一段模糊需求补成少样本提示",
+              "teaching_role": "prompt_reflection",
+              "interaction_ids": [
+                "unit_1_what_is_few_shot_short_answer"
+              ]
+            },
+            {
+              "block_id": "unit_1_what_is_few_shot_wrap",
+              "type": "summary",
+              "title": "收束：示例是这一次对话里的“临摹范本”",
+              "teaching_role": "wrap_up",
+              "interaction_ids": []
+            }
+          ],
+          "interaction_manifest": [
+            {
+              "interaction_id": "unit_1_what_is_few_shot_choice",
+              "section_id": "unit_1_what_is_few_shot",
+              "type": "single_choice",
+              "target_concepts": [
+                "few_shot_prompting",
+                "zero_shot_prompting",
+                "demonstration_examples"
+              ],
+              "event_type": "single_choice_answered"
+            },
+            {
+              "interaction_id": "unit_1_what_is_few_shot_short_answer",
+              "section_id": "unit_1_what_is_few_shot",
+              "type": "short_answer",
+              "target_concepts": [
+                "few_shot_prompting",
+                "demonstration_examples"
+              ],
+              "event_type": "short_answer_submitted"
+            }
+          ],
+          "render_notes": {
+            "fallback": true,
+            "validation_errors": [
+              "css_fragment: css selectors must be scoped to style_scope_id"
+            ],
+            "missing_blocks": [],
+            "interaction_template_renderer": "p0_four_type"
+          }
+        }
+      ],
+      "style_guide": {
+        "style_id": "warm_tutor_card_v1",
+        "layout_mode": "vertical_lesson_with_tutor",
+        "visual_keywords": [
+          "温和",
+          "卡片式",
+          "流程清晰",
+          "轻量动画"
+        ],
+        "color_tokens": {
+          "background": "#f7f4ef",
+          "surface": "#ffffff",
+          "primary": "#5b6cff",
+          "accent": "#ffb86b",
+          "text": "#1f2937"
+        },
+        "typography": {},
+        "component_motifs": [
+          "rounded cards",
+          "soft shadow",
+          "dotted connector",
+          "teacher speech bubble",
+          "step badges"
+        ],
+        "interaction_style": {},
+        "animation_style": {},
+        "spacing_density": "medium",
+        "avoid": [
+          "dense tables",
+          "tiny text",
+          "large empty space",
+          "unbalanced two-column layout",
+          "unscoped css"
+        ]
+      },
+      "citations": []
+    }
+  },
+  "outline": {
+    "id": "outline_few_shot_prompting",
+    "content_type": "interactive_html",
+    "title": "少样本示例入门：用例子教会模型做任务",
+    "audience": "零基础学习者，无需提示工程或机器学习背景",
+    "learning_objectives": [
+      "用自己的话解释什么是少样本示例，并区分零样本提示与少样本提示。",
+      "说明少样本示例为什么能帮助模型理解任务、输出格式和表达风格。",
+      "根据相关性、代表性、多样性和一致性等标准挑选合适的示例。",
+      "识别少样本示例的常见误区，并形成检查示例质量的基本思路。"
+    ],
+    "units": [
+      {
+        "id": "unit_1_what_is_few_shot",
+        "order": 1,
+        "unit_type": "interactive_section",
+        "title": "先看例子：什么是少样本示例？",
+        "goal": "让零基础学习者理解少样本示例的基本形式，并能区分零样本提示、少样本提示和简单堆砌例子。",
+        "core_message": "少样本示例是在提示中放入少量“输入—期望输出”样例，让模型模仿样例完成任务，而不是重新训练模型。",
+        "key_points": [
+          "少样本示例的常见形式：任务说明、若干输入输出示例、待处理输入。",
+          "与零样本提示的区别：零样本只给任务说明，少样本额外给出可模仿样例。",
+          "示例数量通常很少，重点在示范任务模式，而不是提供大规模数据。",
+          "示例不是训练数据，其作用发生在当前提示的上下文中。"
+        ],
+        "visual_strategy": null,
+        "module_type": null,
+        "retrieval_queries": [
+          "少样本示例 定义 few-shot prompting",
+          "zero-shot 与 few-shot 提示 区别",
+          "提示中的输入输出示例 格式"
+        ],
+        "source_chunk_ids": []
+      },
+      {
+        "id": "unit_2_why_it_works",
+        "order": 2,
+        "unit_type": "interactive_section",
+        "title": "为什么有效：例子如何给模型“打样”",
+        "goal": "帮助学习者理解少样本示例通过模式示范、格式约束和意图澄清影响输出，并认识其局限性。",
+        "core_message": "少样本示例把抽象任务变成可模仿的模式，帮助模型对齐输出格式、标签体系和任务意图，但不能保证事实正确。",
+        "key_points": [
+          "模型会从上下文中寻找输入到输出的对应关系。",
+          "示例能帮助稳定输出格式、字段、语气和标签空间。",
+          "合适示例能减少任务说明中的歧义。",
+          "示例效果受模型能力、任务难度和示例质量影响。"
+        ],
+        "visual_strategy": null,
+        "module_type": null,
+        "retrieval_queries": [
+          "few-shot prompting 为什么有效 上下文学习",
+          "in-context learning 示例 作用",
+          "少样本示例 输出格式 约束 模型"
+        ],
+        "source_chunk_ids": []
+      },
+      {
+        "id": "unit_3_how_to_choose_examples",
+        "order": 3,
+        "unit_type": "interactive_section",
+        "title": "怎么挑例子：相关性、代表性与一致性",
+        "goal": "让学习者掌握挑选少样本示例的基本判断标准，能避免明显不相关或格式混乱的示例。",
+        "core_message": "好示例应贴近真实输入、覆盖常见变化、代表任务边界，并保持输入输出格式一致。",
+        "key_points": [
+          "相关性：示例输入应接近真实待处理输入。",
+          "代表性：示例应覆盖常见类型和关键边界情况。",
+          "多样性：避免所有示例都过于相似，导致模型只学会局部模式。",
+          "一致性：示例的格式、标签和判断标准要统一。",
+          "顺序与平衡：示例顺序和类别分布可能影响输出。"
+        ],
+        "visual_strategy": null,
+        "module_type": null,
+        "retrieval_queries": [
+          "少样本示例 选择 原则 相关性 代表性",
+          "few-shot example selection 多样性 顺序",
+          "示例 标签平衡 格式一致"
+        ],
+        "source_chunk_ids": []
+      },
+      {
+        "id": "unit_4_pitfalls_and_summary",
+        "order": 4,
+        "unit_type": "interactive_section",
+        "title": "常见误区与小结：少样本不是万能药",
+        "goal": "帮助学习者识别少样本示例的常见误区，并在课程结束时形成“先定义任务、再挑示例、后验证效果”的基本检查思路。",
+        "core_message": "少样本示例能提升任务对齐，但质量比数量更重要，示例不能替代清晰指令、事实依据和效果验证。",
+        "key_points": [
+          "误区：示例越多越好，导致提示臃肿和相互矛盾。",
+          "误区：示例与真实输入不匹配，模型学到错误模式。",
+          "误区：格式不统一、标签不平衡或顺序随意。",
+          "误区：把示例当作知识库，忽视事实核查与评估。",
+          "小结：明确任务、精选示例、统一格式、验证效果。"
+        ],
+        "visual_strategy": null,
+        "module_type": null,
+        "retrieval_queries": [
+          "few-shot prompting 常见误区",
+          "少样本示例 过多 不相关 格式不一致",
+          "few-shot 示例 标签偏差 顺序敏感 评估"
+        ],
+        "source_chunk_ids": []
+      }
+    ],
+    "sections": [],
+    "metadata": {}
+  }
+}

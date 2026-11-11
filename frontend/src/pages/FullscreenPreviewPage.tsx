@@ -2,10 +2,24 @@ import React, { useEffect, useState } from "react";
 import { InteractiveHtmlRenderer } from "../components/renderers/InteractiveHtmlRenderer";
 import { getContentGenerationPreview } from "../api/contentGenerationApi";
 import type { InteractiveHtmlRenderModel } from "../types/interactiveHtml";
+import { GenerationProgress } from "../components/generation/GenerationProgress";
+import { useContentGenerationStore } from "../stores/contentGenerationStore";
 
 export const FullscreenPreviewPage: React.FC = () => {
   const [model, setModel] = useState<InteractiveHtmlRenderModel | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showReview, setShowReview] = useState(false);
+  const task = useContentGenerationStore((state) => state.task);
+  const preview = useContentGenerationStore((state) => state.preview ?? state.partialPreview);
+  const stopStreamRefresh = useContentGenerationStore((state) => state.stopStreamRefresh);
+
+  useEffect(() => () => stopStreamRefresh(), [stopStreamRefresh]);
+
+  useEffect(() => {
+    if (showReview && preview?.render_model.render_type === "interactive_html_page") {
+      document.title = preview.render_model.title;
+    }
+  }, [showReview, preview]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -28,6 +42,23 @@ export const FullscreenPreviewPage: React.FC = () => {
         setError(err instanceof Error ? err.message : "Failed to load preview");
       });
   }, []);
+
+  if (showReview) {
+    const reviewModel = preview?.render_model.render_type === "interactive_html_page" ? preview.render_model : undefined;
+    return (
+      <main>
+        <GenerationProgress />
+        {task ? (
+          <a href={`${window.location.pathname}#task=${encodeURIComponent(task.task_id)}`}>
+            在工作台查看进度与导出
+          </a>
+        ) : null}
+        {reviewModel ? (
+          <InteractiveHtmlRenderer model={reviewModel} fullscreen onRegenerateStart={() => setShowReview(true)} />
+        ) : null}
+      </main>
+    );
+  }
 
   if (error) {
     return (
@@ -53,7 +84,7 @@ export const FullscreenPreviewPage: React.FC = () => {
     );
   }
 
-  return <InteractiveHtmlRenderer model={model} fullscreen />;
+  return <InteractiveHtmlRenderer model={model} fullscreen onRegenerateStart={() => setShowReview(true)} />;
 };
 
 export default FullscreenPreviewPage;
