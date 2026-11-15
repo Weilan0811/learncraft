@@ -12,13 +12,16 @@ SUPPORTED_WORKFLOW_ELEMENTS = {"image", "mindmap"}
 
 
 def request_from_state(state: ContentGenerationState) -> ContentGenerationRequest:
+    raw = state.raw_request or {}
     return ContentGenerationRequest(
         content_type=state.content_type,
         topic=state.topic,
         user_prompt=state.user_prompt,
         system_prompt=state.system_prompt,
         knowledge_base_ids=state.knowledge_base_ids,
-        generation_options=(state.raw_request or {}).get("generation_options", {}),
+        generation_options=raw.get("generation_options", {}),
+        attachments=raw.get("attachments", []),
+        kb_mode=raw.get("kb_mode", "platform"),
     )
 
 

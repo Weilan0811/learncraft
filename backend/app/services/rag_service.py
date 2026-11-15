@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Protocol
 
+from app.core.config import Settings, get_settings
 from app.schemas.request import ContentGenerationRequest
 from app.schemas.state import RetrievalStatus, RetrievedChunk
 
@@ -34,5 +35,11 @@ class DisabledRAGService:
         return RetrievalResult(chunks=[], status=RetrievalStatus())
 
 
-def get_rag_service() -> RAGService:
+def get_rag_service(settings: Settings | None = None) -> RAGService:
+    settings = settings or get_settings()
+    if settings.kb_provider == "local":
+        from app.services.local_kb_service import LocalKBService
+
+        return LocalKBService(top_k=settings.kb_retrieval_top_k, api_key=settings.bailian_api_key or "")
+    # No external KB API exists anymore; anything other than "local" keeps retrieval off.
     return DisabledRAGService()

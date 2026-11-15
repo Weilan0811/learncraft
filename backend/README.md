@@ -76,11 +76,21 @@ flowchart TB
 | LLM | 返回结构化假数据 | 百炼 OpenAI 兼容接口，JSON schema 约束 + repair + 重试 |
 | 图片 | 本地 SVG 占位图 | APIMart / 百炼 DashScope 原生异步 API（提交 → 轮询 → 下载），429 限流退避 |
 | TTS | 静音音频 | 百炼 `qwen3-tts-instruct-flash` |
-| 检索 | 关闭，返回空片段 | 关闭，等待独立知识库模块接入 |
+| 检索 | 关闭，返回空片段 | 本地知识库：自备语料 + BM25/向量混合检索（`CONTENT_GENERATOR_KB_PROVIDER=local`） |
 
 `CONTENT_GENERATOR_PROVIDER_MODE=stub` 时全链路不依赖任何外部服务，可在无 API Key 的环境跑通完整 workflow，用于本地开发、CI 与前端联调。
 
-知识库检索当前统一关闭：无论 stub 还是 real 模式都返回空片段，不生成占位引用；任务和预览响应会标记 `knowledge_base.status=disabled`。请求中的 `knowledge_base_ids` 字段保留，等待独立知识库模块接入。
+检索层默认关闭（`kb_provider=external` 视为无可用知识库，返回空片段、不生成占位引用，任务和预览响应标记 `knowledge_base.status=disabled`）。设置 `CONTENT_GENERATOR_KB_PROVIDER=local` 后切换到自托管知识库模块：本地 BM25 + 向量混合检索，引擎与评测管线见根 README 的「知识库引擎」章节。
+
+生成请求可附带用户自己的材料（`attachments: [{filename, content}]`，md/txt 纯文本，≤10 个、单个 ≤200KB），并通过 `kb_mode` 选择检索范围：
+
+| kb_mode | 行为 |
+|---|---|
+| `platform`（默认） | 只检索平台知识库，与历史行为完全一致 |
+| `materials_only` | 只检索本次任务附带材料（无附件时请求被拒绝） |
+| `fused` | 平台库与材料各自检索后加权 RRF 融合（权重 1.0/1.3，材料略优先）；无附件时静默降级为 platform |
+
+实现要点：材料进入**任务级独立命名空间**——一次性 BM25 现场构建（不落盘）+ 内存余弦检索（embedding 按 content hash 缓存，同一材料不重复计费）。小命名空间不值得写共享索引；持久的个人知识库（多租户）再迁入统一 collection + scope filter。`Chunk.scope` 区分 `platform` / `attachment` / `wiki`，引用元数据透传 scope，隔离红线：平台模式召回结果中不得出现任务材料（有红队用例验证）。
 
 ### Schema 真源
 
@@ -96,7 +106,7 @@ flowchart TB
 | 实时进度 | 已支持 SSE | `events/stream` 流式推送 + 章节 unit 逐个落库，前端 EventSource 订阅、轮询兜底。 |
 | 内容类型 | 支持 `lecture`、`slide_deck`、`interactive_html`、`social_post`、`podcast_script` | 前三者走 unit-loop workflow；后两者走 direct workflow。 |
 | 内容类型注册 | 已具备 registry 机制 | `app/content_types/` 统一声明生成模式、schema、renderer、generator、元素策略和导出格式。 |
-| 检索服务 | 支持 stub 与外部 KB HTTP API | stub 用于本地测试；real 模式调用外部知识库检索服务。 |
+| 检索服务 | 本地知识库 + 任务级材料 | 本地 BM25+向量混合检索（评测见 `knowledge/eval`）；支持任务附件三种 kb_mode（platform / materials_only / fused）。 |
 | LLM 服务 | 支持 stub 与百炼兼容 OpenAI structured output | real 模式支持 JSON schema 约束、repair、重试、超时和 usage 记录。 |
 | 图片服务 | 支持 stub、APIMart、百炼图片生成 | stub 模式生成本地 SVG 占位图；real 模式生成远程图片并保存为本地 asset；生成失败的 slot 自动降级为占位图。 |
 | TTS 服务 | 支持 stub 与百炼 Qwen-TTS | real 模式使用 `qwen3-tts-instruct-flash`，固定 `Person1 -> Ethan`、`Person2 -> Cherry`。 |

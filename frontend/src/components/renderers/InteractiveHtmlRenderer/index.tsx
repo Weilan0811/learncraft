@@ -251,6 +251,8 @@ export const InteractiveHtmlRenderer: React.FC<Props> = ({ model, fullscreen = f
         user_prompt: [baseRequest.user_prompt, brief.focus_prompt].join("\n\n"),
         system_prompt: baseRequest.system_prompt,
         knowledge_base_ids: baseRequest.knowledge_base_ids,
+        attachments: baseRequest.attachments,
+        kb_mode: baseRequest.kb_mode,
         generation_options: {
           ...baseRequest.generation_options,
           difficulty: brief.suggested_difficulty,
