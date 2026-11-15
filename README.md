@@ -124,8 +124,10 @@ source_url: 原始出处（可选）
 
 **2. 建库**（切分 800/120、结构垃圾过滤、向量化、BM25 索引一次完成）：
 
+先执行 `uv sync --group dev` 安装项目及检索依赖。使用默认本地 BGE-M3 时执行 `uv sync --extra kb-local --group dev`，并按下方模型说明下载模型。使用百炼向量服务时设置系统环境变量 `KB_EMBEDDER=bailian` 和 `CONTENT_GENERATOR_BAILIAN_API_KEY`，无需安装本地模型依赖。
+
 ```bash
-python knowledge/scripts/build_kb.py --rebuild
+python -m knowledge.scripts.build_kb --rebuild
 ```
 
 **3. 检索**（四策略统一入口，CPU/GPU 均可运行）：
@@ -147,8 +149,8 @@ for chunk, score in results:
 **4. 动态增删**（human-in-the-loop：人工审查后手动执行，lint 三查不过即中止）：
 
 ```bash
-python knowledge/scripts/ingest.py --file knowledge/raw/new-doc.md   # 增量入库（秒级）
-python knowledge/scripts/ingest.py --retract <doc_id>                # 撤除（raw 移入 retracted/ 可逆）
+python -m knowledge.scripts.ingest --file knowledge/raw/new-doc.md   # 增量入库（秒级）
+python -m knowledge.scripts.ingest --retract <doc_id>                # 撤除（raw 移入 retracted/ 可逆）
 ```
 
 ### 本地模型备忘
@@ -203,13 +205,13 @@ python -m venv .venv
 # macOS / Linux
 # source .venv/bin/activate
 
-pip install -r backend/requirements.txt
+uv sync --group dev
 
 # 配置环境变量
 cp .env.example .env            # Windows: copy .env.example .env
 
 # 启动后端
-uvicorn app.main:app --app-dir backend --port 8000
+python -m uvicorn app.main:app --app-dir backend --port 8000
 
 # 启动前端
 cd frontend
