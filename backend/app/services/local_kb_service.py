@@ -16,9 +16,9 @@ from __future__ import annotations
 import hashlib
 
 from app.schemas.request import AttachmentDoc, ContentGenerationRequest
-from app.schemas.state import RetrievedChunk
+from app.schemas.state import RetrievalStatus, RetrievedChunk
 from knowledge.engine import kb_engine as kb
-from app.services.rag_service import RAGService
+from app.services.rag_service import RAGService, RetrievalResult
 
 # Fused mode: the attached materials are usually written for exactly this
 # task, so a modest boost over the platform KB keeps them at the front of
@@ -81,7 +81,7 @@ class LocalKBService(RAGService):
         ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)[:top_k]
         return [(chunk_by_id[cid], score) for cid, score in ranked if cid in chunk_by_id]
 
-    def retrieve(self, request: ContentGenerationRequest, stage: str, section_hint: str | None = None) -> list[RetrievedChunk]:
+    def retrieve(self, request: ContentGenerationRequest, stage: str, section_hint: str | None = None) -> RetrievalResult:
         self._ensure_loaded()
         assert self._chunks is not None and self._bm25 is not None and self._embedder is not None
         query = self._build_query(request, stage, section_hint)
@@ -110,7 +110,10 @@ class LocalKBService(RAGService):
                 "stage": stage,
                 "kb_mode": mode,
             }
-            return []
+            return RetrievalResult(
+                chunks=[],
+                status=RetrievalStatus(state="failed", chunk_count=0, message=f"本地知识库检索失败：{exc}"),
+            )
         self.last_diagnostics = {
             "status": "ok",
             "stage": stage,
@@ -120,7 +123,17 @@ class LocalKBService(RAGService):
             "chunk_count": len(results),
             "chunk_ids": [c.chunk_id for c, _ in results],
         }
-        return [
+        status = RetrievalStatus(
+            state="ok" if results else "empty",
+            chunk_count=len(results),
+            message=(
+                f"本地知识库返回 {len(results)} 个片段（{mode} 模式，{self.method} 检索）。"
+                if results
+                else "本地知识库未召回片段，未使用知识库资料。"
+            ),
+        )
+        return RetrievalResult(
+            chunks=[
             RetrievedChunk(
                 id=chunk.chunk_id,
                 source_id=chunk.doc_id,
@@ -137,4 +150,6 @@ class LocalKBService(RAGService):
                 },
             )
             for chunk, score in results
-        ]
+            ],
+            status=status,
+        )

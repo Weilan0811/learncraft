@@ -5,6 +5,8 @@
     "topic": "提示工程中的少样本示例",
     "user_prompt": "面向零基础学员，用 4 个章节讲解什么是少样本示例、为什么有效、如何挑选示例、常见误区。每节包含一段讲解、一个选择题或反思题，并在最后给出小结。",
     "system_prompt": null,
+    "attachments": [],
+    "kb_mode": "platform",
     "knowledge_base_ids": [],
     "generation_options": {
       "language": "zh-CN",
