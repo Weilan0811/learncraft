@@ -58,6 +58,8 @@ export interface ContentGenerationRequest {
   user_prompt: string;
   system_prompt?: string | null;
   knowledge_base_ids?: string[];
+  attachments?: { filename: string; content: string }[];
+  kb_mode?: "platform" | "materials_only" | "fused";
   generation_options?: GenerationOptions;
   generation_options_fields_set?: string[];
 }
