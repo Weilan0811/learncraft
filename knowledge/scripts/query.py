@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 
 from knowledge.engine import kb_engine as kb
 
@@ -13,9 +12,7 @@ def main() -> None:
     )
     parser.add_argument("--top-k", type=int, default=5)
     args = parser.parse_args()
-    chunks = kb.load_all_chunks()
-    if os.environ.get("KB_FILTER_JUNK", "1") == "1":
-        chunks = [chunk for chunk in chunks if not kb.is_structural_junk(chunk)]
+    chunks = kb.indexable_chunks(kb.load_all_chunks())
     if not chunks:
         parser.exit(1, "知识库为空，请先添加材料。\n")
     bm25 = kb.load_bm25_index(chunks)

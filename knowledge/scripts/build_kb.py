@@ -17,11 +17,7 @@ def main() -> None:
     if not chunks:
         parser.exit(1, "未找到可用材料。请先向 knowledge/raw 添加 Markdown 文档。\n")
     filter_junk = os.environ.get("KB_FILTER_JUNK", "1") == "1"
-    indexed = (
-        [chunk for chunk in chunks if not kb.is_structural_junk(chunk)]
-        if filter_junk
-        else chunks
-    )
+    indexed = kb.indexable_chunks(chunks)
     if not indexed:
         parser.exit(1, "材料没有可索引的正文，请检查内容与结构过滤设置。\n")
     kb.load_bm25_index(indexed).save()

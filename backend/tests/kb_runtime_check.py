@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import shutil
 import subprocess
@@ -32,6 +33,13 @@ assert isinstance(result, RetrievalResult)
 assert result.status.state in {"ok", "empty"}
 assert junk.chunk_id not in service._bm25.doc_ids
 assert len(service._bm25.chunks) == len(chunks)
+os.environ["KB_FILTER_JUNK"] = "0"
+unfiltered = LocalKBService(method="keyword")
+assert unfiltered.retrieve(request, "planning").status.state in {"ok", "empty"}
+assert junk.chunk_id in unfiltered._bm25.doc_ids
+assert kb.indexable_chunks([junk]) == [junk]
+os.environ["KB_FILTER_JUNK"] = "1"
+assert kb.indexable_chunks([junk]) == []
 cache.write_text("invalid JSON", encoding="utf-8")
 materials = ContentGenerationRequest(**{**request.model_dump(), "kb_mode":"materials_only", "attachments":[{"filename":"README.md", "content":texts[0]}]})
 attachment_service = LocalKBService(method="keyword")

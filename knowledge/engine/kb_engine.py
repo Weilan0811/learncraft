@@ -109,6 +109,13 @@ def is_structural_junk(chunk: "Chunk") -> bool:
     return False
 
 
+def indexable_chunks(chunks: list[Chunk]) -> list[Chunk]:
+    """所有索引维护和在线查询使用同一过滤设置。"""
+    if os.environ.get("KB_FILTER_JUNK", "1") == "1":
+        return [chunk for chunk in chunks if not is_structural_junk(chunk)]
+    return list(chunks)
+
+
 def parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
     """读取平面字段格式的文档头部。"""
     meta: dict[str, str] = {}

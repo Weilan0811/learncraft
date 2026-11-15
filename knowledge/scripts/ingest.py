@@ -154,8 +154,8 @@ def ingest_file(file: Path, dry_run: bool = False) -> dict:
     if problems:
         raise RuntimeError("ingest aborted by lint gates:\n  " + "\n  ".join(problems))
 
-    junk = [c for c in new_chunks if kb.is_structural_junk(c)]
-    indexable = [c for c in new_chunks if not kb.is_structural_junk(c)]
+    indexable = kb.indexable_chunks(new_chunks)
+    junk = [c for c in new_chunks if c not in indexable]
 
     if dry_run:
         return {
@@ -174,7 +174,7 @@ def ingest_file(file: Path, dry_run: bool = False) -> dict:
     _append_cache(new_chunks)
 
     # -- index sync
-    filtered_all = [c for c in kb.load_all_chunks() if not kb.is_structural_junk(c)]
+    filtered_all = kb.indexable_chunks(kb.load_all_chunks())
     bm25 = kb.BM25Index(filtered_all)
     bm25.save()
 
@@ -256,7 +256,7 @@ def retract_doc(doc_id: str, dry_run: bool = False) -> dict:
     _rewrite_cache_without(doc_id)
 
     # 3. index sync
-    filtered_all = [c for c in kb.load_all_chunks() if not kb.is_structural_junk(c)]
+    filtered_all = kb.indexable_chunks(kb.load_all_chunks())
     bm25 = kb.BM25Index(filtered_all)
     bm25.save()
 
