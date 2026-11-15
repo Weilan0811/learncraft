@@ -24,6 +24,7 @@ import re
 import warnings
 from dataclasses import dataclass, asdict
 from pathlib import Path
+from uuid import NAMESPACE_URL, uuid5
 
 warnings.filterwarnings("ignore")
 
@@ -640,6 +641,10 @@ def close_qdrant() -> None:
         _QDRANT_CLIENT = None
 
 
+def chunk_point_id(chunk_id: str) -> str:
+    return str(uuid5(NAMESPACE_URL, chunk_id))
+
+
 def ensure_vector_index(
     chunks: list[Chunk],
     embedder: Embedder,
@@ -662,8 +667,8 @@ def ensure_vector_index(
     # chunk buried deep in the body).
     vectors = embedder.embed([f"{c.title} | {c.section} | {c.text}" for c in chunks])
     points = [
-        PointStruct(id=idx, vector=vec, payload={"chunk_id": c.chunk_id, "doc_id": c.doc_id, "title": c.title, "topic": c.topic, "scope": c.scope})
-        for idx, (c, vec) in enumerate(zip(chunks, vectors))
+        PointStruct(id=chunk_point_id(c.chunk_id), vector=vec, payload={"chunk_id": c.chunk_id, "doc_id": c.doc_id, "title": c.title, "topic": c.topic, "scope": c.scope})
+        for c, vec in zip(chunks, vectors)
     ]
     for start in range(0, len(points), 100):
         client.upsert(collection, points[start : start + 100])

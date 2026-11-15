@@ -13,8 +13,8 @@ rebuild" actually needs:
 Design invariants (mirrors build_kb.py):
 - chunks.jsonl and the chunk_id space are NEVER filtered (v8 eval assets stay
   valid); junk chunks are recorded but excluded from the indexes.
-- Point ids are positional (count-based) for incremental upserts; retract
-  deletes by payload doc_id. If parity ever drifts, run build_kb.py --rebuild.
+- Point ids are stable UUIDs derived from chunk_id; replacing a document
+  removes all its previous points by doc_id, including legacy integer ids.
 - Human-in-the-loop by design: ingest is a manual command, never a daemon.
 
 Usage (repo root, PYTHONPATH=.):
@@ -166,7 +166,10 @@ def ingest_file(file: Path, dry_run: bool = False) -> dict:
             "dry_run": True, "lint": "PASS",
         }
 
-    # -- cache append (idempotent overwrite for same doc_id)
+    embedder = kb.get_embedder()
+    vectors = embedder.embed([f"{c.title} | {c.section} | {c.text}" for c in indexable])
+
+    # 向量生成成功后再修改缓存，避免服务请求失败时留下半更新的数据。
     _rewrite_cache_without(doc_id)
     _append_cache(new_chunks)
 
@@ -175,20 +178,20 @@ def ingest_file(file: Path, dry_run: bool = False) -> dict:
     bm25 = kb.BM25Index(filtered_all)
     bm25.save()
 
-    embedder = kb.get_embedder()
     collection = kb._active_collection()
     client = kb.get_qdrant()
-    base_id = client.count(collection, exact=True).count
-    from qdrant_client.models import PointStruct
+    from qdrant_client.models import FieldCondition, Filter, MatchValue, PointStruct
 
-    vectors = embedder.embed([f"{c.title} | {c.section} | {c.text}" for c in indexable])
+    if not client.collection_exists(collection):
+        kb.ensure_vector_index([], embedder, collection=collection)
+    client.delete(collection, points_selector=Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]))
     points = [
         PointStruct(
-            id=base_id + i,
+            id=kb.chunk_point_id(c.chunk_id),
             vector=vec,
             payload={"chunk_id": c.chunk_id, "doc_id": c.doc_id, "title": c.title, "topic": c.topic, "scope": c.scope},
         )
-        for i, (c, vec) in enumerate(zip(indexable, vectors))
+        for c, vec in zip(indexable, vectors)
     ]
     for start in range(0, len(points), 100):
         client.upsert(collection, points[start : start + 100])
