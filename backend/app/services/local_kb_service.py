@@ -14,6 +14,7 @@ collection behind a scope filter (multi-tenant strategy, see README).
 from __future__ import annotations
 
 import hashlib
+import os
 
 from app.schemas.request import AttachmentDoc, ContentGenerationRequest
 from app.schemas.state import RetrievalStatus, RetrievedChunk
@@ -42,6 +43,8 @@ class LocalKBService(RAGService):
     def _ensure_loaded(self, mode: str) -> None:
         if mode != "materials_only" and self._bm25 is None:
             self._chunks = kb.load_all_chunks()
+            if os.environ.get("KB_FILTER_JUNK", "1") == "1":
+                self._chunks = [chunk for chunk in self._chunks if not kb.is_structural_junk(chunk)]
             self._bm25 = kb.load_bm25_index(self._chunks)
         if self.method != "keyword" and self._embedder is None and (mode != "platform" or self._chunks):
             self._embedder = kb.get_embedder(api_key=self.api_key or None)
