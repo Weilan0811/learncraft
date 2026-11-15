@@ -27,6 +27,7 @@
 ```
 
 - `knowledge_base_ids` 已进入请求契约并持久化。
+- 当前本地库由服务配置决定，`knowledge_base_ids` 尚不承担分库授权。通过 `kb_mode` 选择平台库、仅附件或融合检索；通过 `attachments: [{filename, content}]` 传入材料正文。复习请求会保留原材料和检索模式。
 - 检索状态通过任务 `progress.knowledge_base` 返回：`used / status / chunk_count / message`。
 - 检索未启用时返回 `status="disabled"`、空片段，生成继续；启用后片段以 `RetrievedChunk` 进入状态：
 

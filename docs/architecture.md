@@ -82,3 +82,9 @@ SQLite 启动时由 `SQLModelTaskRepository` 执行 Alembic `upgrade head`；无
 | `POST /api/content-generation/tasks/{id}/resources/{rid}/retry` | 重试单个资源 |
 
 学习相关接口见 [learning-loop.md](learning-loop.md)。
+
+## 自建知识库
+
+`knowledge/engine` 提供独立的切分、关键词／向量索引和检索能力，`LocalKBService` 负责后端适配。平台材料与任务附件分别检索；仅附件模式不依赖平台索引。建库和文档增删由明确的维护命令执行，单个本地 Qdrant 目录使用单进程访问。
+
+使用说明见 [知识库文档](../knowledge/README.md)，设计依据见 [知识库设计](knowledge-base-design.md)。语料、索引和实验资料不随公开版本分发。
