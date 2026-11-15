@@ -487,10 +487,12 @@ class BM25Index:
         self.doc_ids = [c.chunk_id for c in chunks]
         # Field boosting: repeat the title so heading tokens outweigh body noise.
         self.corpus_tokens = [tokenize(f"{c.title} {c.title} {c.section} {c.text}") for c in chunks]
-        self.bm25 = BM25Okapi(self.corpus_tokens)
+        self.bm25 = BM25Okapi(self.corpus_tokens) if self.corpus_tokens else None
 
     def search(self, query: str, top_k: int = 10, min_rel: float = 0.0) -> list[tuple[Chunk, float]]:
         """min_rel drops weak tail results (score < min_rel * best score)."""
+        if self.bm25 is None:
+            return []
         scores = self.bm25.get_scores(tokenize(query))
         ranked = sorted(zip(self.doc_ids, scores), key=lambda x: x[1], reverse=True)[:top_k]
         best = ranked[0][1] if ranked and ranked[0][1] > 0 else 0.0
@@ -508,7 +510,7 @@ class BM25Index:
 
 
 def load_bm25_index(chunks: list[Chunk] | None = None, force_rebuild: bool = False) -> BM25Index:
-    chunks = chunks or load_all_chunks(force_rebuild=force_rebuild)
+    chunks = chunks if chunks is not None else load_all_chunks(force_rebuild=force_rebuild)
     return BM25Index(chunks)
 
 

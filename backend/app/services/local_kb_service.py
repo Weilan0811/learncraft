@@ -39,10 +39,11 @@ class LocalKBService(RAGService):
         # so the same uploaded material is embedded once per process.
         self._vector_cache: dict[str, list[list[float]]] = {}
 
-    def _ensure_loaded(self) -> None:
-        if self._bm25 is None:
+    def _ensure_loaded(self, mode: str) -> None:
+        if mode != "materials_only" and self._bm25 is None:
             self._chunks = kb.load_all_chunks()
             self._bm25 = kb.load_bm25_index(self._chunks)
+        if self.method != "keyword" and self._embedder is None and (mode != "platform" or self._chunks):
             self._embedder = kb.get_embedder()
 
     def _build_query(self, request: ContentGenerationRequest, stage: str, section_hint: str | None) -> str:
@@ -69,12 +70,14 @@ class LocalKBService(RAGService):
         return chunks
 
     def _search_attachments(self, query: str, attachments: list[AttachmentDoc], top_k: int) -> list[tuple[kb.Chunk, float]]:
-        assert self._embedder is not None
         chunks = self._attachment_chunks(attachments)
         if not chunks:
             return []
         # Per-task BM25 (fresh, never persisted) + in-memory cosine search.
         kw = kb.BM25Index(chunks).search(query, top_k=20)
+        if self.method == "keyword":
+            return kw[:top_k]
+        assert self._embedder is not None
         vec = kb.cosine_search(query, chunks, self._embedder, top_k=20, vector_cache=self._vector_cache)
         fused = kb.rrf_fuse([[c.chunk_id for c, _ in kw], [c.chunk_id for c, _ in vec]])
         chunk_by_id = {c.chunk_id: c for c in chunks}
@@ -82,16 +85,15 @@ class LocalKBService(RAGService):
         return [(chunk_by_id[cid], score) for cid, score in ranked if cid in chunk_by_id]
 
     def retrieve(self, request: ContentGenerationRequest, stage: str, section_hint: str | None = None) -> RetrievalResult:
-        self._ensure_loaded()
-        assert self._chunks is not None and self._bm25 is not None and self._embedder is not None
         query = self._build_query(request, stage, section_hint)
         mode = request.kb_mode
         attachments = list(request.attachments)
         try:
+            self._ensure_loaded(mode)
             if mode == "materials_only":
                 results = self._search_attachments(query, attachments, top_k=self.top_k)
             elif mode == "fused":
-                platform = kb.search(self.method, query, self._chunks, self._bm25, self._embedder, top_k=self.top_k)
+                platform = kb.search(self.method, query, self._chunks, self._bm25, self._embedder, top_k=self.top_k) if self._chunks else []
                 attached = self._search_attachments(query, attachments, top_k=self.top_k)
                 fused = kb.rrf_fuse(
                     [[c.chunk_id for c, _ in platform], [c.chunk_id for c, _ in attached]],
@@ -101,7 +103,7 @@ class LocalKBService(RAGService):
                 ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)[: self.top_k]
                 results = [(chunk_by_id[cid], score) for cid, score in ranked if cid in chunk_by_id]
             else:
-                results = kb.search(self.method, query, self._chunks, self._bm25, self._embedder, top_k=self.top_k)
+                results = kb.search(self.method, query, self._chunks, self._bm25, self._embedder, top_k=self.top_k) if self._chunks else []
         except Exception as exc:
             self.last_diagnostics = {
                 "status": "failed",
