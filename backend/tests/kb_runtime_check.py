@@ -1,5 +1,8 @@
 import json
+import os
 import sys
+import shutil
+import subprocess
 from dataclasses import asdict
 from pathlib import Path
 
@@ -30,6 +33,13 @@ assert isinstance(result, RetrievalResult)
 assert result.status.state in {"ok", "empty"}
 assert junk.chunk_id not in service._bm25.doc_ids
 assert len(service._bm25.chunks) == len(chunks)
+os.environ["KB_FILTER_JUNK"] = "0"
+unfiltered = LocalKBService(method="keyword")
+assert unfiltered.retrieve(request, "planning").status.state in {"ok", "empty"}
+assert junk.chunk_id in unfiltered._bm25.doc_ids
+assert kb.indexable_chunks([junk]) == [junk]
+os.environ["KB_FILTER_JUNK"] = "1"
+assert kb.indexable_chunks([junk]) == []
 cache.write_text("invalid JSON", encoding="utf-8")
 materials = ContentGenerationRequest(**{**request.model_dump(), "kb_mode":"materials_only", "attachments":[{"filename":"README.md", "content":texts[0]}]})
 attachment_service = LocalKBService(method="keyword")
@@ -41,3 +51,13 @@ cloud = LocalKBService(api_key="credential-constructor-check")
 cloud._ensure_loaded("platform")
 assert cloud._embedder.api_key == "credential-constructor-check"
 cloud._embedder.client.close()
+
+kb.KB_RAW_DIR.mkdir(parents=True)
+shutil.copyfile(root / "knowledge/examples/workbench-guide.md", kb.KB_RAW_DIR / "workbench-guide.md")
+kb.load_all_chunks(force_rebuild=True)
+queried = subprocess.run(
+    [sys.executable, "-m", "knowledge.scripts.query", "资源重试", "--method", "keyword"],
+    capture_output=True, text=True, encoding="utf-8", check=True,
+)
+hits = json.loads(queried.stdout)
+assert hits and all(hit["title"] == "教学内容工作台使用说明" for hit in hits)

@@ -1,27 +1,3 @@
-"""Dynamic ingest: single-file mechanical closed loop (unit 4, slimmed).
-
-Scope note (2026-11-14, v8 verdict): the LLM compilation half of the original
-unit-4 design (summaries/concepts incremental update) is DEFERRED -- the wiki
-retrieval channel was ruled out of the main path by the v8 trap quadrant, so
-compiled pages currently have no runtime consumer. What remains is the
-mechanical spine, which is what "the KB can grow and shrink without full
-rebuild" actually needs:
-
-    md file -> chunk -> junk filter -> chunks.jsonl append -> Qdrant upsert
-            -> BM25 rebuild -> lint gates -> ingest log
-
-Design invariants (mirrors build_kb.py):
-- chunks.jsonl and the chunk_id space are NEVER filtered (v8 eval assets stay
-  valid); junk chunks are recorded but excluded from the indexes.
-- Point ids are stable UUIDs derived from chunk_id; replacing a document
-  removes all its previous points by doc_id, including legacy integer ids.
-- Human-in-the-loop by design: ingest is a manual command, never a daemon.
-
-Usage (repo root, PYTHONPATH=.):
-    python knowledge/scripts/ingest.py --file knowledge/raw/<doc>.md
-    python knowledge/scripts/ingest.py --file <staging path>   # copied into raw/
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -42,17 +18,22 @@ from knowledge.engine import kb_engine as kb
 
 # --- lint gates (mechanical, zero-LLM; ingest fails closed on any gate) ------
 
+
 def lint_frontmatter(meta: dict[str, str]) -> list[str]:
     """G1: required fields present and meaningful."""
     problems = []
     if not meta.get("title", "").strip():
         problems.append("G1 fail: frontmatter 'title' is required")
     if not meta.get("topic", "").strip():
-        problems.append("G1 warn-fail: frontmatter 'topic' is required (use 'general' if unsure)")
+        problems.append(
+            "G1 warn-fail: frontmatter 'topic' is required (use 'general' if unsure)"
+        )
     return problems
 
 
-def lint_chunk_ids(new_chunks: list[kb.Chunk], existing_ids: set[str], doc_id: str) -> list[str]:
+def lint_chunk_ids(
+    new_chunks: list[kb.Chunk], existing_ids: set[str], doc_id: str
+) -> list[str]:
     """G2: chunk_id conflicts. Same-doc overlap = legitimate re-ingest (overwrite);
     cross-doc collision is impossible by construction (doc_id is in the id) but
     is still checked defensively."""
@@ -60,7 +41,9 @@ def lint_chunk_ids(new_chunks: list[kb.Chunk], existing_ids: set[str], doc_id: s
     new_ids = {c.chunk_id for c in new_chunks}
     foreign = new_ids & {i for i in existing_ids if not i.startswith(f"{doc_id}::")}
     if foreign:
-        problems.append(f"G2 fail: chunk_id collision with other docs: {sorted(foreign)[:3]}")
+        problems.append(
+            f"G2 fail: chunk_id collision with other docs: {sorted(foreign)[:3]}"
+        )
     return problems
 
 
@@ -71,9 +54,13 @@ def lint_index_parity(filtered_chunks: list[kb.Chunk], collection: str) -> list[
     q_count = client.count(collection, exact=True).count
     bm25_n = _bm25_size()
     if q_count != len(filtered_chunks):
-        problems.append(f"G3 fail: qdrant count {q_count} != filtered chunks {len(filtered_chunks)}")
+        problems.append(
+            f"G3 fail: qdrant count {q_count} != filtered chunks {len(filtered_chunks)}"
+        )
     if bm25_n is not None and bm25_n != len(filtered_chunks):
-        problems.append(f"G3 fail: bm25 corpus {bm25_n} != filtered chunks {len(filtered_chunks)}")
+        problems.append(
+            f"G3 fail: bm25 corpus {bm25_n} != filtered chunks {len(filtered_chunks)}"
+        )
     return problems
 
 
@@ -89,6 +76,7 @@ def _bm25_size() -> int | None:
 
 
 # --- core operations (importable, so experiments run in-process) -------------
+
 
 def _append_cache(chunks: list[kb.Chunk]) -> None:
     """Append chunk lines to chunks.jsonl, preserving the no-trailing-newline
@@ -123,7 +111,12 @@ def _rewrite_cache_without(doc_id: str) -> None:
 def _log(entry: dict) -> None:
     log_path = kb.KB_INDEX_DIR / "ingest_log.jsonl"
     with log_path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps({"ts": time.strftime("%Y-%m-%d %H:%M:%S"), **entry}, ensure_ascii=False) + "\n")
+        f.write(
+            json.dumps(
+                {"ts": time.strftime("%Y-%m-%d %H:%M:%S"), **entry}, ensure_ascii=False
+            )
+            + "\n"
+        )
 
 
 def _sync_meta(filtered_all: list[kb.Chunk]) -> None:
@@ -133,7 +126,9 @@ def _sync_meta(filtered_all: list[kb.Chunk]) -> None:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
     meta["docs"] = len({c.doc_id for c in filtered_all})
     meta["chunks"] = len(filtered_all)
-    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    meta_path.write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def ingest_file(file: Path, dry_run: bool = False) -> dict:
@@ -153,17 +148,22 @@ def ingest_file(file: Path, dry_run: bool = False) -> dict:
         raise RuntimeError(f"ingest aborted: {target.name} produced zero chunks")
 
     # -- lint G1/G2 (fail closed)
-    problems = lint_frontmatter(meta) + lint_chunk_ids(new_chunks, {c.chunk_id for c in kb.load_all_chunks()}, doc_id)
+    problems = lint_frontmatter(meta) + lint_chunk_ids(
+        new_chunks, {c.chunk_id for c in kb.load_all_chunks()}, doc_id
+    )
     if problems:
         raise RuntimeError("ingest aborted by lint gates:\n  " + "\n  ".join(problems))
 
-    junk = [c for c in new_chunks if kb.is_structural_junk(c)]
-    indexable = [c for c in new_chunks if not kb.is_structural_junk(c)]
+    indexable = kb.indexable_chunks(new_chunks)
+    junk = [c for c in new_chunks if c not in indexable]
 
     if dry_run:
         return {
-            "doc_id": doc_id, "chunks": len(new_chunks), "junk": len(junk),
-            "dry_run": True, "lint": "PASS",
+            "doc_id": doc_id,
+            "chunks": len(new_chunks),
+            "junk": len(junk),
+            "dry_run": True,
+            "lint": "PASS",
         }
 
     embedder = kb.get_embedder()
@@ -174,7 +174,7 @@ def ingest_file(file: Path, dry_run: bool = False) -> dict:
     _append_cache(new_chunks)
 
     # -- index sync
-    filtered_all = [c for c in kb.load_all_chunks() if not kb.is_structural_junk(c)]
+    filtered_all = kb.indexable_chunks(kb.load_all_chunks())
     bm25 = kb.BM25Index(filtered_all)
     bm25.save()
 
@@ -184,12 +184,23 @@ def ingest_file(file: Path, dry_run: bool = False) -> dict:
 
     if not client.collection_exists(collection):
         kb.ensure_vector_index([], embedder, collection=collection)
-    client.delete(collection, points_selector=Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]))
+    client.delete(
+        collection,
+        points_selector=Filter(
+            must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]
+        ),
+    )
     points = [
         PointStruct(
             id=kb.chunk_point_id(c.chunk_id),
             vector=vec,
-            payload={"chunk_id": c.chunk_id, "doc_id": c.doc_id, "title": c.title, "topic": c.topic, "scope": c.scope},
+            payload={
+                "chunk_id": c.chunk_id,
+                "doc_id": c.doc_id,
+                "title": c.title,
+                "topic": c.topic,
+                "scope": c.scope,
+            },
         )
         for c, vec in zip(indexable, vectors)
     ]
@@ -199,7 +210,10 @@ def ingest_file(file: Path, dry_run: bool = False) -> dict:
     # -- lint G3 (post-sync parity)
     problems = lint_index_parity(filtered_all, collection)
     if problems:
-        raise RuntimeError("ingest sync failed parity check (run build_kb.py --rebuild to recover):\n  " + "\n  ".join(problems))
+        raise RuntimeError(
+            "ingest sync failed parity check (run build_kb.py --rebuild to recover):\n  "
+            + "\n  ".join(problems)
+        )
 
     _sync_meta(filtered_all)
     summary = {
@@ -224,7 +238,9 @@ def retract_doc(doc_id: str, dry_run: bool = False) -> dict:
     all_chunks = kb.load_all_chunks()
     doc_chunks = [c for c in all_chunks if c.doc_id == doc_id]
     if not doc_chunks:
-        raise RuntimeError(f"retract aborted: doc_id {doc_id!r} has no chunks in the cache")
+        raise RuntimeError(
+            f"retract aborted: doc_id {doc_id!r} has no chunks in the cache"
+        )
 
     if dry_run:
         return {"doc_id": doc_id, "chunks": len(doc_chunks), "dry_run": True}
@@ -240,7 +256,7 @@ def retract_doc(doc_id: str, dry_run: bool = False) -> dict:
     _rewrite_cache_without(doc_id)
 
     # 3. index sync
-    filtered_all = [c for c in kb.load_all_chunks() if not kb.is_structural_junk(c)]
+    filtered_all = kb.indexable_chunks(kb.load_all_chunks())
     bm25 = kb.BM25Index(filtered_all)
     bm25.save()
 
@@ -250,19 +266,23 @@ def retract_doc(doc_id: str, dry_run: bool = False) -> dict:
     client = kb.get_qdrant()
     client.delete(
         collection,
-        points_selector=Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]),
+        points_selector=Filter(
+            must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))]
+        ),
     )
 
     problems = lint_index_parity(filtered_all, collection)
     if problems:
-        raise RuntimeError("retract sync failed parity check (run build_kb.py --rebuild to recover):\n  " + "\n  ".join(problems))
+        raise RuntimeError(
+            "retract sync failed parity check (run build_kb.py --rebuild to recover):\n  "
+            + "\n  ".join(problems)
+        )
 
     _sync_meta(filtered_all)
     summary = {
         "action": "retract",
         "doc_id": doc_id,
         "chunks_removed": len(doc_chunks),
-        "wiki_pages_touched": 0,  # slimmed unit 4: wiki layer untouched; broken source_refs degrade gracefully
         "lint": "PASS",
         "seconds": round(time.perf_counter() - t0, 1),
     }
@@ -271,8 +291,12 @@ def retract_doc(doc_id: str, dry_run: bool = False) -> dict:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="KB dynamic ingest / retract (mechanical spine)")
-    ap.add_argument("--file", help="markdown file to ingest (copied into knowledge/raw/ if outside)")
+    ap = argparse.ArgumentParser(
+        description="KB dynamic ingest / retract (mechanical spine)"
+    )
+    ap.add_argument(
+        "--file", help="markdown file to ingest (copied into knowledge/raw/ if outside)"
+    )
     ap.add_argument("--retract", help="doc_id to retract")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
