@@ -61,6 +61,12 @@ class SocialPostGenerator:
             spec = self._generate_fallback(state)
             spec = spec.model_copy(update={"metadata": {**spec.metadata, "generation_mode": "stub_fallback"}})
         spec = self._normalize_citation_refs(state, spec)
+        if not bool((state.normalized_request or {}).get("include_images", True)):
+            # Keep slots/assets/validator consistent when images are disabled:
+            # empty slots mean validate_final has nothing to require and no image
+            # calls happen downstream. (Fixes the "include_images=false but required
+            # slots still validated" deadlock, task_cdef46af7e90.)
+            return spec.model_copy(update={"image_slots": [], "image_assets": []})
         return self._generate_image_assets(state, spec)
 
     def _generate_with_llm(self, state: ContentGenerationState) -> SocialPostSpec:
@@ -75,6 +81,16 @@ class SocialPostGenerator:
             draft = cast(WechatArticleDraft, llm_service.generate_structured(draft_prompt, WechatArticleDraft))
         except Exception as exc:
             raise SocialPostGenerationError("social_post_draft_generation", exc) from exc
+        if not bool((state.normalized_request or {}).get("include_images", True)):
+            # Skip the image-slot planning LLM call entirely when images are disabled.
+            return SocialPostSpec(
+                id=f"social_{state.request_id}",
+                title=draft.meta.title,
+                metadata={"language": (state.normalized_request or {}).get("language", "zh-CN"), "generation_mode": "llm"},
+                outline=outline,
+                draft=draft,
+                image_slots=[],
+            )
         image_prompt = self._prompt("generator", "social_post_image.md", state, draft=draft.model_dump(mode="json"))
         try:
             slot_plan = cast(ImageSlotPlan, llm_service.generate_structured(image_prompt, ImageSlotPlan))

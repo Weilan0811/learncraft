@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     image_model: str = "gpt-image-2"
     image_resolution: Literal["1k", "2k", "4k"] = "1k"
     tts_provider: str = "bailian"
+    # "local" switches retrieval to the self-hosted knowledge base module;
+    # any other value keeps retrieval disabled (no external KB API exists).
+    kb_provider: Literal["external", "local"] = "external"
+    kb_retrieval_top_k: int = 5
     tts_model: str = "qwen3-tts-flash"
     tts_person1_voice: str = "Ethan"
     tts_person2_voice: str = "Cherry"

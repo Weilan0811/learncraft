@@ -99,9 +99,94 @@ flowchart LR
 
 - **内容类型注册表**：每种内容有独立的大纲约束、生成器、校验器和导出格式。
 - **Provider 工厂**：文本、图片、语音可分别切换服务商，不绑死单一模型。
+- **本地知识库**：BM25 + 向量混合检索、动态 ingest/retract、多目标 qrels 评测体系（见下方「知识库引擎」）。
 - **任务与资源仓储**：任务、产物、资源、引用分表存储，失败资源可单独重试。
 - **学习服务**：会话、事件、摘要、brief 独立于生成流程，可按需启用。
 - **导出器**：PDF、Markdown、HTML、Slide JSON、图片资源、音频各自独立。
+
+## 🗄️ 知识库引擎（Knowledge Base）
+
+生成链路的检索层完全自建：**自备语料、本地索引、四路检索、自带评测**，不依赖外部知识库服务。
+
+### 快速开始
+
+**1. 准备语料**：把你的 markdown 文档放入 `knowledge/raw/`，每篇带 frontmatter：
+
+```markdown
+---
+title: 文档标题
+topic: 主题标签（如 agents / retrieval，用于路由与分层统计）
+source_url: 原始出处（可选）
+---
+
+正文……
+```
+
+**2. 建库**（切分 800/120、结构垃圾过滤、向量化、BM25 索引一次完成）：
+
+```bash
+python knowledge/scripts/build_kb.py --rebuild
+```
+
+**3. 检索**（四策略统一入口，CPU/GPU 均可运行）：
+
+```python
+import sys; sys.path.insert(0, ".")
+from knowledge.engine import kb_engine as kb
+
+chunks = kb.load_all_chunks()          # 全量 chunk（含元数据）
+bm25 = kb.load_bm25_index(chunks)      # jieba 分词 BM25
+embedder = kb.get_embedder()           # 默认本地 BGE-M3，可用 KB_EMBEDDER=bailian 切云端
+
+results = kb.search("hybrid", "如何设计多智能体的任务编排", chunks, bm25, embedder, top_k=10)
+# method: keyword | vector | hybrid | router（查询感知加权融合）
+for chunk, score in results:
+    print(f"{score:.3f}  {chunk.doc_id}::{chunk.section}")
+```
+
+**4. 动态增删**（human-in-the-loop：人工审查后手动执行，lint 三查不过即中止）：
+
+```bash
+python knowledge/scripts/ingest.py --file knowledge/raw/new-doc.md   # 增量入库（秒级）
+python knowledge/scripts/ingest.py --retract <doc_id>                # 撤除（raw 移入 retracted/ 可逆）
+```
+
+### 本地模型备忘
+
+| 模型 | 用途 | 获取与配置 |
+|---|---|---|
+| `BAAI/bge-m3`（~2.3GB） | 默认稠密向量（1024 维，8K 上下文） | `modelscope download --model BAAI/bge-m3 --local_dir .models/bge-m3`；路径自动探测 `.models/bge-m3`，或用 `BGE_M3_PATH` 指定 |
+| `BAAI/bge-reranker-v2-m3`（可选） | 交叉编码精排（实验结论：对任务级长 query 不建议启用，见评测报告） | 下载到 `.models/bge-reranker-v2-m3`，或 `BGE_RERANKER_PATH` 指定 |
+
+环境变量：`KB_EMBEDDER=bge_m3|bailian`（向量后端，bailian 回滚到云端 embedding）、`KB_FILTER_JUNK=1`（结构垃圾过滤开关，默认开）。
+
+### 评测体系（Evaluation）
+
+仓库自带完整的检索评测管线（脚本在 `knowledge/scripts/`），**评测数据不对你的语料预置——对自建语料跑一遍管线即可产出**：
+
+1. **query 快照**：从任务画像采样生成多措辞层级的评测 query（`gen_v8_queries.py`）
+2. **多目标 qrels**：BM25 候选池 + LLM 盲判扩容（TREC pooling 惯例），源 GT 与判 2 扩容构成 strict/lenient 双口径（`build_qrels.py`）
+3. **双口径打分**：doc/chunk recall@k、MRR，全部带 Wilson 95% CI，按 slice 分层（`bench_v8.py`）
+
+本库语料上的实测结论（方法与口径详见 [评测报告](knowledge/eval/results/report-v8-final.md)）：
+
+| 臂 | docR@10 | strict cR@10 |
+|---|---|---|
+| router（加权融合） | **71.5%** [63–79] | 42.2% [32–52] |
+| vector | 67.7% [59–75] | **42.2%** [32–52] |
+| hybrid | 68.5% [60–76] | 41.1% [32–51] |
+| keyword（BM25） | 31.5% [24–40] | 27.8% [20–38] |
+
+同一引擎换 query 分布（合成问句 vs 任务级拼接）实测相差 **12pp**——query 形态是比索引调优更大的杠杆；交叉编码器精排与 wiki 检索通道均经实验裁决未进主链路（负结果与机制诊断在报告中留档）。
+
+### 知识演化层（LLM Wiki）
+
+`knowledge/WIKI_SCHEMA.md` 定义了 Karpathy LLM Wiki 模式的领域实例化（raw 不可变 / 编译层 LLM 维护 / schema 约束三方）。`compile_wiki.py` 生成概念蒸馏页与双链引用图，定位是 **citation 导航与知识地图**，不承担检索召回（大实验裁决详见评测报告）。
+
+### 语料与数据合规
+
+- **知识内容零进仓库**：语料、评测 query、qrels 等衍生的评测数据均只存本地（`.gitignore` 已固化），仓库只交付"组织你自己的语料"的能力。
+- **抓取工具保持中性**：不内置任何目标站点清单，目标 URL 由使用者自行提供。
 
 ## 快速开始
 
@@ -153,10 +238,14 @@ CONTENT_GENERATOR_APIMART_API_KEY=sk-...
 # 语音合成（播客需要）
 CONTENT_GENERATOR_TTS_PROVIDER=bailian
 CONTENT_GENERATOR_TTS_MODEL=qwen3-tts-flash
+
+# 本地知识库检索（可选，默认关闭；开启见下方「知识库引擎」章节）
+# CONTENT_GENERATOR_KB_PROVIDER=local
 ```
 
 - 文本 provider 可选 `bailian` / `deepseek`，图片 provider 可选 `apimart` / `bailian`。
 - 播客复用 `CONTENT_GENERATOR_BAILIAN_API_KEY`；互动讲义只需要文本能力。
+- 知识库检索默认关闭；要接入自托管检索，设置 `CONTENT_GENERATOR_KB_PROVIDER=local`。
 - 数据库默认是仓库根目录下的 SQLite，首次启动自动建表；换 MySQL 时配置 `CONTENT_GENERATOR_DATABASE_URL` 或 `DB_*` 分组。
 - 改完 `.env` 后重启后端生效。完整配置见 [.env.example](.env.example)。
 
