@@ -594,14 +594,14 @@ class BGEM3Embedder:
         return out
 
 
-def get_embedder(kind: str | None = None) -> Embedder:
+def get_embedder(kind: str | None = None, *, api_key: str | None = None) -> Embedder:
     """Embedder factory. Default follows KB_EMBEDDER env (bge_m3 since unit 3.1;
     set KB_EMBEDDER=bailian to roll back to the cloud embedder + kb_chunks collection)."""
     kind = (kind or _active_embedder_kind()).lower()
     if kind == "bge_m3":
         return BGEM3Embedder()
     if kind == "bailian":
-        return BailianEmbedder()
+        return BailianEmbedder(api_key=api_key)
     raise ValueError(f"unknown embedder kind: {kind!r} (expected 'bge_m3' or 'bailian')")
 
 

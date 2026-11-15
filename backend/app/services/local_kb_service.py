@@ -44,7 +44,7 @@ class LocalKBService(RAGService):
             self._chunks = kb.load_all_chunks()
             self._bm25 = kb.load_bm25_index(self._chunks)
         if self.method != "keyword" and self._embedder is None and (mode != "platform" or self._chunks):
-            self._embedder = kb.get_embedder()
+            self._embedder = kb.get_embedder(api_key=self.api_key or None)
 
     def _build_query(self, request: ContentGenerationRequest, stage: str, section_hint: str | None) -> str:
         parts = [request.topic, request.user_prompt, stage]
