@@ -12,6 +12,11 @@ dist/
 
 .env
 .env.local
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
 
 storage/
 .worktrees/
@@ -19,20 +24,10 @@ worktrees/
 
 .idea/
 
-# KB evaluation raw outputs are regenerable by knowledge/scripts/bench_retrieval.py; keep only the report-*.md conclusions
-knowledge/eval/results/raw-*.json
-
-# Knowledge content is copyright-restricted and stays LOCAL ONLY (unit 2.5 decision).
-# The repo ships the KB-building capability (schema, engine, scripts); users bring their own corpus.
+# 自有材料和本地索引不进入版本控制；公开示例放在 knowledge/examples。
 knowledge/raw/
 knowledge/wiki/
-knowledge/eval/local/
-# Eval query sets are corpus-derived DATA -- pipeline ships, data stays local (unit 6).
-knowledge/eval/queries.jsonl
-# Seed task pool stays local too (unit 3.4): it is eval-snapshot raw material,
-# regenerable and tied to the local corpus topics.
-knowledge/eval/seeds/
+knowledge/eval/
 
-# Local model weights (BGE-M3, reranker) follow the same stay-local discipline as the corpus:
-# download via `modelscope download --model BAAI/bge-m3 --local_dir .models/bge-m3`, never commit.
+# 模型权重由使用者自行下载。
 .models/

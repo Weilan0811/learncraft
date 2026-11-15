@@ -1,16 +1,3 @@
-"""Self-hosted knowledge-base service wired into the generation pipeline.
-
-Implements the RAGService contract on top of knowledge/raw/ (BM25 + dense
-vectors fused with query-type-routed weighted RRF, see kb_engine). Replaces
-the external lab KB API whose outage used to starve the whole pipeline.
-
-Task attachments (kb_mode): user-supplied materials live in their own
-per-task namespace — a throwaway in-memory BM25 index plus on-the-fly cosine
-search with content-hash caching. Small namespaces don't justify a shared
-index write; a persistent personal KB would move them into the shared
-collection behind a scope filter (multi-tenant strategy, see README).
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -28,7 +15,9 @@ _FUSED_WEIGHTS = [1.0, 1.3]  # [platform, attachment]
 
 
 class LocalKBService(RAGService):
-    def __init__(self, top_k: int = 5, method: str = "router", api_key: str = "") -> None:
+    def __init__(
+        self, top_k: int = 5, method: str = "router", api_key: str = ""
+    ) -> None:
         self.top_k = top_k
         self.method = method
         self.api_key = api_key
@@ -44,12 +33,20 @@ class LocalKBService(RAGService):
         if mode != "materials_only" and self._bm25 is None:
             self._chunks = kb.load_all_chunks()
             if os.environ.get("KB_FILTER_JUNK", "1") == "1":
-                self._chunks = [chunk for chunk in self._chunks if not kb.is_structural_junk(chunk)]
+                self._chunks = [
+                    chunk for chunk in self._chunks if not kb.is_structural_junk(chunk)
+                ]
             self._bm25 = kb.load_bm25_index(self._chunks)
-        if self.method != "keyword" and self._embedder is None and (mode != "platform" or self._chunks):
+        if (
+            self.method != "keyword"
+            and self._embedder is None
+            and (mode != "platform" or self._chunks)
+        ):
             self._embedder = kb.get_embedder(api_key=self.api_key or None)
 
-    def _build_query(self, request: ContentGenerationRequest, stage: str, section_hint: str | None) -> str:
+    def _build_query(
+        self, request: ContentGenerationRequest, stage: str, section_hint: str | None
+    ) -> str:
         parts = [request.topic, request.user_prompt, stage]
         if request.system_prompt:
             parts.append(request.system_prompt)
@@ -72,7 +69,9 @@ class LocalKBService(RAGService):
             )
         return chunks
 
-    def _search_attachments(self, query: str, attachments: list[AttachmentDoc], top_k: int) -> list[tuple[kb.Chunk, float]]:
+    def _search_attachments(
+        self, query: str, attachments: list[AttachmentDoc], top_k: int
+    ) -> list[tuple[kb.Chunk, float]]:
         chunks = self._attachment_chunks(attachments)
         if not chunks:
             return []
@@ -81,13 +80,22 @@ class LocalKBService(RAGService):
         if self.method == "keyword":
             return kw[:top_k]
         assert self._embedder is not None
-        vec = kb.cosine_search(query, chunks, self._embedder, top_k=20, vector_cache=self._vector_cache)
+        vec = kb.cosine_search(
+            query, chunks, self._embedder, top_k=20, vector_cache=self._vector_cache
+        )
         fused = kb.rrf_fuse([[c.chunk_id for c, _ in kw], [c.chunk_id for c, _ in vec]])
         chunk_by_id = {c.chunk_id: c for c in chunks}
         ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)[:top_k]
-        return [(chunk_by_id[cid], score) for cid, score in ranked if cid in chunk_by_id]
+        return [
+            (chunk_by_id[cid], score) for cid, score in ranked if cid in chunk_by_id
+        ]
 
-    def retrieve(self, request: ContentGenerationRequest, stage: str, section_hint: str | None = None) -> RetrievalResult:
+    def retrieve(
+        self,
+        request: ContentGenerationRequest,
+        stage: str,
+        section_hint: str | None = None,
+    ) -> RetrievalResult:
         query = self._build_query(request, stage, section_hint)
         mode = request.kb_mode
         attachments = list(request.attachments)
@@ -96,17 +104,53 @@ class LocalKBService(RAGService):
             if mode == "materials_only":
                 results = self._search_attachments(query, attachments, top_k=self.top_k)
             elif mode == "fused":
-                platform = kb.search(self.method, query, self._chunks, self._bm25, self._embedder, top_k=self.top_k) if self._chunks else []
-                attached = self._search_attachments(query, attachments, top_k=self.top_k)
+                platform = (
+                    kb.search(
+                        self.method,
+                        query,
+                        self._chunks,
+                        self._bm25,
+                        self._embedder,
+                        top_k=self.top_k,
+                    )
+                    if self._chunks
+                    else []
+                )
+                attached = self._search_attachments(
+                    query, attachments, top_k=self.top_k
+                )
                 fused = kb.rrf_fuse(
-                    [[c.chunk_id for c, _ in platform], [c.chunk_id for c, _ in attached]],
+                    [
+                        [c.chunk_id for c, _ in platform],
+                        [c.chunk_id for c, _ in attached],
+                    ],
                     weights=_FUSED_WEIGHTS,
                 )
-                chunk_by_id = {c.chunk_id: c for c in [*self._chunks, *self._attachment_chunks(attachments)]}
-                ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)[: self.top_k]
-                results = [(chunk_by_id[cid], score) for cid, score in ranked if cid in chunk_by_id]
+                chunk_by_id = {
+                    c.chunk_id: c
+                    for c in [*self._chunks, *self._attachment_chunks(attachments)]
+                }
+                ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)[
+                    : self.top_k
+                ]
+                results = [
+                    (chunk_by_id[cid], score)
+                    for cid, score in ranked
+                    if cid in chunk_by_id
+                ]
             else:
-                results = kb.search(self.method, query, self._chunks, self._bm25, self._embedder, top_k=self.top_k) if self._chunks else []
+                results = (
+                    kb.search(
+                        self.method,
+                        query,
+                        self._chunks,
+                        self._bm25,
+                        self._embedder,
+                        top_k=self.top_k,
+                    )
+                    if self._chunks
+                    else []
+                )
         except Exception as exc:
             self.last_diagnostics = {
                 "status": "failed",
@@ -117,7 +161,9 @@ class LocalKBService(RAGService):
             }
             return RetrievalResult(
                 chunks=[],
-                status=RetrievalStatus(state="failed", chunk_count=0, message=f"本地知识库检索失败：{exc}"),
+                status=RetrievalStatus(
+                    state="failed", chunk_count=0, message=f"本地知识库检索失败：{exc}"
+                ),
             )
         self.last_diagnostics = {
             "status": "ok",
@@ -139,22 +185,22 @@ class LocalKBService(RAGService):
         )
         return RetrievalResult(
             chunks=[
-            RetrievedChunk(
-                id=chunk.chunk_id,
-                source_id=chunk.doc_id,
-                source_title=chunk.title,
-                content=chunk.text,
-                score=float(score),
-                metadata={
-                    "stage": stage,
-                    "section_hint": section_hint or "",
-                    "topic": chunk.topic,
-                    "section": chunk.section,
-                    "source_url": chunk.source_url,
-                    "scope": chunk.scope,
-                },
-            )
-            for chunk, score in results
+                RetrievedChunk(
+                    id=chunk.chunk_id,
+                    source_id=chunk.doc_id,
+                    source_title=chunk.title,
+                    content=chunk.text,
+                    score=float(score),
+                    metadata={
+                        "stage": stage,
+                        "section_hint": section_hint or "",
+                        "topic": chunk.topic,
+                        "section": chunk.section,
+                        "source_url": chunk.source_url,
+                        "scope": chunk.scope,
+                    },
+                )
+                for chunk, score in results
             ],
             status=status,
         )

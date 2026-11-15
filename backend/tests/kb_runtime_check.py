@@ -1,5 +1,7 @@
 import json
 import sys
+import shutil
+import subprocess
 from dataclasses import asdict
 from pathlib import Path
 
@@ -41,3 +43,13 @@ cloud = LocalKBService(api_key="credential-constructor-check")
 cloud._ensure_loaded("platform")
 assert cloud._embedder.api_key == "credential-constructor-check"
 cloud._embedder.client.close()
+
+kb.KB_RAW_DIR.mkdir(parents=True)
+shutil.copyfile(root / "knowledge/examples/workbench-guide.md", kb.KB_RAW_DIR / "workbench-guide.md")
+kb.load_all_chunks(force_rebuild=True)
+queried = subprocess.run(
+    [sys.executable, "-m", "knowledge.scripts.query", "资源重试", "--method", "keyword"],
+    capture_output=True, text=True, encoding="utf-8", check=True,
+)
+hits = json.loads(queried.stdout)
+assert hits and all(hit["title"] == "教学内容工作台使用说明" for hit in hits)
