@@ -187,6 +187,13 @@ class SQLModelTaskRepository:
 
     @staticmethod
     def _save_unit_artifacts(artifacts: ArtifactRepository, task_id: str, state: ContentGenerationState) -> None:
+        if state.planning_query_plan:
+            artifacts.upsert_artifact(task_id, "retrieval_plan", state.planning_query_plan)
+        for key, record in state.retrieval_records.items():
+            artifacts.upsert_artifact(
+                task_id, "retrieval_record", record,
+                unit_id=None if key == "planning" else key,
+            )
         if state.partial_render_model:
             artifacts.upsert_artifact(
                 task_id, "partial_render", state.partial_render_model.model_dump(mode="json")

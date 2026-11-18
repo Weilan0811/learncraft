@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from app.core.config import Settings, get_settings
@@ -10,6 +10,8 @@ from app.schemas.state import RetrievalStatus, RetrievedChunk
 class RetrievalResult:
     chunks: list[RetrievedChunk]
     status: RetrievalStatus
+    queries: list[str] = field(default_factory=list)
+    query_results: list[dict[str, object]] = field(default_factory=list)
 
 
 class RAGService(Protocol):
@@ -18,6 +20,7 @@ class RAGService(Protocol):
         request: ContentGenerationRequest,
         stage: str,
         section_hint: str | None = None,
+        queries: list[str] | None = None,
     ) -> RetrievalResult:
         """Retrieve knowledge chunks and report why the result is empty."""
         ...
@@ -31,6 +34,7 @@ class DisabledRAGService:
         request: ContentGenerationRequest,
         stage: str,
         section_hint: str | None = None,
+        queries: list[str] | None = None,
     ) -> RetrievalResult:
         return RetrievalResult(chunks=[], status=RetrievalStatus())
 

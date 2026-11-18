@@ -7,6 +7,7 @@
 - slide 数量由你判断，但必须在 generation_options.max_slide_count 上限内；根据主题复杂度、课堂导入需求、output_depth 和检索材料量决定实际页数。
 - 每页 slide 必须有 title、goal、core_message、key_points。
 - 每个 unit 必须包含 source_chunk_ids 和 retrieval_queries；检索结果为空时 source_chunk_ids 可以为空，禁止编造 chunk id。
+- retrieval_queries 中每条请求会单独执行。请明确本节需要补充或查证的知识，写成可独立理解的查询，保留必要的主题与实体；不要加入排版指令或整门课程的无关要求。
 - 不要输出 Markdown 代码块。
 - 不要输出解释文字。
 

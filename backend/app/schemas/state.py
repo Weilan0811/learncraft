@@ -108,6 +108,8 @@ class ContentGenerationState(SchemaModel):
     normalized_request: dict[str, object] | None = None
     retrieved_chunks: list[RetrievedChunk] = Field(default_factory=list)
     planning_chunks: list[RetrievedChunk] = Field(default_factory=list)
+    planning_query_plan: dict[str, object] = Field(default_factory=dict)
+    retrieval_records: dict[str, dict[str, object]] = Field(default_factory=dict)
     current_unit_context: list[RetrievedChunk] = Field(default_factory=list)
     unit_context_map: dict[str, list[RetrievedChunk]] = Field(default_factory=dict)
     outline: Outline | None = None

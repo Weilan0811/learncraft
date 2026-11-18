@@ -90,8 +90,50 @@ class LocalKBService(RAGService):
         request: ContentGenerationRequest,
         stage: str,
         section_hint: str | None = None,
+        queries: list[str] | None = None,
     ) -> RetrievalResult:
-        query = self._build_query(request, stage, section_hint)
+        if queries is None:
+            queries = [self._build_query(request, stage, section_hint)]
+        queries = list(dict.fromkeys(q.strip() for q in queries if q.strip()))
+        if not queries:
+            raise ValueError("检索需要至少一条非空查询。")
+        batches = [self._retrieve_single(request, stage, query) for query in queries]
+        query_results = [
+            {"query": query, "status": batch.status.model_dump(),
+             "chunk_ids": [chunk.id for chunk in batch.chunks]}
+            for query, batch in zip(queries, batches)
+        ]
+        by_id: dict[str, RetrievedChunk] = {}
+        scores: dict[str, float] = {}
+        matched_queries: dict[str, list[str]] = {}
+        for query, batch in zip(queries, batches):
+            for rank, chunk in enumerate(batch.chunks, 1):
+                by_id.setdefault(chunk.id, chunk)
+                scores[chunk.id] = scores.get(chunk.id, 0.0) + 1 / (60 + rank)
+                matched_queries.setdefault(chunk.id, []).append(query)
+        ranked_ids = sorted(scores, key=scores.get, reverse=True)[:self.top_k]
+        chunks = [by_id[cid].model_copy(update={
+            "score": scores[cid],
+            "metadata": {**by_id[cid].metadata, "matched_queries": matched_queries[cid]},
+        }) for cid in ranked_ids]
+        failures = [batch.status.message for batch in batches if batch.status.state == "failed"]
+        status = RetrievalStatus(
+            state="failed" if failures else "ok" if chunks else "empty",
+            chunk_count=len(chunks),
+            message="；".join(failures) if failures else f"执行{len(queries)}条查询，合并后返回{len(chunks)}个片段。",
+        )
+        self.last_diagnostics = {"status": status.state, "stage": stage,
+                                 "method": self.method, "kb_mode": request.kb_mode,
+                                 "queries": queries, "query_results": query_results,
+                                 "chunk_count": len(chunks), "chunk_ids": ranked_ids}
+        return RetrievalResult(chunks=chunks, status=status, queries=queries, query_results=query_results)
+
+    def _retrieve_single(
+        self,
+        request: ContentGenerationRequest,
+        stage: str,
+        query: str,
+    ) -> RetrievalResult:
         mode = request.kb_mode
         attachments = list(request.attachments)
         try:
@@ -188,7 +230,7 @@ class LocalKBService(RAGService):
                     score=float(score),
                     metadata={
                         "stage": stage,
-                        "section_hint": section_hint or "",
+                        "query": query,
                         "topic": chunk.topic,
                         "section": chunk.section,
                         "source_url": chunk.source_url,

@@ -36,6 +36,7 @@ class UnitPipelineResult:
     unit_result: UnitGenerationResult | None = None
     render_unit: RenderUnitSnapshot | None = None
     context: list[object] = field(default_factory=list)
+    retrieval_record: dict[str, object] = field(default_factory=dict)
     elements: list[ContentElement] = field(default_factory=list)
     element_status: dict[str, object] = field(default_factory=dict)
     stream_events: list[TaskStreamEvent] = field(default_factory=list)
@@ -78,6 +79,7 @@ def generate_units_parallel(
     # unit generation (the "multi-page progress stuck" bug).
     unit_results = dict(state.unit_results)
     unit_context_map = dict(state.unit_context_map)
+    retrieval_records = dict(state.retrieval_records)
     render_units = dict(state.render_units)
     element_status = dict(state.element_status)
     stream_events = list(state.stream_events)
@@ -91,6 +93,8 @@ def generate_units_parallel(
     persist_snapshot = (config or {}).get("configurable", {}).get("persist_unit_snapshot")
 
     def _merge_unit_result_into_state(result: UnitPipelineResult) -> None:
+        if result.retrieval_record:
+            retrieval_records[result.unit_id] = result.retrieval_record
         if result.context:
             unit_context_map[result.unit_id] = result.context
         if result.unit_result is not None:
@@ -117,6 +121,7 @@ def generate_units_parallel(
             snapshot = state.model_copy(
                 update={
                     "unit_context_map": unit_context_map,
+                    "retrieval_records": dict(retrieval_records),
                     "unit_results": unit_results,
                     "render_units": render_units,
                     "partial_render_model": partial,
@@ -171,6 +176,7 @@ def generate_units_parallel(
     next_index = len(ordered_completed) + len(ordered_failed)
     return {
         "unit_context_map": unit_context_map,
+        "retrieval_records": retrieval_records,
         "unit_results": unit_results,
         "render_units": render_units,
         "partial_render_model": partial_render_model,
@@ -232,6 +238,7 @@ def process_unit_pipeline(state: ContentGenerationState, unit_id: str) -> UnitPi
         unit_result=unit_result,
         render_unit=local.render_units.get(unit_id),
         context=list(local.current_unit_context),
+        retrieval_record=local.retrieval_records.get(unit_id, {}),
         elements=[element for element in local.elements if _element_belongs_to_unit(element, unit_id)],
         element_status={key: value for key, value in local.element_status.items() if _element_status_belongs_to_unit(key, unit_result)},
         stream_events=list(local.stream_events[start_event_count:]),
@@ -299,6 +306,7 @@ def _failed_result(
     return UnitPipelineResult(
         unit_id=unit_id,
         failed=True,
+        retrieval_record=local.retrieval_records.get(unit_id, {}),
         errors=[error for error in local.errors if error not in start_errors],
         workflow_errors=list(local.workflow_errors[start_workflow_error_count:]),
         stream_events=list(local.stream_events[start_event_count:]),
