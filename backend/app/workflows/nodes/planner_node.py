@@ -1,14 +1,15 @@
 import json
 import os
-from datetime import UTC, datetime
+import time
 from typing import cast
-from uuid import uuid4
 
 from app.content_types.registry import get_content_type_profile
 from app.core.config import get_settings
 from app.core.fallback import allow_generation_fallback, fallback_detail
+from app.core.telemetry import drain_provider_metrics
+from app.generators.common.retrieval_formatter import format_retrieval_results
 from app.schemas.outline import Outline, OutlineSection, OutlineUnit
-from app.schemas.state import ContentGenerationState, TaskStreamEvent
+from app.schemas.state import ContentGenerationState
 from app.services.llm_service import get_llm_service
 from app.workflows.nodes.helpers import build_progress
 
@@ -33,7 +34,12 @@ def plan_outline(state: ContentGenerationState) -> dict[str, object]:
 def _generate_outline_with_llm(state: ContentGenerationState) -> Outline:
     prompt = _build_planner_prompt(state)
     llm_service = get_llm_service()
-    return cast(Outline, llm_service.generate_structured(prompt=prompt, schema=Outline))
+    started = time.perf_counter()
+    outline = cast(Outline, llm_service.generate_structured(prompt=prompt, schema=Outline))
+    outline.metadata["generation"] = {"seconds": time.perf_counter() - started,
+        "model_calls": [metric.model_dump(mode="json") for metric in drain_provider_metrics(
+            task_id=state.request_id, node="plan_outline")]}
+    return outline
 
 
 def _build_planner_prompt(state: ContentGenerationState) -> str:
@@ -45,7 +51,7 @@ def _build_planner_prompt(state: ContentGenerationState) -> str:
     with open(template_path, "r", encoding="utf-8") as f:
         template = f.read()
 
-    retrieval_results = _format_retrieval_results(state.planning_chunks)
+    retrieval_results = format_retrieval_results(state.planning_chunks)
     generation_options = json.dumps(state.normalized_request, ensure_ascii=False, indent=2)
 
     return template.format(
@@ -60,26 +66,6 @@ def _get_prompt_template_path(content_type: str) -> str:
     prompts_dir = os.path.join(os.path.dirname(__file__), "..", "..", "prompts", "planner")
     profile = get_content_type_profile(content_type)
     return os.path.join(prompts_dir, profile.planner_prompt_name)
-
-
-def _format_retrieval_results(chunks: list) -> str:
-    if not chunks:
-        return "No retrieval results."
-
-    formatted = []
-    for i, chunk in enumerate(chunks, 1):
-        chunk_id = getattr(chunk, "id", f"chunk_{i}")
-        source_title = getattr(chunk, "source_title", "")
-        score = getattr(chunk, "score", 0.0)
-        content = getattr(chunk, "content", "")[:500]
-        formatted.append(f"[chunk_id={chunk_id}]")
-        if source_title:
-            formatted.append(f"source_title: {source_title}")
-        formatted.append(f"score: {score}")
-        formatted.append(f"content: {content}")
-        formatted.append("")
-
-    return "\n".join(formatted)
 
 
 def _build_fallback_outline(state: ContentGenerationState, reason: str | None = None) -> Outline:
@@ -142,21 +128,12 @@ def _build_fallback_outline(state: ContentGenerationState, reason: str | None = 
 
 
 def _planner_success(state: ContentGenerationState, outline: Outline, source: str) -> dict[str, object]:
+    outline.metadata["planner_source"] = source
     for unit in outline.units:
         if not unit.retrieval_queries:
             unit.retrieval_queries = [state.topic, unit.title]
     return {
         "outline": outline,
-        "stream_events": [
-            *state.stream_events,
-            TaskStreamEvent(
-                event_id=f"event_{uuid4().hex[:12]}",
-                task_id=state.request_id,
-                type="outline_ready",
-                payload={"outline_id": outline.id, "unit_count": len(outline.units), "source": source},
-                created_at=datetime.now(UTC).isoformat(),
-            ),
-        ],
         "current_node": "plan_outline",
         "progress": build_progress(stage="planning", current_node="plan_outline"),
     }

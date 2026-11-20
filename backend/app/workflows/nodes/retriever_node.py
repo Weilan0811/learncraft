@@ -3,6 +3,8 @@ import time
 from pathlib import Path
 
 from app.core.config import get_settings
+from app.core.telemetry import drain_provider_metrics
+from app.generators.common.retrieval_formatter import retrieval_snapshot
 from app.schemas.retrieval import KnowledgeQueryPlan
 from app.schemas.state import ContentGenerationState
 from app.services.llm_service import get_llm_service
@@ -28,6 +30,8 @@ def retrieve_for_planning(state: ContentGenerationState) -> dict[str, object]:
         )
         plan_metadata = {"seconds": time.perf_counter() - started,
                          "usage": getattr(llm_service, "last_usage", {}),
+                         "model_calls": [metric.model_dump(mode="json") for metric in drain_provider_metrics(
+                             task_id=state.request_id, node="retrieve_for_planning")],
                          "provider": get_settings().text_provider,
                          "model": get_settings().text_model}
     queries = [item.query for item in plan.queries] if plan else []
@@ -39,6 +43,7 @@ def retrieve_for_planning(state: ContentGenerationState) -> dict[str, object]:
         "retrieval_records": {**state.retrieval_records, "planning": {
             "queries": queries, "results": result.query_results, "status": result.status.model_dump(),
             "query_planning": plan_metadata,
+            "context": retrieval_snapshot(result.chunks),
         }},
         "retrieved_chunks": result.chunks,
         "planning_chunks": result.chunks,
@@ -62,6 +67,7 @@ def retrieve_for_unit(state: ContentGenerationState) -> dict[str, object]:
             "queries": queries, "results": result.query_results,
             "status": result.status.model_dump(),
             "used_planning_context": not bool(result.chunks) and bool(state.planning_chunks),
+            "context": retrieval_snapshot(chunks),
         }},
         "current_unit_id": unit.id,
         "current_unit_context": chunks,

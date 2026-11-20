@@ -21,7 +21,7 @@
 - 标题清晰、吸引人。
 - learning_objectives 3-5 条，概括整节课的学习目标。
 - audience 描述目标学习者。
-- units 数量 4-8 个，根据主题复杂度决定。
+- units 数量至少1个，必须在 generation_options.max_section_count 上限内；根据主题复杂度、学习目标、output_depth和实际资料决定，不为凑数量增加章节。
 - 每个 unit 的 title 和 goal 清晰反映该 section 的学习目标。
 - core_message 概括本节最重要的教学信息。
 - key_points 列出本节要讲解的核心概念、关键问题或知识范围（2-5 条）。

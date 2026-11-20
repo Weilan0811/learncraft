@@ -86,7 +86,7 @@ def record_provider_call(
                 "model": model,
                 "usage": dict(usage or {}),
                 "retry_count": retry_count,
-                "metadata": dict(metadata or {}),
+                "metadata": {**dict(metadata or {}), "usage": dict(usage or {})},
             },
         )
     )

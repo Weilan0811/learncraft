@@ -1,5 +1,7 @@
 from typing import cast
 import re
+from datetime import UTC, datetime
+from uuid import uuid4
 
 from app.schemas.elements import ImageElement, MindmapElement
 from app.schemas.specs import (
@@ -13,7 +15,7 @@ from app.schemas.specs import (
     SlideSpecPage,
     VISUAL_SUMMARY_REQUIRED_ROLES,
 )
-from app.schemas.state import ContentGenerationState
+from app.schemas.state import ContentGenerationState, TaskStreamEvent
 from app.validators.interactive_html_validator import (
     validate_content as validate_interactive_html_content,
 )
@@ -40,6 +42,14 @@ def validate_outline(state: ContentGenerationState) -> dict[str, object]:
 
         if not state.outline.units:
             errors.append("outline.units is empty")
+        options = state.normalized_request or {}
+        count_key = "max_slide_count" if state.content_type == "slide_deck" else "max_section_count"
+        limit = options.get(count_key)
+        if limit is not None and len(state.outline.units) > int(limit):
+            errors.append(f"outline.units exceeds {count_key}={limit}")
+        available_ids = {chunk.id for chunk in state.planning_chunks}
+        if state.outline.metadata.get("insufficient_knowledge"):
+            errors.append(f"资料不足：{state.outline.metadata['insufficient_knowledge']}")
 
         if len(unit_ids) != len(set(unit_ids)):
             errors.append("outline unit ids must be unique")
@@ -61,29 +71,47 @@ def validate_outline(state: ContentGenerationState) -> dict[str, object]:
             if not unit.title or not unit.goal or not unit.core_message:
                 errors.append(f"outline unit {unit.id} is missing required text fields")
 
-            if not unit.retrieval_queries:
+            if not unit.retrieval_queries or any(not query.strip() for query in unit.retrieval_queries):
                 errors.append(f"outline unit {unit.id} is missing retrieval_queries")
+            if set(unit.source_chunk_ids) - available_ids:
+                errors.append(f"outline unit {unit.id} references unavailable chunks")
 
             if unit.unit_type != expected_unit_type:
                 errors.append(f"outline unit {unit.id} has incorrect unit_type: expected {expected_unit_type}")
 
             if not unit.source_chunk_ids and state.planning_chunks:
                 errors.append(f"outline unit {unit.id} should reference planning chunks")
+        for section in state.outline.sections:
+            if set(section.citations) - available_ids:
+                errors.append(f"outline section {section.id} references unavailable chunks")
 
-    return {
+    previous_errors = (state.outline_validation_report or {}).get("errors", [])
+    result = {
         "outline_validation_report": {"passed": not errors, "errors": errors},
-        "errors": state.errors + errors,
+        "errors": [error for error in state.errors if error not in previous_errors] + errors,
         "current_node": "validate_outline",
         "progress": ensure_monotonic_progress(
             state.progress,
             build_progress(stage="validating_outline", current_node="validate_outline"),
         ),
     }
+    if not errors and not any(event.type == "outline_ready" for event in state.stream_events):
+        result["stream_events"] = [*state.stream_events, TaskStreamEvent(
+            event_id=f"event_{uuid4().hex[:12]}", task_id=state.request_id,
+            type="outline_ready", payload={"outline_id": state.outline.id,
+                "unit_count": len(state.outline.units),
+                "source": state.outline.metadata.get("planner_source", "llm")},
+            created_at=datetime.now(UTC).isoformat())]
+    return result
 
 
 def route_after_outline_validation(state: ContentGenerationState) -> str:
     report = state.outline_validation_report or {}
-    return "pass" if report.get("passed") else "fail"
+    if report.get("passed"):
+        return "pass"
+    if state.outline is not None and state.retry_counts.get("outline_repair", 0) < 1:
+        return "repair"
+    return "fail"
 
 
 def validate_unit_spec(state: ContentGenerationState) -> dict[str, object]:

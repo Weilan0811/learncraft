@@ -26,6 +26,7 @@ from app.workflows.nodes.image_element_node import generate_image_element
 from app.workflows.nodes.mindmap_element_node import generate_mindmap_element
 from app.workflows.nodes.normalize_request_node import normalize_request
 from app.workflows.nodes.planner_node import plan_outline
+from app.workflows.nodes.outline_repair_node import repair_outline
 from app.workflows.nodes.publish_event_node import publish_unit_render
 from app.workflows.nodes.renderer_node import (
     interactive_html_renderer,
@@ -246,6 +247,7 @@ def build_content_generation_graph():
     workflow.add_node("render_direct_content", render_direct_content)
     workflow.add_node("plan_outline", plan_outline)
     workflow.add_node("validate_outline", validate_outline)
+    workflow.add_node("repair_outline", repair_outline)
     workflow.add_node("route_content_type", route_content_type)
     workflow.add_node("initialize_section_units", initialize_section_units)
     workflow.add_node("initialize_slide_units", initialize_slide_units)
@@ -295,8 +297,9 @@ def build_content_generation_graph():
     workflow.add_conditional_edges(
         "validate_outline",
         route_after_outline_validation,
-        {"pass": "route_content_type", "fail": "fail_task"},
+        {"pass": "route_content_type", "repair": "repair_outline", "fail": "fail_task"},
     )
+    workflow.add_edge("repair_outline", "validate_outline")
     workflow.add_conditional_edges(
         "route_content_type",
         route_content_type_choice,

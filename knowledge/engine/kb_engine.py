@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
+from functools import lru_cache
+from threading import Lock
 
 
 import httpx
@@ -19,6 +21,7 @@ QDRANT_DIR = REPO_ROOT / "storage" / "qdrant_kb"
 
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 120
+CHUNK_ID_VERSION = 2
 EMBED_MODEL = "text-embedding-v3"
 EMBED_DIM = 1024
 EMBED_BATCH = 10
@@ -180,7 +183,7 @@ def _chunk_body(
     for m in re.finditer(r"\n(?=#{2,3}\s)", body):
         section_starts.append(m.end())
     section_ends = section_starts[1:] + [len(body)]
-    for sec_start, sec_end in zip(section_starts, section_ends):
+    for section_index, (sec_start, sec_end) in enumerate(zip(section_starts, section_ends)):
         sec = body[sec_start:sec_end]
         sec_lines = sec.strip().splitlines()
         if not sec_lines:
@@ -210,7 +213,7 @@ def _chunk_body(
                 continue
             chunks.append(
                 Chunk(
-                    chunk_id=f"{doc_id}::{section_title}::{idx}",
+                    chunk_id=f"{doc_id}::section-{section_index}::chunk-{idx}",
                     doc_id=doc_id,
                     title=title,
                     topic=topic,
@@ -265,6 +268,8 @@ def load_all_chunks(force_rebuild: bool = False) -> list[Chunk]:
             if line.strip():
                 chunks.append(Chunk(**json.loads(line)))
         if chunks:
+            if len({chunk.chunk_id for chunk in chunks}) != len(chunks):
+                raise ValueError("知识库缓存包含重复片段编号，请重新构建索引。")
             return chunks
     chunks: list[Chunk] = []
     for md in sorted(KB_RAW_DIR.glob("*.md")):
@@ -370,6 +375,17 @@ class Embedder:
         raise NotImplementedError
 
 
+_BGE_MODEL_LOCK = Lock()
+
+
+@lru_cache(maxsize=1)
+def _load_bge_model(model_path: str, use_fp16: bool):
+    from FlagEmbedding import BGEM3FlagModel
+
+    print(f"loading BGE-M3 from {model_path} (fp16={use_fp16}) ...")
+    return BGEM3FlagModel(model_path, use_fp16=use_fp16)
+
+
 class BGEM3Embedder:
     """按需加载本地 BGE-M3 模型。"""
 
@@ -387,17 +403,10 @@ class BGEM3Embedder:
         self._model: "object | None" = None
 
     def _load(self) -> None:
-        try:
-            import torch
-            from FlagEmbedding import BGEM3FlagModel
-        except ImportError as exc:
-            raise RuntimeError(
-                "BGE-M3 local embedding needs torch + FlagEmbedding: "
-                "uv pip install torch FlagEmbedding"
-            ) from exc
+        import torch
         use_fp16 = torch.cuda.is_available()
-        print(f"loading BGE-M3 from {self.model_path} (fp16={use_fp16}) ...")
-        self._model = BGEM3FlagModel(self.model_path, use_fp16=use_fp16)
+        with _BGE_MODEL_LOCK:
+            self._model = _load_bge_model(self.model_path, use_fp16)
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:

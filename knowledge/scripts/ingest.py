@@ -4,6 +4,7 @@ import argparse
 import json
 import shutil
 import time
+from datetime import datetime, timezone
 from dataclasses import asdict
 from pathlib import Path
 
@@ -126,6 +127,7 @@ def _sync_meta(filtered_all: list[kb.Chunk]) -> None:
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
     meta["docs"] = len({c.doc_id for c in filtered_all})
     meta["chunks"] = len(filtered_all)
+    meta["updated_at"] = datetime.now(timezone.utc).isoformat()
     meta_path.write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
     )

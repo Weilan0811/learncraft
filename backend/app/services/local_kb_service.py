@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 from app.schemas.request import AttachmentDoc, ContentGenerationRequest
 from app.schemas.state import RetrievalStatus, RetrievedChunk
@@ -23,6 +24,7 @@ class LocalKBService(RAGService):
         self._chunks: list[kb.Chunk] | None = None
         self._bm25: kb.BM25Index | None = None
         self._embedder: kb.Embedder | None = None
+        self._index_metadata: dict[str, object] = {}
         self.last_diagnostics: dict[str, object] = {}
         # sha256(contextualized text) -> embedding, shared across attachments
         # so the same uploaded material is embedded once per process.
@@ -32,6 +34,9 @@ class LocalKBService(RAGService):
         if mode != "materials_only" and self._bm25 is None:
             self._chunks = kb.indexable_chunks(kb.load_all_chunks())
             self._bm25 = kb.load_bm25_index(self._chunks)
+            metadata_path = kb.KB_INDEX_DIR / "meta.json"
+            if metadata_path.exists():
+                self._index_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         if (
             self.method != "keyword"
             and self._embedder is None
@@ -100,7 +105,8 @@ class LocalKBService(RAGService):
         batches = [self._retrieve_single(request, stage, query) for query in queries]
         query_results = [
             {"query": query, "status": batch.status.model_dump(),
-             "chunk_ids": [chunk.id for chunk in batch.chunks]}
+             "chunk_ids": [chunk.id for chunk in batch.chunks],
+             "chunks": [chunk.model_dump(mode="json") for chunk in batch.chunks]}
             for query, batch in zip(queries, batches)
         ]
         by_id: dict[str, RetrievedChunk] = {}
@@ -235,6 +241,10 @@ class LocalKBService(RAGService):
                         "section": chunk.section,
                         "source_url": chunk.source_url,
                         "scope": chunk.scope,
+                        "doc_offset": chunk.doc_offset,
+                        "doc_end": chunk.doc_offset + len(chunk.text),
+                        "index": self._index_metadata if chunk.scope == "platform" else {
+                            "scope": "attachment", "chunk_id_version": kb.CHUNK_ID_VERSION},
                     },
                 )
                 for chunk, score in results

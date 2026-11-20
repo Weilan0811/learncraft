@@ -6,6 +6,7 @@ from typing import Optional
 from langchain_core.runnables import RunnableConfig
 
 from app.core.config import get_settings
+from app.core.telemetry import drain_provider_metrics
 from app.schemas.elements import ContentElement
 from app.schemas.state import ContentGenerationState, RenderUnitSnapshot, TaskStreamEvent, UnitGenerationResult, WorkflowError
 from app.workflows.nodes.element_flow_node import collect_unit_required_elements, merge_unit_elements
@@ -315,7 +316,17 @@ def _failed_result(
 
 
 def _apply_update(state: ContentGenerationState, update: dict[str, object]) -> ContentGenerationState:
-    return state.model_copy(update=update)
+    local = state.model_copy(update=update)
+    calls = drain_provider_metrics(task_id=state.request_id,
+        node=str(update.get("current_node") or state.current_node), unit_id=state.current_unit_id)
+    if calls and local.current_unit_id:
+        records = dict(local.retrieval_records)
+        record = dict(records.get(local.current_unit_id, {}))
+        record["model_calls"] = [*record.get("model_calls", []),
+            *[metric.model_dump(mode="json") for metric in calls]]
+        records[local.current_unit_id] = record
+        local = local.model_copy(update={"retrieval_records": records})
+    return local
 
 
 def _element_belongs_to_unit(element: ContentElement, unit_id: str) -> bool:

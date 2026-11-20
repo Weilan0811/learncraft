@@ -1,5 +1,29 @@
 # 大纲与章节生成前的知识查询
 
+## 片段身份、索引构建与来源记录
+
+片段编号采用`文档ID::section-章节位置::chunk-片段序号`。同名章节的不同位置不会共用编号，标题仍作为检索元数据。编号属于第二版格式，构建时间与格式版本保存在`storage/kb/meta.json`。
+
+`python -m knowledge.scripts.build_kb --rebuild`先在独立目录构建并验证BM25和向量索引，再替换当前索引，保留旧目录备份；替换前需要停止使用当前知识库的服务。构建失败不会删除当前索引。替换文件时发生异常会恢复原目录。
+
+如需只构建而不替换，使用`python -m knowledge.scripts.build_kb --rebuild --output-dir storage/kb-candidate`，输出目录必须为空。向量模型、过滤规则、切分尺寸与融合配置继续沿用已有设置。
+
+旧实验保留原快照；数据库原有正文缓存编号保持原样。新的检索记录独立保存检索编号、完整正文、文档内位置、索引元数据，以及生成节点实际看到的前500字符。位置以引擎清理后的文档正文为基准。
+
+同进程的BGE-M3实例共用已加载权重，避免大纲与并发章节重复加载模型。
+
+## 大纲校验与一次修复
+
+大纲校验统一检查章节数上限、类型、序号、有效查询和引用。`units.source_chunk_ids`及`sections.citations`都只能使用本次大纲检索提供的片段编号。有资料时，缺少章节引用仍为错误。
+
+校验通过后才发送`outline_ready`事件。首次校验失败后可执行一次大纲修复，再次校验仍未通过则任务失败，不发送大纲可用事件。修复沿用已有LLM服务，其结构修复和网络重试另有记录，因此一次逻辑修复可能包含多次实际HTTP请求。
+
+修复提示只提供本次资料、原大纲、学生请求及校验错误。资料不足时，模型可在`metadata.insufficient_knowledge`中说明缺少的知识；这类输出保持未通过状态。不能用任意有效编号代替真正的依据。
+
+修复次数沿用工作流的`retry_counts`，错误、耗时与用量保存到大纲`metadata.validation_repair`。检索及阶段用量依据通过下述任务产物保存，数据库表结构不变。
+
+模型用量在实际执行调用的线程中收集：查询规划保存在`query_planning.model_calls`，大纲生成保存在`metadata.generation.model_calls`，大纲修复保存在`metadata.validation_repair.model_calls`，章节调用保存在对应`retrieval_record.model_calls`。包含结构修复产生的成功响应；没有返回用量的请求仍需以服务商账单核对。索引增删会更新元数据的`updated_at`。
+
 ## 运行方式
 
 启用本地知识库（`CONTENT_GENERATOR_KB_PROVIDER=local`）时，流程如下：

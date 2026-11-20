@@ -1,4 +1,14 @@
-def format_retrieval_results(chunks: list, *, max_chars_per_chunk: int = 500) -> str:
+RETRIEVAL_CONTENT_LIMIT = 500
+
+
+def retrieval_snapshot(chunks: list) -> list[dict[str, object]]:
+    return [{**chunk.model_dump(mode="json"),
+             "shown_content": chunk.content[:RETRIEVAL_CONTENT_LIMIT],
+             "shown_start": 0, "shown_end": min(len(chunk.content), RETRIEVAL_CONTENT_LIMIT)}
+            for chunk in chunks]
+
+
+def format_retrieval_results(chunks: list, *, max_chars_per_chunk: int = RETRIEVAL_CONTENT_LIMIT) -> str:
     if not chunks:
         return "No retrieval results."
 
