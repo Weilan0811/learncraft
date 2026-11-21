@@ -3,6 +3,7 @@ name = "content-generator-agent"
 version = "0.1.0"
 description = "Content generation agent skeleton for multimodal learning content."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.18.4",

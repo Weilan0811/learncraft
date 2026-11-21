@@ -1,5 +1,7 @@
 ﻿# Scene Content Kit
 
+本组件采用 MIT，基于 OpenMAIC 相关实现简化和封装。来源与改动见 [ORIGIN.md](ORIGIN.md)，上游版权及许可声明见 [LICENSE.OpenMAIC](LICENSE.OpenMAIC)。
+
 `scene-content-kit` is a lightweight slide-only renderer extracted from OpenMAIC. It is designed for Next.js applications that need to render static PPT-like pages from structured JSON.
 
 ## What It Does
