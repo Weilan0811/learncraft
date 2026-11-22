@@ -1,35 +1,60 @@
 # Content Generator Agent
 
-多模态教学内容生成工具。输入主题和学习要求，生成可预览、可导出、可继续学习的教学资源。
+**把想学的主题，变成一份能读、能练、能复习的交互讲义。**
 
-项目可以独立运行，也可以通过 HTTP API 接入教育平台。后端使用 FastAPI、LangGraph 和 SQLite，前端使用 React 与 TypeScript。
+想弄懂一个新概念，或者找个主题从头学起？写下你的基础和学习要求，让 Agent 规划章节、组织讲解和练习。读一段，试着回答几个问题，再看看哪些地方值得回头复习。
 
-![互动讲义预览](docs/assets/interactive-lesson.png)
+除了交互讲义，还可以生成图文讲义、双人播客和图文推文。项目提供完整的网页工作台，也支持通过 HTTP API 接入自己的应用。
 
-## 能做什么
+[生成效果](#生成效果) · [交互讲义](#边读边练继续复习) · [快速开始](#快速开始) · [配置指南](docs/configuration.md) · [架构与开发](docs/architecture.md)
 
-| 内容类型 | 主要输出 |
-|---|---|
-| 互动讲义 | 分章 HTML、互动题、学习摘要、带答题记录的离线讲义 |
-| 讲义 | 分章图文、PDF、Markdown、HTML |
-| 幻灯片 | 逐页内容、配图、Slide JSON、PDF |
-| 播客 | 多角色脚本、语音分段、完整音频 |
-| 图文推文 | 长文、封面和章节配图 |
+## 生成效果
 
-生成中的章节会逐步显示。任务历史保存在数据库中，失败的图片或语音可以单独重试。互动讲义支持记录作答、统计薄弱知识点，并按原始材料和生成设置创建复习讲义。
+<table>
+<tr>
+<td width="50%" align="center"><strong>交互讲义</strong> · <a href="docs/examples/README.md">完整示例与下载</a><br><a href="docs/assets/screenshots/interactive-home.jpg"><img src="docs/assets/screenshots/interactive-home.jpg" width="520" alt="六章交互讲义：生成式AI如何理解你的问题"></a><br>分章阅读，穿插互动练习。</td>
+<td width="50%" align="center"><strong>图文讲义</strong> · <a href="docs/examples/README.md">完整示例与下载</a><br><a href="docs/assets/screenshots/lecture-home.jpg"><img src="docs/assets/screenshots/lecture-home.jpg" width="520" alt="咖啡供需讲义的标题、学习目标和正文"></a><br>把概念、案例和配图组织成完整讲义。</td>
+</tr>
+<tr>
+<td align="center"><strong>图文推文</strong> · <a href="docs/examples/README.md">完整示例与下载</a><br><a href="docs/assets/screenshots/social-mobile.jpg"><img src="docs/assets/screenshots/social-mobile.jpg" height="300" alt="手机尺寸下的AI Agent工作流文章首页"></a><br>生成正文与配图，预览文章排版。</td>
+<td align="center"><strong>播客</strong> · <a href="docs/examples/README.md">完整示例与下载</a><br><a href="docs/assets/screenshots/podcast.jpg"><img src="docs/assets/screenshots/podcast.jpg" width="520" alt="双人播客脚本和完整音频播放器"></a><br>双人对谈脚本，配分段语音与完整音频。</td>
+</tr>
+</table>
+
+<sub>另支持幻灯片生成，目前排版效果暂不稳定。</sub>
+
+## 边读边练，继续复习
+
+讲义生成一章，就能先看一章。沿着目录阅读概念、案例和图解，遇到练习就停下来试一试：做一道选择题，写下自己的解释，或者想想换个情景该怎么办。
+
+![交互讲义正文](docs/assets/screenshots/interactive-content.jpg)
+
+读完后，学习摘要会帮你整理这次的作答情况、薄弱概念和建议复习章节。还没弄懂的地方，可以继续生成一份针对性的复习讲义，沿用原来的资料和设置；想留着慢慢看，也可以导出带作答记录的离线讲义。
+
+单选、多选提供答案反馈；简答和讨论会保存提交内容，未评分的回答不计入正确率。
+
+完整作品保存在 [示例目录](docs/examples/README.md)。下载解压后打开入口页面，即可阅读或试听。
+
+## 日常使用
+
+- **随时回来继续看：** 历史任务保存在本地，可重新打开预览与导出结果。
+- **使用自己的资料：** 可选知识库支持平台材料、当前任务附件，或两者一起检索。
+- **单独重试资源：** 图片或语音失败后，可重试对应资源，保留已完成的正文。
 
 ## 快速开始
 
-需要 Python 3.11+、uv 和 Node.js 22.12+。以下命令均从仓库根目录开始。
+需要 Python 3.11+、[uv](https://docs.astral.sh/uv/) 和 Node.js 22.12+。以下使用 PowerShell。
 
 ```powershell
-uv sync --group dev
-Copy-Item .env.example .env
+git clone https://github.com/Weilan0811/content-generator-agent.git
+cd content-generator-agent
+uv sync
+if (!(Test-Path -LiteralPath .env)) {
+    Copy-Item .env.example .env
+}
 ```
 
-macOS、Linux 可以使用 `cp .env.example .env`。
-
-编辑 `.env`，切换到真实生成模式并填写所需 API Key：
+编辑根目录 `.env`，配置真实文本服务。例如使用百炼：
 
 ```dotenv
 CONTENT_GENERATOR_PROVIDER_MODE=real
@@ -38,22 +63,13 @@ CONTENT_GENERATOR_TEXT_MODEL=qwen3.5-flash
 CONTENT_GENERATOR_BAILIAN_API_KEY=填写你的百炼Key
 ```
 
-| 能力 | 配置要求 |
-|---|---|
-| 文本生成 | 所有类型都需要；支持百炼或 DeepSeek |
-| 图片生成 | 讲义、幻灯片、图文推文需要；支持 APIMart 或百炼 |
-| 语音生成 | 播客需要；使用百炼语音服务 |
-| 知识库 | 可选；默认关闭，基本启动流程不需要下载向量模型或建立索引 |
-
-服务商选择、模型名称和其余参数见 [.env.example](.env.example)。不要提交填有真实凭据的 `.env`。
-
 启动后端：
 
 ```powershell
 uv run python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-另开一个终端启动前端：
+另开终端，从仓库根目录启动前端：
 
 ```powershell
 cd frontend
@@ -61,76 +77,32 @@ npm ci
 npm run dev
 ```
 
-打开 <http://127.0.0.1:5173>。API 文档位于 <http://127.0.0.1:8000/docs>。SQLite 首次启动自动建表，生成文件写入 `storage/`。
+打开 [内容生成工作台](http://127.0.0.1:5173)，选择“互动讲义”，输入学习主题与要求，开始生成。例如：
 
-改动 `.env` 后重启后端。仅验证页面和接口时，可以明确选择 `CONTENT_GENERATOR_PROVIDER_MODE=stub`；该模式不生成真实教学内容。知识库有独立开关，启用后仍需要实际检索依赖和模型。
+> 我想了解生成式 AI 如何理解问题，有一点编程基础，希望用直观例子讲清楚。
 
-## 基本使用
+交互讲义的基本使用只需要文本服务。图文讲义、幻灯片和推文还需要图片服务；播客需要语音服务。服务配置、知识库和排错步骤见[配置指南](docs/configuration.md)。模型调用按所选服务商计费。
 
-1. 在工作台选择内容类型，填写主题、受众和生成要求。
-2. 查看生成进度和逐章预览，完成后导出所需格式。
-3. 从历史记录重新打开任务，在对应资源位置重试失败的图片或语音。
-4. 在互动讲义中作答，查看学习摘要，生成针对薄弱点的复习内容。
+## 项目结构
 
-![学习摘要与复习入口](docs/assets/adaptive-review.png)
+| 目录 | 内容 |
+| --- | --- |
+| `frontend/` | 网页工作台、历史记录、内容预览与互动学习 |
+| `backend/` | 生成接口、Agent 工作流、模型服务、渲染与导出 |
+| `knowledge/` | 独立知识库引擎、示例材料与索引维护命令 |
+| `backend/alembic/` | 数据库结构迁移 |
+| `docs/` | 配置、架构与专题文档 |
+| `storage/` | 运行时数据库、生成文件和日志，首次使用后建立 |
 
-## API 接入
+## 了解实现
 
-向 `POST /api/content-generation/tasks` 提交生成请求：
+后端使用 FastAPI、LangGraph、Pydantic 和 SQLite，前端使用 React 与 TypeScript。生成过程包含大纲规划、分章生成、结构校验和局部修复；知识库使用 BM25 与向量融合检索，为大纲和章节准备资料。
 
-```json
-{
-  "content_type": "interactive_html",
-  "topic": "如何使用教学内容工作台",
-  "user_prompt": "面向初次使用者讲解任务生成、预览与资源重试，并加入检查理解的题目。",
-  "generation_options": {"difficulty": "introductory", "max_section_count": 3}
-}
-```
-
-返回的 `task_id` 可用于查询进度、读取预览和导出资源。平台上下文、学习事件与集成契约见 [平台接口说明](docs/platform-contract.md)。
-
-## 可选知识库
-
-项目提供自托管知识库能力：添加自己的 Markdown 材料，建立关键词和向量索引，再让内容生成流程检索这些材料。也支持只检索单个任务附带的材料，或与平台知识库融合检索。
-
-仓库包含自行编写的[使用说明示例](knowledge/examples/workbench-guide.md)，不附带外部语料、模型权重和实验数据。
-
-- 安装、配置、建库和增删材料：[知识库使用说明](knowledge/README.md)。
-- 分块、融合、过滤和材料隔离的设计依据：[知识库设计](docs/knowledge-base-design.md)。
-
-## 项目结构与设计
-
-后端按 API、请求契约、工作流、服务、渲染和存储分层。知识库引擎独立于后端，通过检索适配器提供片段和检索状态。
-
-```mermaid
-flowchart LR
-    A[生成请求] --> B[可选材料检索]
-    B --> C[大纲与内容生成]
-    C --> D[校验与分章渲染]
-    D --> E[预览与导出]
-    E --> F[互动学习记录]
-    F --> G[学习摘要与复习请求]
-```
-
-| 文档 | 内容 |
-|---|---|
-| [架构](docs/architecture.md) | 模块职责、工作流与持久化 |
-| [后端说明](backend/README.md) | 服务接口与实现细节 |
-| [互动讲义](docs/interactive-lesson.md) | 在线互动与离线讲义 |
-| [学习记录](docs/learning-loop.md) | 会话、摘要及复习生成 |
-| [设计决策](docs/adr.md) | 主要工程取舍 |
-| [贡献说明](CONTRIBUTORS.md) | 作者归属及第三方组件 |
-
-## 开发检查
-
-```powershell
-uv run python -m pytest backend/tests/test_kb_runtime.py backend/tests/test_learning_persistence.py backend/tests/test_learning_summary.py
-cd frontend
-npm run build
-```
-
-知识库默认不参与基本启动。开启真实生成后，模型响应、生成时间和费用取决于服务商配置。幻灯片版式及自动配图仍有改进空间。
+| 文档 | 可以了解什么 |
+| --- | --- |
+| [配置指南](docs/configuration.md) | 模型、图片、语音、知识库与本地数据 |
+| [架构与开发指南](docs/architecture.md) | 生成流程、交互讲义、检索和开发入口 |
 
 ## 许可证
 
-项目自行开发的代码采用 [MIT 许可证](LICENSE)。第三方组件保留各自的许可证与署名，来源及适用范围见[第三方组件说明](THIRD_PARTY_NOTICES.md)。贡献归属见[贡献说明](CONTRIBUTORS.md)。
+项目自行开发的代码采用 [MIT 许可证](LICENSE)。第三方组件保留各自许可证及署名，详见[第三方组件说明](THIRD_PARTY_NOTICES.md)和[贡献说明](CONTRIBUTORS.md)。

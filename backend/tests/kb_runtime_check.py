@@ -14,7 +14,7 @@ from knowledge.engine import kb_engine as kb
 
 root = Path(sys.argv[1])
 assert kb.BM25Index([]).search("knowledge") == []
-texts = [(root / path).read_text(encoding="utf-8")[:2000] for path in ["README.md", "docs/architecture.md", "docs/learning-loop.md"]]
+texts = [(root / path).read_text(encoding="utf-8")[:2000] for path in ["README.md", "docs/architecture.md", "docs/design/learning-loop.md"]]
 chunks = []
 for index, text in enumerate(texts):
     chunks.extend(kb.chunks_from_text(str(index), str(index), text))

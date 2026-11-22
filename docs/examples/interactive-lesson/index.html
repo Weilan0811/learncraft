@@ -1,0 +1,1479 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>生成式AI如何理解你的问题？</title><style>/* InteractiveHtmlRenderer — vertical module card layout with sticky sidebar */
+
+/* ---- CSS Variables ---- */
+.ih-app {
+  --ih-bg: #f7f4ef;
+  --ih-paper: rgba(255, 255, 255, 0.88);
+  --ih-paper-strong: rgba(255, 255, 255, 0.96);
+  --ih-ink: #1f2937;
+  --ih-muted: #667085;
+  --ih-primary: #6d5dfc;
+  --ih-primary-2: #8b7cff;
+  --ih-primary-soft: rgba(109, 93, 252, 0.11);
+  --ih-accent: #ffb84d;
+  --ih-accent-soft: rgba(255, 184, 77, 0.18);
+  --ih-green: #13b981;
+  --ih-green-soft: rgba(19, 185, 129, 0.12);
+  --ih-red: #ef4444;
+  --ih-red-soft: rgba(239, 68, 68, 0.10);
+  --ih-blue: #36a3ff;
+  --ih-blue-soft: rgba(54, 163, 255, 0.12);
+  --ih-line: rgba(31, 41, 55, 0.12);
+  --ih-line-strong: rgba(31, 41, 55, 0.18);
+  --ih-shadow: 0 24px 80px rgba(31, 41, 55, 0.10);
+  --ih-shadow-soft: 0 14px 38px rgba(31, 41, 55, 0.08);
+  --ih-radius: 26px;
+
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(109, 93, 252, 0.18), transparent 36%),
+    radial-gradient(circle at top right, rgba(255, 184, 77, 0.20), transparent 28%),
+    radial-gradient(circle at 70% 45%, rgba(54, 163, 255, 0.08), transparent 30%),
+    var(--ih-bg);
+  color: var(--ih-ink);
+  line-height: 1.7;
+}
+
+/* ---- Sidebar ---- */
+.ih-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 28px 22px;
+  border-right: 1px solid var(--ih-line);
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(16px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ih-brand { display: flex; gap: 12px; align-items: center; margin-bottom: 30px; }
+.ih-logo {
+  width: 46px; height: 46px; border-radius: 16px;
+  background: linear-gradient(135deg, var(--ih-primary), var(--ih-accent));
+  display: grid; place-items: center; color: white; font-weight: 950;
+  flex-shrink: 0; box-shadow: 0 14px 40px rgba(109, 93, 252, 0.24);
+}
+.ih-brand__title { margin: 0; font-size: 15px; line-height: 1.3; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+.ih-brand__subtitle { margin: 2px 0 0; font-size: 12px; color: var(--ih-muted); }
+
+.ih-nav-title { margin: 22px 0 10px; color: var(--ih-muted); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; }
+.ih-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
+.ih-nav__link {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin: 2px 0;
+  border-radius: 14px; border: none; background: transparent; color: var(--ih-ink);
+  text-decoration: none; font-size: 14px; cursor: pointer; transition: 0.2s ease;
+  text-align: left; font-family: inherit; width: 100%;
+}
+.ih-nav__link:hover { background: rgba(109, 93, 252, 0.08); transform: translateX(3px); }
+.ih-nav__link.active { background: rgba(109, 93, 252, 0.10); font-weight: 700; }
+.ih-nav__link.done { opacity: 0.65; }
+.ih-nav__dot { width: 9px; height: 9px; border-radius: 999px; background: var(--ih-primary-2); flex: 0 0 auto; }
+.ih-nav__link.active .ih-nav__dot { background: var(--ih-primary); box-shadow: 0 0 0 4px rgba(109, 93, 252, 0.18); }
+.ih-nav__link.done .ih-nav__dot { background: var(--ih-green); }
+.ih-nav__label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ih-nav__check { color: var(--ih-green); font-size: 13px; flex: 0 0 auto; }
+
+/* ---- Progress Card ---- */
+.ih-progress-card {
+  margin-top: auto; padding: 16px; background: var(--ih-paper);
+  border: 1px solid var(--ih-line); border-radius: 20px; box-shadow: var(--ih-shadow);
+}
+.ih-progress-card strong { display: block; font-size: 13px; margin-bottom: 10px; }
+.ih-progress-bar { width: 100%; height: 10px; border-radius: 999px; background: rgba(109, 93, 252, 0.12); overflow: hidden; }
+.ih-progress-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--ih-primary), var(--ih-accent)); transition: width 0.45s ease; }
+.ih-progress-text { margin: 10px 0 0; color: var(--ih-muted); font-size: 13px; }
+
+/* ---- Main Content ---- */
+.ih-main { padding: 40px clamp(24px, 4vw, 72px) 80px; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+
+/* ---- Module Card ---- */
+.ih-module-card {
+  width: 100%; max-width: 1440px; padding: 38px clamp(28px, 4vw, 56px); margin-bottom: 42px;
+  background: var(--ih-paper); border: 1px solid var(--ih-line);
+  border-radius: var(--ih-radius); box-shadow: var(--ih-shadow);
+  animation: ihCardIn 0.45s ease both;
+}
+@keyframes ihCardIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ih-module-card--hero {
+  background: linear-gradient(135deg, rgba(109,93,252,0.08), rgba(255,184,77,0.08)), var(--ih-paper);
+}
+
+/* Hero inner layout */
+.ih-hero-inner {
+  display: flex; gap: 28px; align-items: center; justify-content: space-between;
+  margin-bottom: 24px;
+}
+.ih-hero-text { flex: 1; }
+.ih-hero-title {
+  margin: 0 0 10px; font-size: clamp(26px, 4vw, 44px); line-height: 1.15; letter-spacing: -0.02em;
+}
+.ih-hero-subtitle { font-size: 17px; color: var(--ih-muted); margin: 0; line-height: 1.6; }
+
+.ih-hero-icon { flex: 0 0 auto; }
+.ih-hero-icon__shape {
+  width: 56px; height: 56px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(109,93,252,0.18), rgba(255,184,77,0.22));
+  border: 1px solid rgba(109,93,252,0.16);
+}
+
+.ih-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px;
+  border-radius: 999px; background: rgba(109,93,252,0.10); color: var(--ih-primary);
+  font-size: 13px; font-weight: 850; margin-bottom: 18px;
+}
+
+/* Module card header */
+.ih-module-card__header { margin-bottom: 28px; }
+.ih-module-card__title {
+  margin: 0 0 8px; font-size: 24px; line-height: 1.3; letter-spacing: -0.02em;
+}
+.ih-module-card__goal { font-size: 15px; color: var(--ih-muted); margin: 0; line-height: 1.6; }
+
+/* Module card blocks area */
+.ih-module-card__blocks { display: flex; flex-direction: column; gap: 16px; }
+
+/* Fragment body generated by the backend */
+.ih-fragment {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  width: 100%;
+}
+.ih-fragment > .ih-unit {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.ih-fragment > .ih-unit > .ih-card,
+.ih-fragment > .ih-unit > .ih-block,
+.ih-fragment > .ih-unit > .ih-quiz,
+.ih-fragment > .ih-unit > .ih-reflection,
+.ih-fragment > .ih-unit > .ih-callout,
+.ih-fragment > .ih-unit > article {
+  box-sizing: border-box;
+  max-width: none !important;
+  width: 100% !important;
+}
+.ih-block {
+  padding: 24px;
+  border-radius: 22px;
+  border: 1px solid var(--ih-line);
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 8px 28px rgba(31, 41, 55, 0.05);
+}
+.ih-block--intro {
+  background: linear-gradient(135deg, rgba(109, 93, 252, 0.10), rgba(54, 163, 255, 0.08)), rgba(255,255,255,0.72);
+}
+.ih-block--concept,
+.ih-block--explain,
+.ih-block--visual,
+.ih-block--case_compare,
+.ih-block--flow,
+.ih-block--tabs {
+  background: rgba(255, 255, 255, 0.74);
+}
+.ih-block--quiz,
+.ih-block--practice,
+.ih-block--scenario,
+.ih-block--dialogue {
+  background: linear-gradient(135deg, rgba(109,93,252,0.08), rgba(255,184,77,0.10));
+}
+.ih-block--reflection,
+.ih-block--summary {
+  background: var(--ih-green-soft);
+  border-color: rgba(19,185,129,0.24);
+}
+.ih-unit h2,
+.ih-unit h3,
+.ih-unit h4 {
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+.ih-unit p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.75;
+}
+.ih-unit ul,
+.ih-unit ol {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+}
+.ih-unit button {
+  font-family: inherit;
+}
+.ih-unit .ih-card {
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid var(--ih-line);
+  background: rgba(255,255,255,0.76);
+}
+.ih-unit .ih-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--ih-primary-soft);
+  color: var(--ih-primary);
+  font-size: 12px;
+  font-weight: 850;
+}
+.ih-unit .ih-reflection {
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.58);
+  border: 1px dashed rgba(19,185,129,0.32);
+}
+
+.ih-tabs { display: grid; gap: 14px; }
+.ih-tabs__list,
+.ih-tab-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ih-tab {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: rgba(31,41,55,0.07);
+  color: var(--ih-ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+}
+.ih-tab.active,
+.ih-tab.selected,
+.ih-tab[aria-pressed="true"] {
+  background: var(--ih-primary);
+  color: #fff;
+}
+.ih-tab-panel {
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.68);
+  border: 1px solid var(--ih-line);
+}
+.ih-tab-panel:not(.active)[hidden] { display: none; }
+
+.ih-flow-board[data-current-step] [data-step]:not(.active):not(.done) {
+  opacity: 0.72;
+}
+
+.ih-unit .ih-quiz {
+  padding: 22px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(109,93,252,0.08), rgba(255,184,77,0.10));
+  border: 1px solid var(--ih-line);
+}
+
+.ih-unit .ih-dialogue-panel,
+.ih-unit .ih-scenario-layout {
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px solid var(--ih-line);
+  background: rgba(255,255,255,0.70);
+}
+
+.ih-unit .scenario-card,
+.ih-unit .scenario-card * {
+  color: #fff !important;
+}
+
+/* Sub-card: a viewport-sized mini-card within a module */
+.ih-sub-card {
+  padding: 28px 32px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--ih-line);
+  border-radius: 18px;
+  box-shadow: 0 4px 20px rgba(31, 41, 55, 0.06);
+}
+
+/* Module card footer */
+.ih-module-card__footer {
+  margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--ih-line);
+  display: flex; justify-content: flex-end;
+}
+.ih-btn.done { background: var(--ih-green-soft); color: var(--ih-green); }
+
+/* ---- Buttons ---- */
+.ih-btn {
+  border: none; cursor: pointer; border-radius: 999px; padding: 12px 22px;
+  font-weight: 850; font-size: 14px; transition: 0.2s ease; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.ih-btn:hover:not(:disabled) { transform: translateY(-2px); }
+.ih-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.ih-btn--primary { color: white; background: linear-gradient(135deg, var(--ih-primary), var(--ih-primary-2)); box-shadow: 0 14px 30px rgba(109,93,252,0.24); }
+.ih-btn--secondary { color: var(--ih-ink); background: rgba(31,41,55,0.07); }
+.ih-btn--ghost { color: var(--ih-muted); background: transparent; border: 1px solid var(--ih-line); }
+
+/* ---- Content Blocks ---- */
+.ih-heading { font-size: 24px; line-height: 1.3; margin: 0 0 14px; letter-spacing: -0.02em; }
+.ih-paragraph p { margin: 0 0 12px; font-size: 16px; line-height: 1.8; }
+
+/* Concept Card Grid */
+.ih-concept-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.ih-concept-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.ih-concept-card {
+  padding: 24px; border-radius: 22px; border: 1px solid var(--ih-line);
+  background: rgba(255,255,255,0.66); transition: 0.22s ease;
+}
+.ih-concept-card:hover { transform: translateY(-5px); box-shadow: 0 18px 42px rgba(31,41,55,0.10); }
+.ih-concept-card__icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 16px; margin-bottom: 14px; background: rgba(109,93,252,0.11); font-size: 22px; }
+.ih-concept-card__explanation { font-size: 16px; margin-bottom: 16px; line-height: 1.7; }
+.ih-concept-card__terms { display: flex; flex-wrap: wrap; gap: 8px; }
+.ih-concept-card__term { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: rgba(31,41,55,0.07); color: var(--ih-muted); font-size: 12px; font-weight: 850; }
+
+/* Callout */
+.ih-callout { padding: 18px 22px; border-radius: 20px; }
+.ih-callout--tip, .ih-callout--reflection { background: var(--ih-accent-soft); border: 1px solid rgba(255,184,77,0.32); }
+.ih-callout--important { background: var(--ih-green-soft); border: 1px solid rgba(19,185,129,0.24); }
+.ih-callout--warning { background: var(--ih-red-soft); border: 1px solid rgba(239,68,68,0.20); }
+.ih-callout__label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 850; margin-bottom: 8px; color: var(--ih-muted); }
+.ih-callout--tip .ih-callout__label::before { content: "💡"; font-size: 14px; }
+.ih-callout--important .ih-callout__label::before { content: "⭐"; font-size: 14px; }
+.ih-callout--warning .ih-callout__label::before { content: "⚠️"; font-size: 14px; }
+.ih-callout--reflection .ih-callout__label::before { content: "💭"; font-size: 14px; }
+.ih-callout p { margin: 0; font-size: 15px; line-height: 1.7; }
+
+/* Example */
+.ih-example { padding: 24px; border-radius: 22px; border: 1px solid var(--ih-line); background: rgba(255,255,255,0.72); }
+.ih-example h4 { margin: 0 0 12px; font-size: 17px; }
+.ih-example__explanation { font-size: 15px; margin-bottom: 14px; line-height: 1.7; }
+.ih-example__takeaway { font-size: 14px; color: var(--ih-muted); }
+
+/* Summary */
+.ih-summary { padding: 26px; border-radius: 24px; background: var(--ih-green-soft); border: 1px solid rgba(19,185,129,0.24); }
+.ih-summary h3 { margin: 0 0 16px; font-size: 20px; }
+.ih-summary ul { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
+.ih-summary li { font-size: 15px; line-height: 1.6; }
+.ih-summary__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ih-summary__card { padding: 20px; border-radius: 22px; background: rgba(255,255,255,0.66); border: 1px solid var(--ih-line); transition: 0.22s ease; }
+.ih-summary__card:hover { transform: translateY(-4px); box-shadow: 0 14px 32px rgba(31,41,55,0.08); }
+.ih-summary__card-num { width: 32px; height: 32px; border-radius: 999px; display: inline-grid; place-items: center; background: rgba(109,93,252,0.10); color: var(--ih-primary); font-weight: 900; font-size: 14px; margin-bottom: 10px; }
+.ih-summary__card p { margin: 0; font-size: 15px; line-height: 1.6; }
+
+/* ---- Animated Flow (enhanced) ---- */
+.ih-animated-flow { padding: 28px; border-radius: 28px; background: radial-gradient(circle at 15% 18%, rgba(109,93,252,0.16), transparent 26%), radial-gradient(circle at 82% 72%, rgba(255,184,77,0.18), transparent 27%), rgba(255,255,255,0.64); border: 1px solid var(--ih-line); }
+.ih-flow-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+.ih-flow-controls__left { display: flex; gap: 10px; flex-wrap: wrap; }
+.ih-flow-status { font-size: 13px; font-weight: 850; color: var(--ih-muted); padding: 7px 12px; border-radius: 999px; background: rgba(31,41,55,0.06); }
+
+.ih-flow-board { position: relative; border-radius: 24px; padding: 28px; overflow: hidden; background: radial-gradient(circle at 15% 18%, rgba(109,93,252,0.12), transparent 26%), radial-gradient(circle at 82% 72%, rgba(255,184,77,0.14), transparent 27%), rgba(255,255,255,0.60); border: 1px solid var(--ih-line); }
+.ih-flow-track { position: relative; padding: 6px 0 2px; }
+.ih-flow-track__line { position: absolute; left: 12%; right: 12%; top: 48px; height: 8px; border-radius: 999px; background: rgba(31,41,55,0.10); overflow: hidden; }
+.ih-flow-track__fill { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--ih-primary), var(--ih-accent)); transition: width 0.45s ease; }
+.ih-flow-packet { position: absolute; top: 36px; left: 12%; width: 32px; height: 32px; border-radius: 999px; background: linear-gradient(135deg, var(--ih-primary), var(--ih-accent)); box-shadow: 0 12px 28px rgba(109,93,252,0.28); z-index: 4; transform: translateX(-50%); transition: left 0.48s ease; display: grid; place-items: center; color: white; font-size: 15px; }
+.ih-flow-nodes { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; align-items: stretch; }
+.ih-flow-node { display: grid; grid-template-rows: auto 1fr; gap: 14px; min-width: 0; }
+.ih-flow-node__dot { width: 48px; height: 48px; border-radius: 999px; display: grid; place-items: center; margin: 0 auto; color: white; background: #252a35; font-weight: 950; border: 5px solid rgba(255,255,255,0.82); box-shadow: var(--ih-shadow-soft); transition: 0.25s ease; }
+.ih-flow-node__card { min-height: 140px; padding: 16px; border-radius: 22px; background: rgba(255,255,255,0.82); border: 1px solid var(--ih-line); box-shadow: var(--ih-shadow-soft); transition: 0.25s ease; }
+.ih-flow-node__card h4 { margin: 0 0 8px; font-size: 15px; }
+.ih-flow-node__card p { margin: 0; font-size: 13px; line-height: 1.5; }
+.ih-flow-node.active .ih-flow-node__dot { background: linear-gradient(135deg, var(--ih-primary), var(--ih-accent)); transform: scale(1.08); animation: ihPulse 1s ease-in-out infinite; }
+.ih-flow-node.active .ih-flow-node__card { transform: translateY(-6px); border-color: rgba(109,93,252,0.45); box-shadow: 0 20px 52px rgba(109,93,252,0.18); }
+.ih-flow-node.done .ih-flow-node__dot { background: var(--ih-green); }
+.ih-flow-node.done .ih-flow-node__card { background: rgba(19,185,129,0.08); border-color: rgba(19,185,129,0.24); }
+
+@keyframes ihPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(109,93,252,0.30); }
+  50%    { box-shadow: 0 0 0 10px rgba(109,93,252,0.00); }
+}
+
+.ih-token-stream { display: flex; flex-wrap: wrap; gap: 9px; min-height: 60px; align-content: center; padding: 14px; margin-top: 20px; border-radius: 22px; background: rgba(255,255,255,0.58); border: 1px dashed rgba(31,41,55,0.16); }
+.ih-token-chip { opacity: 0; transform: translateY(12px) scale(0.96); padding: 7px 10px; border-radius: 999px; background: rgba(109,93,252,0.10); color: var(--ih-primary); font-weight: 900; font-size: 12px; transition: 0.35s ease; }
+.ih-token-chip.show { opacity: 1; transform: translateY(0) scale(1); }
+.ih-flow-story { padding: 20px; border-radius: 24px; border: 1px solid var(--ih-line); background: rgba(255,255,255,0.72); margin-top: 20px; }
+.ih-flow-story strong { color: var(--ih-primary); }
+
+/* Legacy step buttons (fallback for simple flows without auto-play) */
+.ih-animated-flow__progress { display: flex; justify-content: center; gap: 18px; margin-bottom: 24px; }
+.ih-animated-flow__step-btn { width: 48px; height: 48px; border-radius: 999px; border: 5px solid rgba(255,255,255,0.82); background: #252a35; color: white; font-weight: 950; font-size: 16px; cursor: pointer; display: grid; place-items: center; transition: 0.25s ease; box-shadow: var(--ih-shadow-soft); }
+.ih-animated-flow__step-btn.active { background: linear-gradient(135deg, var(--ih-primary), var(--ih-accent)); transform: scale(1.08); animation: ihPulse 1s ease-in-out infinite; }
+.ih-animated-flow__step-btn.done { background: var(--ih-green); }
+.ih-animated-flow__content { padding: 22px; border-radius: 22px; background: rgba(255,255,255,0.82); border: 1px solid var(--ih-line); box-shadow: var(--ih-shadow-soft); margin-bottom: 18px; }
+.ih-animated-flow__content h4 { margin: 0 0 10px; font-size: 18px; }
+.ih-animated-flow__content p { margin: 0 0 8px; font-size: 15px; line-height: 1.7; }
+.ih-animated-flow__nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ih-animated-flow__nav button { padding: 10px 20px; border-radius: 999px; border: 1px solid var(--ih-line); background: rgba(31,41,55,0.07); color: var(--ih-ink); font-weight: 850; cursor: pointer; transition: 0.2s ease; font-family: inherit; font-size: 14px; }
+.ih-animated-flow__nav button:hover:not(:disabled) { transform: translateY(-2px); }
+.ih-animated-flow__nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---- Case Compare (with internal tabs) ---- */
+.ih-case-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.ih-case-tab { padding: 10px 16px; border-radius: 999px; background: rgba(31,41,55,0.07); color: var(--ih-ink); border: none; cursor: pointer; font-size: 14px; font-weight: 750; transition: 0.2s ease; font-family: inherit; }
+.ih-case-tab.active { background: var(--ih-primary); color: white; }
+.ih-case-compare__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 18px; }
+.ih-case-compare__case { padding: 22px; border-radius: 22px; border: 1px solid var(--ih-line); background: rgba(255,255,255,0.76); min-height: 180px; }
+.ih-case-compare__case h4 { margin: 0 0 12px; font-size: 17px; }
+.ih-case-compare__case p  { font-size: 14px; line-height: 1.7; }
+.ih-case-compare__case--default { background: rgba(255,255,255,0.76); }
+.ih-case-compare__case--good, .ih-case-compare__case--success { background: rgba(19,185,129,0.08); border-color: rgba(19,185,129,0.24); }
+.ih-case-compare__case--weak, .ih-case-compare__case--warning, .ih-case-compare__case--bad, .ih-case-compare__case--error { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.20); }
+.ih-case-compare__tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.ih-tag { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: 999px; background: rgba(31,41,55,0.07); color: var(--ih-muted); font-size: 12px; font-weight: 850; }
+.ih-tag.green { background: var(--ih-green-soft); color: var(--ih-green); }
+.ih-tag.orange { background: var(--ih-accent-soft); color: #a15d00; }
+.ih-case-compare__takeaway { font-size: 14px; color: var(--ih-muted); line-height: 1.6; }
+
+/* ---- Context Inspector ---- */
+.ih-context-inspector { display: grid; gap: 10px; }
+.ih-context-inspector__item { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px; background: rgba(31,41,55,0.05); border: 1px solid var(--ih-line); cursor: pointer; transition: 0.2s ease; }
+.ih-context-inspector__item:hover { background: rgba(109,93,252,0.05); }
+.ih-context-inspector__item strong { font-size: 14px; flex-shrink: 0; }
+.ih-context-inspector__item span { color: var(--ih-muted); font-size: 13px; line-height: 1.5; }
+.ih-context-inspector__result { font-size: 14px; color: var(--ih-muted); margin-top: 10px; line-height: 1.5; }
+.ih-context-meter { margin: 16px 0 6px; height: 12px; border-radius: 999px; background: rgba(31,41,55,0.09); overflow: hidden; }
+.ih-context-meter span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--ih-primary), var(--ih-accent)); transition: width 0.35s ease; }
+
+/* ---- Stepper ---- */
+.ih-stepper__tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.ih-stepper__tab { padding: 10px 16px; border-radius: 999px; background: rgba(31,41,55,0.07); color: var(--ih-ink); border: none; cursor: pointer; font-size: 14px; font-weight: 750; transition: 0.2s ease; font-family: inherit; }
+.ih-stepper__tab.active { background: var(--ih-primary); color: white; }
+.ih-stepper__content { padding: 24px; border-radius: 22px; border: 1px solid var(--ih-line); background: rgba(255,255,255,0.68); }
+.ih-stepper__content p { margin: 0; font-size: 15px; line-height: 1.7; }
+
+/* ---- Interactive Blocks ---- */
+.ih-interactive { padding: 26px; border-radius: 24px; background: linear-gradient(135deg, rgba(109,93,252,0.08), rgba(255,184,77,0.10)); border: 1px solid var(--ih-line); }
+.ih-question { font-size: 17px; font-weight: 850; margin: 0 0 18px; line-height: 1.5; }
+.ih-options { display: grid; gap: 10px; margin-bottom: 18px; }
+.ih-option {
+  width: 100%; text-align: left; padding: 14px 18px; border-radius: 16px;
+  background: white; border: 1px solid var(--ih-line); color: var(--ih-ink);
+  font-weight: 750; font-size: 14px; cursor: pointer; transition: 0.2s ease;
+  font-family: inherit; display: flex; flex-direction: column; gap: 6px;
+}
+.ih-option:hover { transform: translateX(4px); }
+.ih-option.active, .ih-option.checked { background: var(--ih-primary-soft); border-color: rgba(109,93,252,0.42); }
+.ih-option.correct { border-color: rgba(19,185,129,0.40); background: rgba(19,185,129,0.12); }
+.ih-option.wrong { border-color: rgba(239,68,68,0.40); background: rgba(239,68,68,0.10); }
+.ih-option:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.ih-option--preferred { border-color: rgba(19,185,129,0.32); background: rgba(19,185,129,0.08); }
+.ih-option--preferred::after {
+  content: "推荐"; font-size: 11px; font-weight: 850; color: var(--ih-green);
+  align-self: flex-end; padding: 2px 8px; border-radius: 999px;
+  background: rgba(19,185,129,0.14);
+}
+.ih-checkbox { display: flex; gap: 12px; align-items: center; }
+.ih-checkbox input[type="checkbox"] { flex: 0 0 auto; margin: 0; width: 18px; height: 18px; cursor: pointer; }
+.ih-feedback { font-weight: 850; color: var(--ih-muted); margin-top: 10px; font-size: 14px; }
+.ih-explanation { padding: 18px; border-radius: 18px; background: rgba(19,185,129,0.10); border: 1px solid rgba(19,185,129,0.24); font-size: 14px; line-height: 1.6; margin-top: 12px; }
+.ih-submit-btn { padding: 12px 24px; border-radius: 999px; border: none; background: linear-gradient(135deg, var(--ih-primary), var(--ih-primary-2)); color: white; font-weight: 850; font-size: 14px; cursor: pointer; transition: 0.2s ease; box-shadow: 0 14px 30px rgba(109,93,252,0.24); font-family: inherit; }
+.ih-submit-btn:hover { transform: translateY(-2px); }
+.ih-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.ih-interactive textarea, .ih-interactive input[type="text"] {
+  width: 100%; padding: 14px 16px; border-radius: 18px; border: 1px solid var(--ih-line);
+  font-family: inherit; font-size: 15px; line-height: 1.6; outline: none;
+  background: rgba(255,255,255,0.76); resize: vertical; transition: 0.2s ease; box-sizing: border-box; margin-bottom: 14px;
+}
+.ih-interactive textarea:focus, .ih-interactive input[type="text"]:focus { border-color: rgba(109,93,252,0.48); box-shadow: 0 0 0 4px rgba(109,93,252,0.10); }
+
+/* ---- Drag Match Board ---- */
+.ih-drag-match__hint { color: var(--ih-muted); font-size: 13px; margin: 0 0 16px; }
+.ih-match-board { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 14px; margin-bottom: 16px; }
+.ih-match-board__bank, .ih-match-board__zones { display: grid; gap: 10px; align-content: start; }
+.ih-match-board__label { color: var(--ih-muted); font-size: 13px; font-weight: 850; margin: 0 0 2px; }
+.ih-match-board__empty { color: var(--ih-muted); font-size: 13px; padding: 10px 0; }
+.ih-match-board__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.ih-match-item {
+  min-height: 64px; border-radius: 18px; padding: 13px 14px; border: 1px solid var(--ih-line);
+  background: rgba(255,255,255,0.74); font-weight: 850; font-size: 14px;
+  cursor: grab; user-select: none; transition: 0.2s ease;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.ih-match-item:active { cursor: grabbing; }
+.ih-match-item:hover { transform: translateX(3px); }
+.ih-match-item.selected { outline: 3px solid rgba(109,93,252,0.18); border-color: rgba(109,93,252,0.42); }
+.ih-match-item.dragging { opacity: 0.55; transform: scale(0.98); }
+.ih-match-item__handle { color: var(--ih-muted); font-size: 12px; flex-shrink: 0; }
+.ih-match-item--in-zone { cursor: pointer; border-style: solid; background: white; }
+.ih-match-item--in-zone:hover { transform: translateX(0); }
+.ih-match-item--in-zone .ih-match-item__handle { display: none; }
+
+.ih-drop-zone {
+  min-height: 64px; border-radius: 18px; padding: 13px 14px; border: 1px dashed var(--ih-line);
+  background: rgba(31,41,55,0.04); transition: 0.2s ease;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ih-drop-zone.selected-target { background: var(--ih-primary-soft); border-color: rgba(109,93,252,0.42); }
+.ih-drop-zone__label { color: var(--ih-muted); font-size: 13px; font-weight: 850; }
+.ih-drop-zone.correct { border-color: rgba(19,185,129,0.40); background: rgba(19,185,129,0.08); border-style: solid; }
+.ih-drop-zone.wrong { border-color: rgba(239,68,68,0.40); background: rgba(239,68,68,0.08); border-style: solid; }
+.ih-match-item__result { font-size: 12px; font-weight: 850; margin-left: auto; }
+.ih-match-item__result.correct { color: var(--ih-green); }
+.ih-match-item--in-zone.wrong { border-color: rgba(239,68,68,0.40); background: rgba(239,68,68,0.08); }
+.ih-match-item--in-zone.correct { border-color: rgba(19,185,129,0.40); background: rgba(19,185,129,0.08); }
+.ih-match-item--correct-answer {
+  border-color: rgba(19,185,129,0.40) !important;
+  background: rgba(19,185,129,0.06) !important;
+  border-style: dashed !important;
+}
+
+/* ---- Sequence ---- */
+.ih-sequence__hint { color: var(--ih-muted); font-size: 13px; margin: 0 0 16px; }
+.ih-sequence__list { display: grid; gap: 10px; margin-bottom: 16px; }
+.ih-sequence__item {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  padding: 14px 18px; border-radius: 18px; border: 1px solid var(--ih-line);
+  background: white; font-weight: 850; font-size: 14px; cursor: grab; user-select: none;
+}
+.ih-sequence__item:active { cursor: grabbing; }
+.ih-sequence__item.dragging { opacity: 0.55; transform: scale(0.99); }
+.ih-sequence__item::before { counter-increment: ihSeq; content: counter(ihSeq); width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; background: rgba(31,41,55,0.08); color: var(--ih-muted); font-size: 13px; font-weight: 850; flex-shrink: 0; }
+.ih-sequence__item.selected { border-color: rgba(109,93,252,0.44); background: var(--ih-primary-soft); }
+.ih-sequence__handle { color: var(--ih-muted); letter-spacing: -2px; font-size: 16px; cursor: grab; user-select: none; }
+.ih-sequence__controls { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ---- Short Answer ---- */
+.ih-short-answer__mode { color: var(--ih-blue); font-size: 13px; font-weight: 700; margin: 0 0 10px; }
+.ih-short-answer__actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.ih-short-answer__saved-hint { color: var(--ih-muted); font-size: 13px; margin-top: 8px; }
+.ih-rubric {
+  margin-top: 14px; padding: 18px; border-radius: 18px;
+  background: rgba(19, 185, 129, 0.10); border: 1px solid rgba(19, 185, 129, 0.24);
+}
+.ih-rubric strong { color: var(--ih-green); }
+.ih-rubric ul { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.ih-rubric li { font-size: 14px; line-height: 1.6; }
+
+/* ---- Flashcard ---- */
+.ih-flashcard__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+.ih-flashcard__card { min-height: 200px; cursor: pointer; perspective: 1000px; }
+.ih-flashcard__card-inner { position: relative; width: 100%; height: 100%; min-height: 200px; transition: transform 0.5s; transform-style: preserve-3d; }
+.ih-flashcard__card.flipped .ih-flashcard__card-inner { transform: rotateY(180deg); }
+.ih-flashcard__front, .ih-flashcard__back { position: absolute; inset: 0; border-radius: 22px; padding: 24px; border: 1px solid var(--ih-line); box-shadow: var(--ih-shadow-soft); display: grid; place-items: center; text-align: center; font-weight: 900; font-size: 18px; backface-visibility: hidden; line-height: 1.5; }
+.ih-flashcard__front { background: rgba(255,255,255,0.74); }
+.ih-flashcard__back { background: rgba(109,93,252,0.08); font-weight: 750; transform: rotateY(180deg); }
+.ih-flashcard__nav { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.ih-flashcard__nav button { padding: 8px 18px; border-radius: 999px; border: 1px solid var(--ih-line); background: white; cursor: pointer; font-weight: 750; transition: 0.15s ease; font-family: inherit; font-size: 14px; }
+.ih-flashcard__nav button:hover:not(:disabled) { transform: translateY(-2px); }
+.ih-flashcard__nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+.ih-flashcard__nav span { font-size: 14px; color: var(--ih-muted); }
+
+/* ---- Socratic Chat (bubble-based) ---- */
+.ih-socratic-layout { display: grid; grid-template-columns: 0.96fr 1.04fr; gap: 18px; }
+.ih-chat-box { min-height: 380px; max-height: 480px; display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 24px; background: rgba(255,255,255,0.72); border: 1px solid var(--ih-line); overflow-y: auto; scroll-behavior: smooth; }
+.ih-bubble { padding: 12px 14px; border-radius: 18px; max-width: 92%; font-size: 14px; animation: ihBubbleIn 0.25s ease both; line-height: 1.5; }
+@keyframes ihBubbleIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.ih-bubble--ai { align-self: flex-start; background: rgba(109,93,252,0.10); border: 1px solid rgba(109,93,252,0.18); }
+.ih-bubble--user { align-self: flex-end; background: rgba(255,184,77,0.18); border: 1px solid rgba(255,184,77,0.28); }
+.ih-bubble--system { align-self: center; max-width: 100%; background: rgba(31,41,55,0.06); color: var(--ih-muted); border: 1px dashed var(--ih-line); font-size: 13px; }
+.ih-typing { align-self: flex-start; width: 72px; height: 36px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 4px; background: rgba(109,93,252,0.09); border: 1px solid rgba(109,93,252,0.16); }
+.ih-typing i { width: 6px; height: 6px; border-radius: 999px; background: var(--ih-primary); animation: ihTyping 0.9s infinite; }
+.ih-typing i:nth-child(2) { animation-delay: 0.12s; }
+.ih-typing i:nth-child(3) { animation-delay: 0.24s; }
+@keyframes ihTyping { 0%,80%,100% { opacity: 0.25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.ih-socratic-panel { padding: 20px; border-radius: 24px; border: 1px solid var(--ih-line); background: rgba(255,255,255,0.66); }
+.ih-socratic-panel__title { font-size: 17px; font-weight: 850; margin: 0 0 6px; }
+.ih-socratic-panel__guide { font-size: 13px; color: var(--ih-muted); margin: 0 0 14px; }
+.ih-socratic-panel__goal { padding: 14px 16px; border-radius: 18px; background: var(--ih-blue-soft); border: 1px solid rgba(54,163,255,0.24); font-size: 13px; margin-bottom: 14px; }
+.ih-socratic-input-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 14px; }
+.ih-socratic-input-row input[type="text"] { padding: 12px 14px; border-radius: 16px; border: 1px solid var(--ih-line); font-family: inherit; font-size: 14px; outline: none; background: rgba(255,255,255,0.76); }
+.ih-socratic-input-row input[type="text"]:focus { border-color: rgba(109,93,252,0.48); box-shadow: 0 0 0 4px rgba(109,93,252,0.10); }
+.ih-socratic-done { padding: 28px; border-radius: 24px; background: var(--ih-green-soft); border: 1px solid rgba(19,185,129,0.24); text-align: center; font-weight: 850; }
+
+/* ---- Scenario (dual-column) ---- */
+.ih-scenario-layout { display: grid; grid-template-columns: 0.96fr 1.04fr; gap: 18px; }
+.ih-scenario-scene { border-radius: 24px; padding: 24px; background: linear-gradient(135deg, rgba(54,163,255,0.10), rgba(109,93,252,0.09)), rgba(255,255,255,0.72); border: 1px solid var(--ih-line); min-height: 380px; }
+.ih-scenario-scene__title { font-size: 20px; margin: 0 0 8px; }
+.ih-scenario-scene__context { padding: 14px; border-radius: 16px; background: rgba(255,255,255,0.72); border: 1px solid var(--ih-line); margin-bottom: 16px; font-size: 14px; line-height: 1.5; }
+.ih-scenario-scene__task { font-size: 16px; font-weight: 850; margin: 0 0 14px; }
+.ih-scenario-chat { min-height: 380px; max-height: 480px; display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 24px; background: rgba(255,255,255,0.72); border: 1px solid var(--ih-line); overflow-y: auto; }
+.ih-scenario-chat__title { font-size: 16px; font-weight: 850; margin: 0 0 4px; }
+.ih-scenario-done { padding: 28px; border-radius: 24px; background: var(--ih-green-soft); border: 1px solid rgba(19,185,129,0.24); text-align: center; font-weight: 850; }
+
+/* ---- Tutor Message ---- */
+.ih-tutor-message { padding: 14px 16px; border-radius: 16px; background: rgba(109,93,252,0.08); border: 1px solid rgba(109,93,252,0.16); font-size: 14px; color: var(--ih-primary); font-weight: 850; margin-bottom: 14px; line-height: 1.5; }
+
+/* ---- Unknown Block Warning ---- */
+.ih-unknown-block { padding: 16px; border-radius: 16px; border: 1px dashed var(--ih-red); background: var(--ih-red-soft); color: var(--ih-red); font-size: 13px; }
+
+/* ---- Learning Summary ---- */
+.ih-learning-summary {
+  width: 100%; max-width: 1440px; margin-bottom: 42px; padding: 32px clamp(24px, 4vw, 44px);
+  background: linear-gradient(135deg, rgba(19, 185, 129, 0.06), rgba(109, 93, 252, 0.08)), var(--ih-paper);
+  border: 1px solid var(--ih-line); border-radius: var(--ih-radius);
+  box-shadow: var(--ih-shadow-soft); animation: ihCardIn 0.45s ease both;
+}
+.ih-learning-summary__header {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px;
+}
+.ih-learning-summary__title { margin: 0; font-size: 22px; line-height: 1.35; letter-spacing: -0.01em; }
+.ih-learning-summary-badge { flex: 0 0 auto; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 850; }
+.ih-learning-summary-badge.is-warn { background: var(--ih-accent-soft); color: #9a5b00; }
+.ih-learning-summary-badge.is-ok { background: var(--ih-green-soft); color: var(--ih-green); }
+
+.ih-learning-summary-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+.ih-learning-summary-metrics > div {
+  padding: 16px 18px; border-radius: 18px; background: var(--ih-paper-strong);
+  border: 1px solid var(--ih-line); display: grid; gap: 4px;
+}
+.ih-learning-summary-metrics span { font-size: 12px; color: var(--ih-muted); }
+.ih-learning-summary-metrics strong { font-size: 22px; font-weight: 900; letter-spacing: -0.01em; }
+.ih-learning-summary-text { margin: 0 0 18px; font-size: 15px; color: var(--ih-muted); line-height: 1.7; }
+
+.ih-learning-summary-block { margin-bottom: 16px; }
+.ih-learning-summary-block h3 { margin: 0 0 10px; font-size: 14px; font-weight: 850; }
+.ih-learning-summary-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.ih-learning-summary-tag {
+  padding: 7px 13px; border-radius: 999px; background: var(--ih-accent-soft);
+  color: #8a5100; font-size: 13px; font-weight: 800;
+}
+.ih-learning-summary-sections { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.ih-learning-summary-sections li {
+  display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px;
+  border-radius: 14px; background: var(--ih-paper-strong); border: 1px solid var(--ih-line); font-size: 14px;
+}
+.ih-learning-summary-sections em { font-style: normal; color: var(--ih-red); font-weight: 800; }
+.ih-learning-summary-actions {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--ih-line);
+}
+.ih-learning-summary-error { margin: 0; font-size: 13px; color: var(--ih-red); font-weight: 700; }
+
+/* ---- Citations Footer ---- */
+.ih-citations { width: 100%; max-width: 1440px; margin-top: 32px; padding: 24px; border-radius: 24px; background: rgba(31,41,55,0.04); border: 1px solid var(--ih-line); }
+.ih-citations h3 { margin: 0 0 14px; font-size: 16px; color: var(--ih-muted); }
+.ih-citations ul { margin: 0; padding-left: 20px; font-size: 14px; color: var(--ih-muted); display: grid; gap: 6px; }
+
+/* ---- Fullscreen mode ---- */
+.ih-app--fullscreen { grid-template-columns: 260px 1fr; }
+.ih-app--fullscreen .ih-main { padding: 40px min(6vw, 70px) 80px; }
+
+/* ---- Responsive ---- */
+@media (max-width: 1080px) {
+  .ih-app { grid-template-columns: 1fr; }
+  .ih-sidebar { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--ih-line); }
+  .ih-main { padding: 28px 24px 60px; }
+  .ih-hero-icon { display: none; }
+  .ih-socratic-layout, .ih-scenario-layout { grid-template-columns: 1fr; }
+  .ih-flow-nodes { grid-template-columns: 1fr; gap: 10px; }
+  .ih-flow-node { grid-template-columns: 54px 1fr; grid-template-rows: auto; align-items: center; }
+  .ih-flow-node__dot { margin: 0; }
+  .ih-flow-track__line, .ih-flow-packet { display: none; }
+  .ih-flow-node__card { min-height: auto; }
+}
+
+@media (max-width: 720px) {
+  .ih-main { padding: 24px 14px 60px; }
+  .ih-module-card { padding: 24px; }
+  .ih-sub-card { padding: 20px; }
+  .ih-concept-grid, .ih-case-compare__grid, .ih-match-board, .ih-flashcard__grid, .ih-summary__grid { grid-template-columns: 1fr; }
+  .ih-hero-title { font-size: 24px; }
+  .ih-chat-box { max-height: 360px; }
+  .ih-learning-summary-metrics { grid-template-columns: repeat(2, 1fr); }
+  .ih-learning-summary__header { flex-direction: column; }
+}
+
+.ih-scope-unit-1-what-is-understanding {
+  --ih-primary: #5b6cff;
+  --ih-accent: #ffb86b;
+  --ih-surface: #ffffff;
+  --ih-background: #f7f4ef;
+  --ih-text: #1f2937;
+  --ih-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --ih-radius: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--ih-text);
+  line-height: 1.6;
+}
+.ih-scope-unit-1-what-is-understanding article {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--ih-surface);
+  border-radius: var(--ih-radius);
+  box-shadow: var(--ih-shadow);
+}
+.ih-scope-unit-1-what-is-understanding h3 {
+  font-size: 1.25rem;
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+.ih-scope-unit-1-what-is-understanding h4 {
+  font-size: 1rem;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+.ih-scope-unit-1-what-is-understanding p {
+  margin: 8px 0;
+}
+.ih-scope-unit-1-what-is-understanding .ih-dialogue-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-dialogue-item {
+  padding: 12px 16px;
+  border-radius: 12px;
+  max-width: 80%;
+}
+.ih-scope-unit-1-what-is-understanding .ih-dialogue-user {
+  align-self: flex-end;
+  background: var(--ih-primary);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-dialogue-ai {
+  align-self: flex-start;
+  background: #f0f0f0;
+  border-bottom-left-radius: 4px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-badge {
+  display: inline-block;
+  background: var(--ih-accent);
+  color: var(--ih-text);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-callout {
+  background: #fff8e1;
+  border-left: 4px solid var(--ih-accent);
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-card {
+  background: var(--ih-surface);
+  border-radius: var(--ih-radius);
+  box-shadow: var(--ih-shadow);
+  padding: 16px;
+  margin-top: 12px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-flow-board {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-flow-step {
+  background: var(--ih-background);
+  padding: 12px 16px;
+  border-radius: 8px;
+  position: relative;
+}
+.ih-scope-unit-1-what-is-understanding .ih-flow-step strong {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-flow-step p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.ih-scope-unit-1-what-is-understanding .ih-step-badge {
+  display: inline-block;
+  background: var(--ih-primary);
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.ih-scope-unit-1-what-is-understanding .dotted-connector {
+  height: 16px;
+  border-left: 2px dashed var(--ih-accent);
+  margin-left: 20px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-scenario-layout {
+  margin-top: 16px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-weight-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-weight-label {
+  width: 60px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.ih-scope-unit-1-what-is-understanding .ih-bar {
+  height: 12px;
+  background: var(--ih-primary);
+  border-radius: 999px;
+  transition: width 0.3s;
+}
+.ih-scope-unit-1-what-is-understanding .ih-note {
+  font-style: italic;
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 4px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-reflection {
+  background: #f0f7ff;
+  border: 1px solid var(--ih-primary);
+}
+.ih-scope-unit-1-what-is-understanding .ih-compact .ih-flow-step {
+  padding: 8px 12px;
+}
+.ih-scope-unit-1-what-is-understanding .ih-compact .ih-flow-step strong {
+  font-size: 0.8rem;
+}
+.ih-scope-unit-1-what-is-understanding .ih-compact .ih-flow-step p {
+  font-size: 0.75rem;
+}
+@media (max-width: 640px) {
+  .ih-scope-unit-1-what-is-understanding article {
+    padding: 12px;
+  }
+  .ih-scope-unit-1-what-is-understanding .ih-dialogue-item {
+    max-width: 90%;
+  }
+}
+
+.ih-scope-unit-1-what-is-understanding .ih-options { display: grid; gap: 12px; margin: 16px 0; }
+.ih-scope-unit-1-what-is-understanding .ih-option { width: 100%; text-align: left; border: 1px solid rgba(36,48,68,.14); background: #fff; color: var(--ih-text, #243044); border-radius: 16px; padding: 13px 15px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
+.ih-scope-unit-1-what-is-understanding .ih-option::before { content: attr(data-option-label); display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 999px; background: rgba(92,109,246,.12); color: var(--ih-accent, #5c6df6); font-weight: 800; }
+.ih-scope-unit-1-what-is-understanding .ih-option.is-selected, .ih-scope-unit-1-what-is-understanding .ih-option.selected, .ih-scope-unit-1-what-is-understanding .ih-option.active { border-color: var(--ih-accent, #5c6df6); background: rgba(92,109,246,.10); }
+.ih-scope-unit-1-what-is-understanding .ih-option.is-correct { border-color: rgba(22,163,74,.55); background: rgba(22,163,74,.08); }
+.ih-scope-unit-1-what-is-understanding .ih-option.is-wrong { border-color: rgba(220,38,38,.46); background: rgba(220,38,38,.06); }
+.ih-scope-unit-1-what-is-understanding .ih-submit { border: 0; border-radius: 999px; padding: 10px 18px; background: var(--ih-accent, #5c6df6); color: #fff; font-weight: 800; cursor: pointer; }
+.ih-scope-unit-1-what-is-understanding .ih-submit.secondary { background: #243044; }
+.ih-scope-unit-1-what-is-understanding .ih-textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid rgba(36,48,68,.14); border-radius: 16px; padding: 14px 16px; background: #fff; color: var(--ih-text, #243044); }
+.ih-scope-unit-1-what-is-understanding .ih-feedback { display: none; margin-top: 14px; border-radius: 16px; padding: 14px 16px; background: rgba(255,255,255,.78); border: 1px solid rgba(36,48,68,.12); }
+.ih-scope-unit-1-what-is-understanding .ih-feedback.is-visible { display: block; }
+.ih-scope-unit-1-what-is-understanding .ih-feedback.success { border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08); }
+.ih-scope-unit-1-what-is-understanding .ih-feedback.warn { border-color: rgba(255,184,107,.55); background: rgba(255,184,107,.12); }
+.ih-scope-unit-1-what-is-understanding .scenario-box { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 16px; }
+.ih-scope-unit-1-what-is-understanding .scenario-card { border-radius: 18px; padding: 18px; background: #243044; color: #fff; }
+.ih-scope-unit-1-what-is-understanding .scenario-card .tag { display: inline-block; background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 10px; font-size: 12px; margin-bottom: 10px; }
+@media (max-width: 760px) { .ih-scope-unit-1-what-is-understanding .scenario-box { grid-template-columns: 1fr; } }
+.ih-scope-unit-2-knowledge-compression { --ih-accent: #ffb86b; --ih-surface: #ffffff; --ih-background: #f7f4ef; --ih-primary: #5b6cff; --ih-text: #1f2937; max-width: 800px; margin: 0 auto; padding: 1.5rem; font-family: system-ui, -apple-system, sans-serif; color: var(--ih-text); overflow-wrap: break-word; word-break: break-word; } .ih-scope-unit-2-knowledge-compression .ih-eyebrow { display: inline-block; background: var(--ih-accent); color: #1f2937; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.75rem; } .ih-scope-unit-2-knowledge-compression h3 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.75rem; line-height: 1.3; } .ih-scope-unit-2-knowledge-compression h4 { font-size: 1.1rem; font-weight: 600; margin: 0.5rem 0 0.25rem; } .ih-scope-unit-2-knowledge-compression p { line-height: 1.6; margin: 0 0 1rem; } .ih-scope-unit-2-knowledge-compression .ih-card { background: var(--ih-surface); border-radius: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 1.25rem; margin-bottom: 1rem; } .ih-scope-unit-2-knowledge-compression .ih-card-header { font-weight: 600; font-size: 1rem; margin-bottom: 0.5rem; } .ih-scope-unit-2-knowledge-compression .ih-scenario-layout { display: flex; gap: 1rem; flex-wrap: wrap; } .ih-scope-unit-2-knowledge-compression .ih-scenario-layout .ih-card { flex: 1; min-width: 180px; } .ih-scope-unit-2-knowledge-compression .ih-flow-board { display: flex; align-items: center; justify-content: center; gap: 0.5rem; flex-wrap: wrap; padding: 1.5rem 0; } .ih-scope-unit-2-knowledge-compression .ih-flow-step { background: var(--ih-surface); border-radius: 1rem; padding: 1rem; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); min-width: 140px; } .ih-scope-unit-2-knowledge-compression .ih-flow-step .ih-step-badge { display: inline-block; background: var(--ih-primary); color: white; border-radius: 50%; width: 32px; height: 32px; line-height: 32px; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; } .ih-scope-unit-2-knowledge-compression .ih-flow-connector { width: 24px; height: 2px; background: var(--ih-primary); border: 1px dashed var(--ih-accent); position: relative; } .ih-scope-unit-2-knowledge-compression .ih-flow-connector::after { content: '→'; color: var(--ih-primary); font-size: 1.2rem; position: absolute; right: -12px; top: -10px; } .ih-scope-unit-2-knowledge-compression .ih-callout { border-left: 4px solid var(--ih-primary); background: var(--ih-surface); padding: 1rem 1.25rem; border-radius: 0.5rem; margin: 1rem 0; } .ih-scope-unit-2-knowledge-compression .ih-callout-correct { border-left-color: #34d399; } .ih-scope-unit-2-knowledge-compression .ih-callout-wrong { border-left-color: #f87171; } .ih-scope-unit-2-knowledge-compression .ih-concept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; } .ih-scope-unit-2-knowledge-compression .ih-typewriter .ih-word-pulse { animation: ihPulse 2s ease-in-out infinite; display: inline-block; background: var(--ih-accent); padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 600; } @keyframes ihPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.05); } } .ih-scope-unit-2-knowledge-compression .ih-highlight-step { background: #fef9c3; } .ih-scope-unit-2-knowledge-compression article { margin-bottom: 2.5rem; }
+
+.ih-scope-unit-2-knowledge-compression .ih-options { display: grid; gap: 12px; margin: 16px 0; }
+.ih-scope-unit-2-knowledge-compression .ih-option { width: 100%; text-align: left; border: 1px solid rgba(36,48,68,.14); background: #fff; color: var(--ih-text, #243044); border-radius: 16px; padding: 13px 15px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
+.ih-scope-unit-2-knowledge-compression .ih-option::before { content: attr(data-option-label); display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 999px; background: rgba(92,109,246,.12); color: var(--ih-accent, #5c6df6); font-weight: 800; }
+.ih-scope-unit-2-knowledge-compression .ih-option.is-selected, .ih-scope-unit-2-knowledge-compression .ih-option.selected, .ih-scope-unit-2-knowledge-compression .ih-option.active { border-color: var(--ih-accent, #5c6df6); background: rgba(92,109,246,.10); }
+.ih-scope-unit-2-knowledge-compression .ih-option.is-correct { border-color: rgba(22,163,74,.55); background: rgba(22,163,74,.08); }
+.ih-scope-unit-2-knowledge-compression .ih-option.is-wrong { border-color: rgba(220,38,38,.46); background: rgba(220,38,38,.06); }
+.ih-scope-unit-2-knowledge-compression .ih-submit { border: 0; border-radius: 999px; padding: 10px 18px; background: var(--ih-accent, #5c6df6); color: #fff; font-weight: 800; cursor: pointer; }
+.ih-scope-unit-2-knowledge-compression .ih-submit.secondary { background: #243044; }
+.ih-scope-unit-2-knowledge-compression .ih-textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid rgba(36,48,68,.14); border-radius: 16px; padding: 14px 16px; background: #fff; color: var(--ih-text, #243044); }
+.ih-scope-unit-2-knowledge-compression .ih-feedback { display: none; margin-top: 14px; border-radius: 16px; padding: 14px 16px; background: rgba(255,255,255,.78); border: 1px solid rgba(36,48,68,.12); }
+.ih-scope-unit-2-knowledge-compression .ih-feedback.is-visible { display: block; }
+.ih-scope-unit-2-knowledge-compression .ih-feedback.success { border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08); }
+.ih-scope-unit-2-knowledge-compression .ih-feedback.warn { border-color: rgba(255,184,107,.55); background: rgba(255,184,107,.12); }
+.ih-scope-unit-2-knowledge-compression .scenario-box { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 16px; }
+.ih-scope-unit-2-knowledge-compression .scenario-card { border-radius: 18px; padding: 18px; background: #243044; color: #fff; }
+.ih-scope-unit-2-knowledge-compression .scenario-card .tag { display: inline-block; background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 10px; font-size: 12px; margin-bottom: 10px; }
+@media (max-width: 760px) { .ih-scope-unit-2-knowledge-compression .scenario-box { grid-template-columns: 1fr; } }
+.ih-scope-unit-3-discriminative-vs-generative {
+  --ih-accent: #5b6cff;
+  --ih-surface: #ffffff;
+  --ih-bg: #f7f4ef;
+  --ih-primary: #ffb86b;
+  --ih-text: #1f2937;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--ih-text);
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.ih-scope-unit-3-discriminative-vs-generative article {
+  margin-bottom: 3rem;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-eyebrow {
+  display: inline-block;
+  background: var(--ih-primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  margin-bottom: 0.5rem;
+}
+.ih-scope-unit-3-discriminative-vs-generative h3 {
+  font-size: 1.5rem;
+  margin: 0.5rem 0 1rem;
+  color: var(--ih-text);
+}
+.ih-scope-unit-3-discriminative-vs-generative h4 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+.ih-scope-unit-3-discriminative-vs-generative p {
+  margin: 0.5rem 0;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-card {
+  background: var(--ih-surface);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 1.25rem;
+  margin: 0.75rem 0;
+  transition: box-shadow 0.2s;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-flow-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-flow-board > .ih-card,
+.ih-scope-unit-3-discriminative-vs-generative .ih-flow-board > .ih-step {
+  flex: 1 1 200px;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-concept-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-scenario-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-scenario-layout .ih-card {
+  flex: 1 1 250px;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-highlight {
+  border-left: 4px solid var(--ih-accent);
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-accent-text {
+  color: var(--ih-accent);
+  font-weight: 600;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-step {
+  background: var(--ih-surface);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  padding: 1.25rem;
+  position: relative;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--ih-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-callout {
+  background: #fff9e6;
+  border-left: 4px solid var(--ih-primary);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+}
+.ih-scope-unit-3-discriminative-vs-generative .ih-reflection {
+  background: #eef0ff;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  border: 1px dashed var(--ih-accent);
+}
+@media (max-width: 600px) {
+  .ih-scope-unit-3-discriminative-vs-generative {
+    padding: 1rem;
+  }
+  .ih-scope-unit-3-discriminative-vs-generative .ih-concept-grid {
+    grid-template-columns: 1fr;
+  }
+  .ih-scope-unit-3-discriminative-vs-generative .ih-scenario-layout {
+    flex-direction: column;
+  }
+}
+
+.ih-scope-unit-3-discriminative-vs-generative .ih-options { display: grid; gap: 12px; margin: 16px 0; }
+.ih-scope-unit-3-discriminative-vs-generative .ih-option { width: 100%; text-align: left; border: 1px solid rgba(36,48,68,.14); background: #fff; color: var(--ih-text, #243044); border-radius: 16px; padding: 13px 15px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
+.ih-scope-unit-3-discriminative-vs-generative .ih-option::before { content: attr(data-option-label); display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 999px; background: rgba(92,109,246,.12); color: var(--ih-accent, #5c6df6); font-weight: 800; }
+.ih-scope-unit-3-discriminative-vs-generative .ih-option.is-selected, .ih-scope-unit-3-discriminative-vs-generative .ih-option.selected, .ih-scope-unit-3-discriminative-vs-generative .ih-option.active { border-color: var(--ih-accent, #5c6df6); background: rgba(92,109,246,.10); }
+.ih-scope-unit-3-discriminative-vs-generative .ih-option.is-correct { border-color: rgba(22,163,74,.55); background: rgba(22,163,74,.08); }
+.ih-scope-unit-3-discriminative-vs-generative .ih-option.is-wrong { border-color: rgba(220,38,38,.46); background: rgba(220,38,38,.06); }
+.ih-scope-unit-3-discriminative-vs-generative .ih-submit { border: 0; border-radius: 999px; padding: 10px 18px; background: var(--ih-accent, #5c6df6); color: #fff; font-weight: 800; cursor: pointer; }
+.ih-scope-unit-3-discriminative-vs-generative .ih-submit.secondary { background: #243044; }
+.ih-scope-unit-3-discriminative-vs-generative .ih-textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid rgba(36,48,68,.14); border-radius: 16px; padding: 14px 16px; background: #fff; color: var(--ih-text, #243044); }
+.ih-scope-unit-3-discriminative-vs-generative .ih-feedback { display: none; margin-top: 14px; border-radius: 16px; padding: 14px 16px; background: rgba(255,255,255,.78); border: 1px solid rgba(36,48,68,.12); }
+.ih-scope-unit-3-discriminative-vs-generative .ih-feedback.is-visible { display: block; }
+.ih-scope-unit-3-discriminative-vs-generative .ih-feedback.success { border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08); }
+.ih-scope-unit-3-discriminative-vs-generative .ih-feedback.warn { border-color: rgba(255,184,107,.55); background: rgba(255,184,107,.12); }
+.ih-scope-unit-3-discriminative-vs-generative .scenario-box { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 16px; }
+.ih-scope-unit-3-discriminative-vs-generative .scenario-card { border-radius: 18px; padding: 18px; background: #243044; color: #fff; }
+.ih-scope-unit-3-discriminative-vs-generative .scenario-card .tag { display: inline-block; background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 10px; font-size: 12px; margin-bottom: 10px; }
+@media (max-width: 760px) { .ih-scope-unit-3-discriminative-vs-generative .scenario-box { grid-template-columns: 1fr; } }
+.ih-scope-unit-4-multimodal-understanding {
+  --ih-accent: #ffb86b;
+  --ih-surface: #ffffff;
+  --ih-primary: #5b6cff;
+  --ih-text: #1f2937;
+  --ih-bg: #f7f4ef;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--ih-text);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-eyebrow {
+  display: inline-block;
+  background: var(--ih-accent);
+  color: #1f2937;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-card {
+  background: var(--ih-surface);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-callout {
+  background: #fef9ef;
+  border-left: 4px solid var(--ih-accent);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-flow-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-flow-step {
+  background: var(--ih-surface);
+  border-radius: 12px;
+  padding: 1rem;
+  flex: 1 1 200px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  position: relative;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-flow-step::after {
+  content: '→';
+  position: absolute;
+  right: -0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ih-primary);
+  font-size: 1.5rem;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-flow-step:last-child::after {
+  content: none;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-step-badge {
+  display: inline-block;
+  background: var(--ih-primary);
+  color: white;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 2rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-compare-card {
+  background: var(--ih-surface);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.ih-scope-unit-4-multimodal-understanding .ih-compare-card.ih-vs {
+  border: 2px solid var(--ih-accent);
+}
+.ih-scope-unit-4-multimodal-understanding .ih-dialogue-panel {
+  background: #f0f4ff;
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  margin: 1rem 0;
+  position: relative;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-dialogue-panel::before {
+  content: '💬';
+  position: absolute;
+  left: 1rem;
+  top: 0.5rem;
+  font-size: 1.5rem;
+}
+.ih-scope-unit-4-multimodal-understanding .ih-reflection {
+  background: linear-gradient(135deg, #f7f4ef 0%, #fff8f0 100%);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+}
+.ih-scope-unit-4-multimodal-understanding h3 {
+  font-size: 1.25rem;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  color: var(--ih-primary);
+}
+.ih-scope-unit-4-multimodal-understanding p {
+  line-height: 1.6;
+  margin: 0.5rem 0;
+}
+.ih-scope-unit-4-multimodal-understanding ul {
+  padding-left: 1.25rem;
+  line-height: 1.6;
+}
+.ih-scope-unit-4-multimodal-understanding li {
+  margin-bottom: 0.4rem;
+}
+@media (max-width: 600px) {
+  .ih-scope-unit-4-multimodal-understanding .ih-compare-grid {
+    grid-template-columns: 1fr;
+  }
+  .ih-scope-unit-4-multimodal-understanding .ih-flow-board {
+    flex-direction: column;
+  }
+  .ih-scope-unit-4-multimodal-understanding .ih-flow-step::after {
+    content: '↓';
+    right: auto;
+    bottom: -0.75rem;
+    top: auto;
+    left: 50%;
+    transform: translateX(-50%) rotate(90deg);
+  }
+}
+
+.ih-scope-unit-4-multimodal-understanding .ih-options { display: grid; gap: 12px; margin: 16px 0; }
+.ih-scope-unit-4-multimodal-understanding .ih-option { width: 100%; text-align: left; border: 1px solid rgba(36,48,68,.14); background: #fff; color: var(--ih-text, #243044); border-radius: 16px; padding: 13px 15px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
+.ih-scope-unit-4-multimodal-understanding .ih-option::before { content: attr(data-option-label); display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 999px; background: rgba(92,109,246,.12); color: var(--ih-accent, #5c6df6); font-weight: 800; }
+.ih-scope-unit-4-multimodal-understanding .ih-option.is-selected, .ih-scope-unit-4-multimodal-understanding .ih-option.selected, .ih-scope-unit-4-multimodal-understanding .ih-option.active { border-color: var(--ih-accent, #5c6df6); background: rgba(92,109,246,.10); }
+.ih-scope-unit-4-multimodal-understanding .ih-option.is-correct { border-color: rgba(22,163,74,.55); background: rgba(22,163,74,.08); }
+.ih-scope-unit-4-multimodal-understanding .ih-option.is-wrong { border-color: rgba(220,38,38,.46); background: rgba(220,38,38,.06); }
+.ih-scope-unit-4-multimodal-understanding .ih-submit { border: 0; border-radius: 999px; padding: 10px 18px; background: var(--ih-accent, #5c6df6); color: #fff; font-weight: 800; cursor: pointer; }
+.ih-scope-unit-4-multimodal-understanding .ih-submit.secondary { background: #243044; }
+.ih-scope-unit-4-multimodal-understanding .ih-textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid rgba(36,48,68,.14); border-radius: 16px; padding: 14px 16px; background: #fff; color: var(--ih-text, #243044); }
+.ih-scope-unit-4-multimodal-understanding .ih-feedback { display: none; margin-top: 14px; border-radius: 16px; padding: 14px 16px; background: rgba(255,255,255,.78); border: 1px solid rgba(36,48,68,.12); }
+.ih-scope-unit-4-multimodal-understanding .ih-feedback.is-visible { display: block; }
+.ih-scope-unit-4-multimodal-understanding .ih-feedback.success { border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08); }
+.ih-scope-unit-4-multimodal-understanding .ih-feedback.warn { border-color: rgba(255,184,107,.55); background: rgba(255,184,107,.12); }
+.ih-scope-unit-4-multimodal-understanding .scenario-box { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 16px; }
+.ih-scope-unit-4-multimodal-understanding .scenario-card { border-radius: 18px; padding: 18px; background: #243044; color: #fff; }
+.ih-scope-unit-4-multimodal-understanding .scenario-card .tag { display: inline-block; background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 10px; font-size: 12px; margin-bottom: 10px; }
+@media (max-width: 760px) { .ih-scope-unit-4-multimodal-understanding .scenario-box { grid-template-columns: 1fr; } }
+.ih-scope-unit-5-case-study { --ih-accent: #ffb86b; --ih-surface: #ffffff; --ih-background: #f7f4ef; --ih-primary: #5b6cff; --ih-text: #1f2937; --ih-font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 16px; overflow-wrap: break-word; word-wrap: break-word; } .ih-scope-unit-5-case-study article { background: var(--ih-surface); border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; margin-bottom: 24px; } .ih-scope-unit-5-case-study h3 { color: var(--ih-primary); font-size: 1.25rem; margin-top: 0; } .ih-scope-unit-5-case-study h4 { color: var(--ih-text); font-size: 1rem; margin: 0 0 8px; } .ih-scope-unit-5-case-study p { line-height: 1.6; color: var(--ih-text); } .ih-scope-unit-5-case-study .ih-callout { background: #fffbee; border-left: 4px solid var(--ih-accent); padding: 12px 16px; border-radius: 8px; margin: 16px 0; } .ih-scope-unit-5-case-study .ih-eyebrow { display: inline-block; background: var(--ih-accent); color: #fff; font-size: 0.75rem; padding: 4px 12px; border-radius: 20px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; } .ih-scope-unit-5-case-study .ih-dialogue-panel { display: flex; gap: 12px; background: #f9f8f5; border-radius: 12px; padding: 16px; margin: 16px 0; } .ih-scope-unit-5-case-study .ih-dialogue-speaker { font-weight: 600; white-space: nowrap; color: var(--ih-primary); } .ih-scope-unit-5-case-study .ih-dialogue-content p { margin: 0; } .ih-scope-unit-5-case-study .ih-concept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 16px 0; } .ih-scope-unit-5-case-study .ih-concept-grid .ih-card { background: #f7f4ef; border-radius: 12px; padding: 16px; border: 1px solid #e5e0d8; } .ih-scope-unit-5-case-study .ih-flow-board { display: flex; flex-direction: column; gap: 0; margin: 16px 0; } .ih-scope-unit-5-case-study .ih-flow-step { display: flex; align-items: flex-start; gap: 12px; background: var(--ih-surface); border: 1px solid #e5e0d8; border-radius: 12px; padding: 16px; position: relative; } .ih-scope-unit-5-case-study .ih-step-badge { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--ih-primary); color: #fff; border-radius: 50%; font-weight: 600; font-size: 0.9rem; flex-shrink: 0; } .ih-scope-unit-5-case-study .ih-flow-connector { width: 2px; height: 24px; margin-left: 16px; border-left: 2px dashed var(--ih-accent); } .ih-scope-unit-5-case-study .ih-reflection { background: #f0f5ff; border-radius: 12px; padding: 16px; margin: 16px 0; } @media (max-width: 600px) { .ih-scope-unit-5-case-study { padding: 12px; } .ih-scope-unit-5-case-study article { padding: 16px; } .ih-scope-unit-5-case-study .ih-concept-grid { grid-template-columns: 1fr; } }
+
+.ih-scope-unit-5-case-study .ih-options { display: grid; gap: 12px; margin: 16px 0; }
+.ih-scope-unit-5-case-study .ih-option { width: 100%; text-align: left; border: 1px solid rgba(36,48,68,.14); background: #fff; color: var(--ih-text, #243044); border-radius: 16px; padding: 13px 15px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
+.ih-scope-unit-5-case-study .ih-option::before { content: attr(data-option-label); display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 999px; background: rgba(92,109,246,.12); color: var(--ih-accent, #5c6df6); font-weight: 800; }
+.ih-scope-unit-5-case-study .ih-option.is-selected, .ih-scope-unit-5-case-study .ih-option.selected, .ih-scope-unit-5-case-study .ih-option.active { border-color: var(--ih-accent, #5c6df6); background: rgba(92,109,246,.10); }
+.ih-scope-unit-5-case-study .ih-option.is-correct { border-color: rgba(22,163,74,.55); background: rgba(22,163,74,.08); }
+.ih-scope-unit-5-case-study .ih-option.is-wrong { border-color: rgba(220,38,38,.46); background: rgba(220,38,38,.06); }
+.ih-scope-unit-5-case-study .ih-submit { border: 0; border-radius: 999px; padding: 10px 18px; background: var(--ih-accent, #5c6df6); color: #fff; font-weight: 800; cursor: pointer; }
+.ih-scope-unit-5-case-study .ih-submit.secondary { background: #243044; }
+.ih-scope-unit-5-case-study .ih-textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid rgba(36,48,68,.14); border-radius: 16px; padding: 14px 16px; background: #fff; color: var(--ih-text, #243044); }
+.ih-scope-unit-5-case-study .ih-feedback { display: none; margin-top: 14px; border-radius: 16px; padding: 14px 16px; background: rgba(255,255,255,.78); border: 1px solid rgba(36,48,68,.12); }
+.ih-scope-unit-5-case-study .ih-feedback.is-visible { display: block; }
+.ih-scope-unit-5-case-study .ih-feedback.success { border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08); }
+.ih-scope-unit-5-case-study .ih-feedback.warn { border-color: rgba(255,184,107,.55); background: rgba(255,184,107,.12); }
+.ih-scope-unit-5-case-study .scenario-box { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 16px; }
+.ih-scope-unit-5-case-study .scenario-card { border-radius: 18px; padding: 18px; background: #243044; color: #fff; }
+.ih-scope-unit-5-case-study .scenario-card .tag { display: inline-block; background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 10px; font-size: 12px; margin-bottom: 10px; }
+@media (max-width: 760px) { .ih-scope-unit-5-case-study .scenario-box { grid-template-columns: 1fr; } }
+.ih-scope-unit-6-boundaries-and-future {
+  --ih-accent: #ffb86b;
+  --ih-surface: #ffffff;
+  --ih-primary: #5b6cff;
+  --ih-text: #1f2937;
+  --ih-background: #f7f4ef;
+  --ih-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 1rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-card {
+  background: var(--ih-surface);
+  border-radius: 12px;
+  box-shadow: var(--ih-shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-eyebrow {
+  display: inline-block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ih-primary);
+  background: rgba(91,108,255,0.1);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+.ih-scope-unit-6-boundaries-and-future h3 {
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
+  color: var(--ih-text);
+}
+.ih-scope-unit-6-boundaries-and-future h4 {
+  color: var(--ih-primary);
+  margin-bottom: 0.4rem;
+}
+.ih-scope-unit-6-boundaries-and-future p {
+  line-height: 1.6;
+  color: var(--ih-text);
+}
+.ih-scope-unit-6-boundaries-and-future .ih-callout {
+  background: rgba(255,184,107,0.15);
+  border-left: 4px solid var(--ih-accent);
+  padding: 1rem;
+  border-radius: 6px;
+  margin: 1rem 0;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-concept-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-concept-grid .ih-card {
+  flex: 1 1 200px;
+  min-width: 180px;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-flow-board {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-step {
+  background: var(--ih-surface);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+  flex: 1 1 140px;
+  text-align: center;
+  position: relative;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-badge {
+  display: inline-block;
+  background: var(--ih-primary);
+  color: #fff;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-scenario-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-scenario-layout .ih-card {
+  flex: 1 1 250px;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-reflection {
+  background: var(--ih-background);
+  border-radius: 10px;
+  padding: 1.2rem;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-reflection ul {
+  list-style: none;
+  padding-left: 0;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-reflection li {
+  padding: 0.6rem 0;
+  border-bottom: 1px dotted #ddd;
+}
+.ih-scope-unit-6-boundaries-and-future .ih-reflection li:last-child {
+  border-bottom: none;
+}
+@media (max-width: 600px) {
+  .ih-scope-unit-6-boundaries-and-future .ih-concept-grid,
+  .ih-scope-unit-6-boundaries-and-future .ih-flow-board,
+  .ih-scope-unit-6-boundaries-and-future .ih-scenario-layout {
+    flex-direction: column;
+  }
+  .ih-scope-unit-6-boundaries-and-future .ih-step {
+    flex: 1 1 auto;
+  }
+}
+
+.ih-scope-unit-6-boundaries-and-future .ih-options { display: grid; gap: 12px; margin: 16px 0; }
+.ih-scope-unit-6-boundaries-and-future .ih-option { width: 100%; text-align: left; border: 1px solid rgba(36,48,68,.14); background: #fff; color: var(--ih-text, #243044); border-radius: 16px; padding: 13px 15px; cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
+.ih-scope-unit-6-boundaries-and-future .ih-option::before { content: attr(data-option-label); display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 999px; background: rgba(92,109,246,.12); color: var(--ih-accent, #5c6df6); font-weight: 800; }
+.ih-scope-unit-6-boundaries-and-future .ih-option.is-selected, .ih-scope-unit-6-boundaries-and-future .ih-option.selected, .ih-scope-unit-6-boundaries-and-future .ih-option.active { border-color: var(--ih-accent, #5c6df6); background: rgba(92,109,246,.10); }
+.ih-scope-unit-6-boundaries-and-future .ih-option.is-correct { border-color: rgba(22,163,74,.55); background: rgba(22,163,74,.08); }
+.ih-scope-unit-6-boundaries-and-future .ih-option.is-wrong { border-color: rgba(220,38,38,.46); background: rgba(220,38,38,.06); }
+.ih-scope-unit-6-boundaries-and-future .ih-submit { border: 0; border-radius: 999px; padding: 10px 18px; background: var(--ih-accent, #5c6df6); color: #fff; font-weight: 800; cursor: pointer; }
+.ih-scope-unit-6-boundaries-and-future .ih-submit.secondary { background: #243044; }
+.ih-scope-unit-6-boundaries-and-future .ih-textarea { width: 100%; min-height: 120px; resize: vertical; border: 1px solid rgba(36,48,68,.14); border-radius: 16px; padding: 14px 16px; background: #fff; color: var(--ih-text, #243044); }
+.ih-scope-unit-6-boundaries-and-future .ih-feedback { display: none; margin-top: 14px; border-radius: 16px; padding: 14px 16px; background: rgba(255,255,255,.78); border: 1px solid rgba(36,48,68,.12); }
+.ih-scope-unit-6-boundaries-and-future .ih-feedback.is-visible { display: block; }
+.ih-scope-unit-6-boundaries-and-future .ih-feedback.success { border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.08); }
+.ih-scope-unit-6-boundaries-and-future .ih-feedback.warn { border-color: rgba(255,184,107,.55); background: rgba(255,184,107,.12); }
+.ih-scope-unit-6-boundaries-and-future .scenario-box { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr); gap: 16px; }
+.ih-scope-unit-6-boundaries-and-future .scenario-card { border-radius: 18px; padding: 18px; background: #243044; color: #fff; }
+.ih-scope-unit-6-boundaries-and-future .scenario-card .tag { display: inline-block; background: rgba(255,255,255,.14); border-radius: 999px; padding: 4px 10px; font-size: 12px; margin-bottom: 10px; }
+@media (max-width: 760px) { .ih-scope-unit-6-boundaries-and-future .scenario-box { grid-template-columns: 1fr; } }
+[hidden]{display:none!important}.example-note{padding:18px 24px;background:#fff8e8;border-radius:16px;margin:16px 0}.ih-feedback:not(:empty){padding:16px;margin:12px 0;background:#eef5ff;border-radius:12px}.ih-nav__link.active{font-weight:bold}.ih-option[aria-pressed=true]{outline:2px solid #6d5dfc}
+</style><body><div class="ih-app"><aside class="ih-sidebar"><h1>生成式AI如何理解你的问题？</h1><p>交互讲义 · 静态示例</p><nav class="ih-nav"><button class="ih-nav__link" data-section="unit-1-what-is-understanding">从提问开始：AI如何“读”懂你的语言？</button><button class="ih-nav__link" data-section="unit-2-knowledge-compression">知识压缩与概率预测：模型如何“理解”问题？</button><button class="ih-nav__link" data-section="unit-3-discriminative-vs-generative">从判别到生成：AI理解能力的质变</button><button class="ih-nav__link" data-section="unit-4-multimodal-understanding">多模态融合：当问题包含图像、声音或视频</button><button class="ih-nav__link" data-section="unit-5-case-study">案例分析：AI教学资源自动化中的问题理解</button><button class="ih-nav__link" data-section="unit-6-boundaries-and-future">理解能力的边界与未来展望</button></nav><a href="../index.html">返回作品目录</a></aside><main class="ih-main"><div class="example-note">这是一份实际生成的六章讲义。可以切换章节、选择答案或填写简答；练习仅在当前页面内反馈，刷新后清除，不提交学习记录，也不调用模型。完整工作台提供学习摘要与复习生成。</div><section class="ih-module-card" data-example-section="" id="unit-1-what-is-understanding"><h2>从提问开始：AI如何“读”懂你的语言？</h2><section class="ih-unit ih-scope-unit-1-what-is-understanding" data-section-id="unit-1-what-is-understanding" id="unit-1-what-is-understanding">
+<article class="ih-scope-unit-1-what-is-understanding" data-block-id="unit-1-what-is-understanding_intro" data-block-type="intro"><div class="ih-dialogue-panel"><div class="ih-dialogue-item ih-dialogue-user"><span class="ih-badge">你的提问</span><p>“AI，能不能帮我总结一下量子计算的基本原理？”</p></div><div class="ih-dialogue-item ih-dialogue-ai"><span class="ih-badge">AI 回答</span><p>量子计算利用量子比特的叠加和纠缠特性，能够同时进行大量并行计算……</p></div></div><div class="ih-callout ih-card"><h4>🤔 AI真的“理解”你的问题吗？</h4><p>我们每天都在和AI流畅对话，但它的“理解”其实是一系列数学变换——从自然语言到数值向量的转换。本单元将拆解第一步：语言是如何被数学化的。</p></div></article>
+<article class="ih-scope-unit-1-what-is-understanding" data-block-id="unit-1-what-is-understanding_token_embedding" data-block-type="concept_explanation"><h3>第一步：把文字拆成Token，再嵌入到向量空间</h3><p>AI并不直接阅读文字，它首先将句子切分成Token（最小的处理单元），然后将每个Token映射到一个高维向量空间中。</p><div class="ih-flow-board"><div class="ih-flow-step"><span class="ih-step-badge">1</span><strong>Tokenization</strong><p>句子 <code>“AI如何理解语言”</code> 被拆分为：<code>['AI', '如何', '理解', '语言']</code>（或更细粒度的子词）</p></div><div class="ih-flow-step"><span class="ih-step-badge">2</span><strong>词嵌入（Embedding）</strong><p>每个Token对应一个固定维度的向量（如768维），这些向量位于高维语义空间中。</p></div><div class="ih-flow-step"><span class="ih-step-badge">3</span><strong>语义相似度</strong><p>向量距离越近，语义越相似。例如“苹果”和“水果”的向量距离远小于“苹果”和“汽车”。</p></div></div><div class="ih-card ih-callout"><p><strong>关键洞察：</strong>整个句子的“含义”被转化为一组向量的集合，AI通过数学运算来“理解”你的问题。</p></div></article>
+<article class="ih-scope-unit-1-what-is-understanding" data-block-id="unit-1-what-is-understanding_attention" data-block-type="animated_flow"><h3>注意力机制：AI如何聚焦问题的关键</h3><p>在得到所有Token的向量后，AI需要找出哪些部分最重要——这就是注意力机制的工作。</p><div class="ih-flow-board"><div class="ih-flow-step"><span class="ih-step-badge">Q</span><strong>Query（查询）</strong><p>你当前关注的Token（比如“理解”）发出一个“查询信号”</p></div><div class="ih-flow-step"><span class="ih-step-badge">K</span><strong>Key（键）</strong><p>句子中所有其他Token都提供自己的“键”，用于匹配查询</p></div><div class="ih-flow-step"><span class="ih-step-badge">V</span><strong>Value（值）</strong><p>每个Token携带的“值”信息，将被加权汇总</p></div></div><div class="ih-card ih-scenario-layout"><h4>注意力权重示例</h4><div class="ih-weight-bar"><span class="ih-weight-label">AI</span><div class="ih-bar"></div></div><div class="ih-weight-bar"><span class="ih-weight-label">如何</span><div class="ih-bar"></div></div><div class="ih-weight-bar"><span class="ih-weight-label">理解</span><div class="ih-bar"></div></div><div class="ih-weight-bar"><span class="ih-weight-label">语言</span><div class="ih-bar"></div></div><p class="ih-note">在这个例子中，“理解”获得了最高的注意力权重，因为它是最关键的动作。</p></div><p>通过这种机制，AI可以动态地关注输入中最相关的部分，甚至捕捉到跨越长距离的语义依赖。</p></article>
+<article class="ih-block ih-interaction ih-quiz ih-quiz--single ih-variant-tutor_question" data-block-id="unit-1-what-is-understanding_single_choice" data-block-type="single_choice">
+<div class="ih-block-header"><div><div class="ih-block-kicker">单选题</div><h3>检验理解：AI的“理解”本质是什么？</h3></div></div>
+<p class="ih-question">生成式AI“理解”你问的问题，最准确的描述是？</p>
+<div aria-label="单选题选项" class="ih-options" role="group">
+<button class="ih-option" data-correct="false" data-feedback="不完全对。AI没有人类般的理解，它只是通过数学计算模拟理解效果。" data-ih-action="single-choice" data-interaction-id="interaction-single-choice-meaning" data-option-id="a" data-option-label="A" type="button">AI像人类一样理解词义和语境</button>
+<button class="ih-option" data-correct="true" data-feedback="正确！AI本质上是一个数学函数，将自然语言转换为向量表示，再基于注意力机制加权处理。" data-ih-action="single-choice" data-interaction-id="interaction-single-choice-meaning" data-option-id="b" data-option-label="B" type="button">AI将文字转为Token，再映射成向量，通过统计规律和注意力机制处理</button>
+<button class="ih-option" data-correct="false" data-feedback="不是。AI的模型参数不是数据库，而是通过训练学到的概率分布，并非直接检索。" data-ih-action="single-choice" data-interaction-id="interaction-single-choice-meaning" data-option-id="c" data-option-label="C" type="button">AI直接搜索数据库中找到最匹配的回答</button>
+<button class="ih-option" data-correct="false" data-feedback="不对。虽然有些AI会集成搜索，但核心生成过程是基于自回归预测，而非直接搜索。" data-ih-action="single-choice" data-interaction-id="interaction-single-choice-meaning" data-option-id="d" data-option-label="D" type="button">AI调用外部搜索引擎获取结果</button>
+</div>
+<div aria-live="polite" class="ih-feedback" data-ih-feedback-for="interaction-single-choice-meaning"></div>
+</article>
+<article class="ih-scope-unit-1-what-is-understanding" data-block-id="unit-1-what-is-understanding_reflection" data-block-type="reflection"><h3>回顾：从提问到向量再到理解</h3><p>让我们串联本节课的完整流程：</p><div class="ih-flow-board ih-compact"><div class="ih-flow-step"><strong>你提问</strong><p>自然语言句子</p></div><div class="ih-dotted-connector"></div><div class="ih-flow-step"><strong>Token化</strong><p>拆解为Token序列</p></div><div class="ih-dotted-connector"></div><div class="ih-flow-step"><strong>嵌入向量</strong><p>每个Token映射为高维向量</p></div><div class="ih-dotted-connector"></div><div class="ih-flow-step"><strong>注意力加权</strong><p>动态聚焦关键信息</p></div><div class="ih-dotted-connector"></div><div class="ih-flow-step"><strong>模型输出</strong><p>生成回答</p></div></div><div class="ih-card ih-reflection"><h4>核心结论</h4><p>AI的“理解”本质上是将自然语言转化为数学表示，并通过注意力机制进行加权组合。后续单元我们将深入探讨上下文窗口、模型训练等更精彩的话题。</p></div></article>
+</section></section><section class="ih-module-card" data-example-section="" hidden="" id="unit-2-knowledge-compression"><h2>知识压缩与概率预测：模型如何“理解”问题？</h2><section class="ih-unit ih-scope-unit-2-knowledge-compression" data-section-id="unit-2-knowledge-compression" id="unit-2-knowledge-compression">
+<article class="ih-scope-unit-2-knowledge-compression" data-block-id="unit-2-knowledge-compression_intro" data-block-type="intro"><div class="ih-eyebrow">导言</div><h3>为什么AI能像人一样回答问题？</h3><p>大语言模型（LLM）并非搜索引擎——它不直接检索已有内容，而是通过知识压缩与概率预测<strong>生成全新文本</strong>。想象你问“光合作用的原理”：传统搜索返回百科条目（静态匹配），而LLM会自主组织语言，生成一段连贯解释。这背后的核心问题：<strong>模型如何“理解”你的问题？</strong></p><div class="ih-scenario-layout"><div class="ih-card"><div class="ih-card-header">🔍 传统搜索</div><p>返回百科条目“光合作用是指…”，是预先存储的静态内容。</p></div><div class="ih-card"><div class="ih-card-header">🧠 大语言模型</div><p>基于数万亿参数中的压缩知识，动态生成一段从未存在的解释。</p></div></div></article>
+<article class="ih-scope-unit-2-knowledge-compression" data-block-id="unit-2-knowledge-compression_pretrain" data-block-type="concept_explanation"><div class="ih-eyebrow">核心概念</div><h3>知识压缩：从互联网数据到千亿参数</h3><p>预训练（Pre-training）让模型阅读海量互联网文本——包括书籍、百科、论文等。通过预测下一个词等任务，模型逐渐将数据中的规律、事实、逻辑“压缩”到自己的参数权重中。这就像构建一个<strong>巨大的函数</strong>：输入是问题，输出是回答，中间是千亿级的压缩知识。</p><div class="ih-flow-board"><div class="ih-flow-step"><span class="ih-step-badge">1</span><h4>海量数据</h4></div><div class="ih-flow-connector"></div><div class="ih-flow-step"><span class="ih-step-badge">2</span><h4>模型参数（千亿维）</h4></div><div class="ih-flow-connector"></div><div class="ih-flow-step"><span class="ih-step-badge">3</span><h4>回答生成</h4></div></div></article>
+<article class="ih-scope-unit-2-knowledge-compression" data-block-id="unit-2-knowledge-compression_autoregressive" data-block-type="animated_flow"><div class="ih-eyebrow">运作机制</div><h3>自回归生成：逐词预测如何构建回答</h3><p>LLM生成文本时，每次只预测下一个Token（词或子词），且依赖已经生成的上文。这种“一步接一步”的方式称为<strong>自回归</strong>。上下文注意力机制让模型能回顾前文，确保逻辑连贯。下面模拟这个过程（动态逐词呈现效果由CSS动画实现）。</p><div class="ih-flow-board ih-typewriter"><div class="ih-flow-step"><span class="ih-step-badge">当前上文</span><p>光合作用的原理是</p></div><div class="ih-flow-connector"></div><div class="ih-flow-step ih-highlight-step"><span class="ih-step-badge">下一个预测词</span><p class="ih-word-pulse">植物</p></div><div class="ih-flow-connector"></div><div class="ih-flow-step"><span class="ih-step-badge">完整句子</span><p>光合作用的原理是植物利用光能…</p></div></div></article>
+<article class="ih-block ih-interaction ih-quiz ih-quiz--single ih-variant-checkpoint" data-block-id="unit-2-knowledge-compression_checkpoint1" data-block-type="single_choice">
+<div class="ih-block-header"><div><div class="ih-block-kicker">单选题</div><h3>检验理解：知识压缩的本质</h3></div></div>
+<p class="ih-question">下列关于大语言模型知识压缩的说法，哪一项是正确的？</p>
+<div aria-label="单选题选项" class="ih-options" role="group">
+<button class="ih-option" data-correct="false" data-feedback="不对，模型不是存储原文，而是把知识内化到参数中。" data-ih-action="single-choice" data-interaction-id="interaction-check1" data-option-id="a" data-option-label="A" type="button">模型像数据库一样直接存储了互联网上的所有文本</button>
+<button class="ih-option" data-correct="true" data-feedback="正确！模型通过预训练学习数据的分布规律，并用参数权重来编码这些知识。" data-ih-action="single-choice" data-interaction-id="interaction-check1" data-option-id="b" data-option-label="B" type="button">预训练过程将海量文本中的统计规律压缩到模型参数中</button>
+<button class="ih-option" data-correct="false" data-feedback="模型并不完美记忆细节，它更擅长把握模式和规律，细节容易出错。" data-ih-action="single-choice" data-interaction-id="interaction-check1" data-option-id="c" data-option-label="C" type="button">知识压缩意味着模型可以记住每一个事实和数字</button>
+<button class="ih-option" data-correct="false" data-feedback="不，知识压缩发生在预训练阶段，推理时模型只是使用已经压缩好的参数。" data-ih-action="single-choice" data-interaction-id="interaction-check1" data-option-id="d" data-option-label="D" type="button">知识压缩是在模型推理时才发生的</button>
+</div>
+<div aria-live="polite" class="ih-feedback" data-ih-feedback-for="interaction-check1"></div>
+</article>
+<article class="ih-scope-unit-2-knowledge-compression" data-block-id="unit-2-knowledge-compression_why_logic" data-block-type="concept_explanation"><div class="ih-eyebrow">深入理解</div><h3>为什么概率预测能产生有逻辑的回答？</h3><p>训练数据中蕴含了人类语言的逻辑模式——因果关系、时空顺序、常见事实等。模型通过上下文注意力参考前文信息，选择概率最高的词，而这些词往往最符合逻辑和常识。比较下面两个句子，感受概率差异：</p><div class="ih-callout ih-callout-correct"><h4>✅ 逻辑连贯句（高概率）</h4><p>光合作用释放氧气，因为植物将二氧化碳和水转化为有机物。</p></div><div class="ih-callout ih-callout-wrong"><h4>❌ 随机预测句（低概率）</h4><p>光合作用释放氧气，因为月亮绕着地球转。</p></div></article>
+<article class="ih-block ih-interaction ih-short-answer ih-variant-tutor_question" data-block-id="unit-2-knowledge-compression_reflection" data-block-type="short_answer">
+<div class="ih-block-header"><div><div class="ih-block-kicker">简答题</div><h3>反思：模型真的‘理解’吗？</h3></div></div>
+<p class="ih-question">有人认为大语言模型只是‘随机鹦鹉’，并不真正理解问题。结合本单元的知识压缩和概率预测原理，谈谈你的看法。你觉得模型表现出的‘理解’是真实的吗？</p>
+<textarea class="ih-textarea" data-ih-input-for="interaction-reflect" placeholder="输入你的思考（不少于20字）..."></textarea>
+<div class="ih-actions">
+<button class="ih-submit" data-ih-action="short-answer-submit" data-interaction-id="interaction-reflect" data-min-length="20" data-reference-points="模型基于统计概率而非真正的语义理解|上下文注意力使输出看起来逻辑连贯|人类的理解伴随意识、意图和常识推理|模型的能力来自数据中的模式压缩" type="button">提交简答</button>
+</div>
+<div aria-live="polite" class="ih-feedback" data-ih-feedback-for="interaction-reflect"></div>
+</article>
+<article class="ih-scope-unit-2-knowledge-compression" data-block-id="unit-2-knowledge-compression_summary" data-block-type="summary"><div class="ih-eyebrow">要点回顾</div><h3>知识压缩与概率预测</h3><p>本单元的核心公式：<strong>大语言模型 = 知识压缩函数 + 自回归概率预测</strong>。下面是三个关键板块：</p><div class="ih-concept-grid"><div class="ih-card"><div class="ih-card-header">📚 预训练压缩</div><p>将互联网知识编码为参数权重，形成知识函数。</p></div><div class="ih-card"><div class="ih-card-header">🔄 自回归预测</div><p>根据上文逐步预测下一个Token，逐词构建回答。</p></div><div class="ih-card"><div class="ih-card-header">🧩 逻辑连贯性</div><p>高概率词源于训练数据中的逻辑模式，配合注意力机制保证连贯。</p></div></div></article>
+</section></section><section class="ih-module-card" data-example-section="" hidden="" id="unit-3-discriminative-vs-generative"><h2>从判别到生成：AI理解能力的质变</h2><section class="ih-unit ih-scope-unit-3-discriminative-vs-generative" data-section-id="unit-3-discriminative-vs-generative" id="unit-3-discriminative-vs-generative">
+<article data-block-id="unit-3-discriminative-vs-generative_intro" data-block-type="intro"><div class="ih-eyebrow">单元导入</div><h3>AI如何理解你的问题？两种截然不同的方式</h3><p>当我们向AI提问时，它是在像搜索引擎一样匹配已有答案，还是像人一样创造新内容？这个问题背后隐藏着两种根本不同的AI范式。</p><div class="ih-flow-board"><div class="ih-card"><h4>判别式范式</h4><p>匹配 &amp; 分发<br/>在已有数据中寻找最相关结果</p></div><div class="ih-card"><h4>生成式范式</h4><p>创造 &amp; 生产<br/>学习数据分布后生成全新内容</p></div></div><p>从互联网时代的“连接与分发”到生成式时代的“创造与生产”，AI的能力正在发生质变。</p></article>
+<article data-block-id="unit-3-discriminative-vs-generative_concept" data-block-type="concept_explanation"><div class="ih-eyebrow">核心概念</div><h3>判别式AI：分类、匹配、推荐</h3><p>判别式AI不创造新内容，而是通过算法对已有数据进行分类、匹配和排序，本质上是从已有信息中寻找最相关的结果。</p><div class="ih-concept-grid"><div class="ih-card"><h4>搜索引擎</h4><p>根据关键词匹配网页并排序，返回已有内容。</p></div><div class="ih-card"><h4>推荐系统</h4><p>根据用户画像和消费历史，分发用户可能喜欢的视频、商品。</p></div><div class="ih-card"><h4>人脸识别</h4><p>将输入的人脸与数据库中的特征进行匹配，完成身份判定。</p></div></div><p>判别式AI的局限性在于：它无法处理未见过的组合，输出结果本质上是人类已有内容的重组或检索。</p></article>
+<article data-block-id="unit-3-discriminative-vs-generative_generative" data-block-type="concept_explanation"><div class="ih-eyebrow">核心概念</div><h3>生成式AI：创造、生产、定制</h3><p>与判别式不同，生成式AI通过学习海量数据的分布规律，能够<span class="ih-accent-text">从无到有</span>地产生全新内容。</p><div class="ih-concept-grid"><div class="ih-card"><h4>生成诗歌</h4><p>给定主题，AI能自主创作从未存在过的诗句。</p></div><div class="ih-card"><h4>生成图像</h4><p>描述一句场景，AI能生成符合描述的逼真画面。</p></div><div class="ih-card"><h4>生成代码</h4><p>用自然语言描述需求，AI能生成可运行的代码。</p></div></div><p>其核心机制是<span class="ih-accent-text">概率想象</span>：像一位画家先学习无数作品的风格，再一笔一笔地猜测下一笔该画什么（自回归），最终完成全新的作品。</p></article>
+<article data-block-id="unit-3-discriminative-vs-generative_compare" data-block-type="case_compare"><div class="ih-eyebrow">场景对比</div><h3>具体场景对比：推荐视频 vs 生成视频</h3><p>用同一个输入“我想看猫的视频”，体验两种AI的截然不同的反应。</p><div class="ih-scenario-layout"><div class="ih-card"><h4>判别式AI：推荐已有视频</h4><p>从视频库中搜索“猫”，匹配大量已有的猫咪视频并排序展示给你——它没有创造任何新内容。</p></div><div class="ih-card ih-highlight"><h4>生成式AI：生成全新视频</h4><p>学习过数百万小时猫的视频，理解了猫的姿态、毛发、动作规律后，实时生成一段从未存在过的猫咪视频——它<span class="ih-accent-text">创造</span>了新的画面。</p></div></div><p>关键差异：判别式是“匹配”，生成式是“创造”。只有真正理解问题，才能生成从未见过的新内容。</p></article>
+<article data-block-id="unit-3-discriminative-vs-generative_flow" data-block-type="animated_flow"><div class="ih-eyebrow">过程揭秘</div><h3>生成式AI的想象过程</h3><p>用一个简单的比喻理解生成式AI的“概率想象”：它像一位画家，遵循三个步骤完成创作。</p><div class="ih-flow-board"><div class="ih-step"><span class="ih-step-badge">1</span><h4>知识压缩</h4><p>将海量数据（比如上亿张画）压缩为模型参数，相当于画家脑中存储了无数画作的“规律”。</p></div><div class="ih-step"><span class="ih-step-badge">2</span><h4>自回归预测</h4><p>从空白画布开始，一笔一笔地预测“下一笔该画什么颜色/形状”，每一步都基于前面的结果。</p></div><div class="ih-step"><span class="ih-step-badge">3</span><h4>创造全新作品</h4><p>当所有笔触完成后，一幅从未存在过的、符合数据分布规律的全新画作诞生了。</p></div></div><p>这就是“从无到有”的本质：模型不是检索已有的图片，而是理解了“画”这个世界的底层规律，然后按照规律创造新世界。</p></article>
+<article class="ih-block ih-interaction ih-quiz ih-quiz--single ih-variant-tutor_question" data-block-id="unit-3-discriminative-vs-generative_interaction" data-block-type="single_choice">
+<div class="ih-block-header"><div><div class="ih-block-kicker">单选题</div><h3>诊断理解：判别还是生成？</h3></div></div>
+<p class="ih-question">下面哪个应用最可能属于生成式AI？</p>
+<div aria-label="单选题选项" class="ih-options" role="group">
+<button class="ih-option" data-correct="false" data-feedback="这是判别式AI，因为它从已有的电影库中匹配你的偏好，并没有创造新电影。" data-ih-action="single-choice" data-interaction-id="interaction-1" data-option-id="a" data-option-label="A" type="button">视频平台根据你的观看历史推荐电影</button>
+<button class="ih-option" data-correct="false" data-feedback="这是判别式AI，它根据历史数据和规则判定交易属于欺诈或正常，不产生新内容。" data-ih-action="single-choice" data-interaction-id="interaction-1" data-option-id="b" data-option-label="B" type="button">银行系统判断一笔交易是否为欺诈</button>
+<button class="ih-option" data-correct="true" data-feedback="正确！AI根据你的描述学习数据分布并生成全新图像，这是典型的生成式AI。" data-ih-action="single-choice" data-interaction-id="interaction-1" data-option-id="c" data-option-label="C" type="button">用文字描述让AI生成一幅从未见过的插画</button>
+<button class="ih-option" data-correct="false" data-feedback="这是判别式AI，它匹配关键词返回已有网页，不创造新内容。" data-ih-action="single-choice" data-interaction-id="interaction-1" data-option-id="d" data-option-label="D" type="button">搜索引擎返回相关网页的列表</button>
+</div>
+<div aria-live="polite" class="ih-feedback" data-ih-feedback-for="interaction-1"></div>
+</article>
+<article data-block-id="unit-3-discriminative-vs-generative_summary" data-block-type="reflection"><div class="ih-eyebrow">范式跃迁</div><h3>从工具到协作者：范式跃迁的意义</h3><p>判别式AI是<span class="ih-accent-text">工具</span>——它只能解决已有模式匹配的问题，是人的“外脑”；生成式AI是<span class="ih-accent-text">协作者</span>——它能创造全新内容，成为人的“创作伙伴”。</p><div class="ih-callout"><p>范式跃迁：从“信息分发”到“知识创造”，从“连接”到“生成”。</p></div><div class="ih-reflection"><p>💡 <strong>反思问题</strong>：如果你有一个能创造一切的AI伙伴，你希望用它做什么？</p></div></article>
+</section></section><section class="ih-module-card" data-example-section="" hidden="" id="unit-4-multimodal-understanding"><h2>多模态融合：当问题包含图像、声音或视频</h2><section class="ih-unit ih-scope-unit-4-multimodal-understanding" data-section-id="unit-4-multimodal-understanding" id="unit-4-multimodal-understanding">
+<article data-block-id="unit-4-multimodal-understanding_intro" data-block-type="intro"><span class="ih-eyebrow">引入思考</span><h3>AI能“看”懂世界吗？</h3><p>想象一下：你拍了一张照片发给AI，问“这里能停车吗？”——纯文本模型只能根据你手动输入的文字描述来回答，而多模态模型可以<strong>直接“看”照片</strong>，识别出路牌、标线和周围环境，给出更准确的答案。</p><div class="ih-dialogue-panel"><p><strong>用户：</strong>（上传一张路边照片）这里可以临时停车吗？</p><p><strong>多模态AI：</strong>我看到路侧有黄色禁止停车线，且前方有禁停标志，不建议在此停车。</p></div><p>这种能同时处理<strong>文本、图像、声音、视频</strong>等不同信息形态的能力，就是<strong>多模态</strong>。纯文本模型只能处理单一模态，面对图像、音频等就直接“失明”了。而多模态模型的出现，让AI第一次拥有了接近人类的感知广度。</p></article>
+<article data-block-id="unit-4-multimodal-understanding_concept" data-block-type="concept_explanation"><span class="ih-eyebrow">核心原理</span><h3>多模态大模型如何工作？统一编码与模态对齐</h3><p>多模态模型的核心架构可以分为三个关键步骤：</p><div class="ih-flow-board"><div class="ih-flow-step"><div class="ih-step-badge">1</div><h4>模态独立编码</h4><p>文本通过BERT/LLM编码，图像通过ViT（Vision Transformer）编码，音频通过专用编码器，各自转为高维向量。</p></div><div class="ih-flow-step"><div class="ih-step-badge">2</div><h4>模态对齐</h4><p>通过对比学习或交叉注意力机制，将不同模态的向量映射到<strong>共享语义空间</strong>，使“猫”的图像向量与文本向量距离最近。</p></div><div class="ih-flow-step"><div class="ih-step-badge">3</div><h4>融合与推理</h4><p>拼接或加权融合多模态特征，输入下游任务头进行分类、生成或决策，实现跨模态理解。</p></div></div><div class="ih-callout"><p><strong>💡 关键概念：</strong>模态对齐是多模态的基石，它打破了单一模态的信息孤岛，让AI能够在不同感官之间建立联系。</p></div></article>
+<article data-block-id="unit-4-multimodal-understanding_case" data-block-type="case_compare"><span class="ih-eyebrow">对比分析</span><h3>文本 vs 多模态：理解一张机票照片</h3><p>假设你拍了一张机票照片，问AI“这趟航班几点起飞”？来看看两种模型的表现差异：</p><div class="ih-compare-grid"><div class="ih-compare-card"><h4>📝 纯文本模型</h4><p>需要你先手动输入：<em>“一张机票，航班号CA1234，显示起飞时间14:30”</em>。模型只能基于你给出的文字回答，如果你漏说了座位号或登机口，它就无法告知。</p><ul><li>依赖人工描述，容易出错</li><li>无法识别图像中的布局、颜色</li><li>信息丢失风险高</li></ul></div><div class="ih-compare-card ih-vs"><h4>🖼️ 多模态模型</h4><p>直接分析照片中的文字、图标、颜色和布局，自动识别出航班号、时间、登机口、座位号等所有信息。</p><ul><li>无需人工转述</li><li>同时处理图像中的文本和视觉元素</li><li>共享语义空间实现跨模态检索</li></ul></div></div><p>多模态模型的优势在于：它能像人类一样同时使用“眼睛”和“耳朵”，而不是只靠“打字”来理解世界。</p></article>
+<article data-block-id="unit-4-multimodal-understanding_sora" data-block-type="animated_flow"><span class="ih-eyebrow">前沿突破</span><h3>Sora 的突破：从文字到物理世界</h3><p>OpenAI 的 Sora 是多模态模型的里程碑——它能够根据文本描述生成符合物理规律的视频。其工作流程如下：</p><div class="ih-flow-board"><div class="ih-flow-step"><div class="ih-step-badge">①</div><h4>输入文本</h4><p>“一只金毛犬在公园里追飞盘，阳光透过树叶洒在地上”</p></div><div class="ih-flow-step"><div class="ih-step-badge">②</div><h4>物理世界理解</h4><p>模型隐含学习物理规律——重力、运动轨迹、光影变化、毛发飘动的一致性。</p></div><div class="ih-flow-step"><div class="ih-step-badge">③</div><h4>输出视频帧</h4><p>生成连续、连贯、符合真实物理运动的视频序列。</p></div></div><div class="ih-callout"><p><strong>🎯 难点：</strong>生成视频不仅要“画”出物体，还要确保每一帧符合物理规律（如飞盘的弧线、狗奔跑时肌肉的运动），否则会出现“不现实”的扭曲。Sora 在这方面取得了突破性进展。</p></div></article>
+<article class="ih-block ih-interaction ih-quiz ih-quiz--single ih-variant-checkpoint" data-block-id="unit-4-multimodal-understanding_quiz" data-block-type="single_choice">
+<div class="ih-block-header"><div><div class="ih-block-kicker">单选题</div><h3>检测理解：多模态模型的核心步骤</h3></div></div>
+<p class="ih-question">以下哪一步是多模态模型将不同模态信息映射到同一个语义空间的过程？</p>
+<div aria-label="单选题选项" class="ih-options" role="group">
+<button class="ih-option" data-correct="false" data-feedback="这一步只是将各模态编码为向量，还未统一。" data-ih-action="single-choice" data-interaction-id="int_1" data-option-id="a" data-option-label="A" type="button">模态独立编码</button>
+<button class="ih-option" data-correct="true" data-feedback="正确！模态对齐通过对比学习或交叉注意力，将不同模态映射到共享语义空间。" data-ih-action="single-choice" data-interaction-id="int_1" data-option-id="b" data-option-label="B" type="button">模态对齐</button>
+<button class="ih-option" data-correct="false" data-feedback="这一步是在对齐后进行的综合推理，不是将模态映射到同一空间。" data-ih-action="single-choice" data-interaction-id="int_1" data-option-id="c" data-option-label="C" type="button">融合与推理</button>
+<button class="ih-option" data-correct="false" data-feedback="训练是整体过程，不是具体的映射步骤。" data-ih-action="single-choice" data-interaction-id="int_1" data-option-id="d" data-option-label="D" type="button">端到端训练</button>
+</div>
+<div aria-live="polite" class="ih-feedback" data-ih-feedback-for="int_1"></div>
+</article>
+<article data-block-id="unit-4-multimodal-understanding_summary" data-block-type="summary"><span class="ih-eyebrow">核心回顾</span><h3>核心回顾：多模态让AI真正理解世界</h3><div class="ih-card"><h4>📌 关键要点</h4><ul><li><strong>多模态定义：</strong>同时处理文本、图像、音频、视频等多种信息形态的AI系统。</li><li><strong>统一编码器：</strong>各模态通过专用编码器转换为高维向量。</li><li><strong>模态对齐：</strong>将不同模态映射到共享语义空间，实现跨模态理解。</li><li><strong>典型应用：</strong>图文问答、视频分析、文生视频（如Sora）。</li></ul></div><div class="ih-reflection"><p>“多模态不是简单的拼凑，而是让AI在底层实现语义对齐，像人一样用多种感官协同理解世界。”</p></div></article>
+</section></section><section class="ih-module-card" data-example-section="" hidden="" id="unit-5-case-study"><h2>案例分析：AI教学资源自动化中的问题理解</h2><section class="ih-unit ih-scope-unit-5-case-study" data-section-id="unit-5-case-study" id="unit-5-case-study">
+<article data-block-id="unit-5-case-study_intro" data-block-type="intro"><div class="ih-callout ih-eyebrow">场景再现</div><h3>教师备课的困境</h3><div class="ih-dialogue-panel"><div class="ih-dialogue-speaker">👨‍🏫 王老师</div><div class="ih-dialogue-content"><p>"生成式AI技术迭代太快了，我去年刚备好的课又过时了。这周五就要上课，还要调研最新动态、写讲义、做PPT……时间根本不够用！"</p></div></div><p>如果有一套多智能体系统，能够自动完成调研、撰写和排版，王老师的备课压力将大大减轻。这就是本项目要解决的问题——自动化教学资料生成流水线。</p></article>
+<article data-block-id="unit-5-case-study_concept" data-block-type="concept_explanation"><h3>为什么系统需要深层理解用户意图？</h3><p>自然语言需求往往充满歧义。例如教师说"讲一下生成式AI"，这句话并没有指明受众、深度或侧重方向。</p><div class="ih-concept-grid"><div class="ih-card"><h4>受众判断</h4><p>是给本科生科普，还是给研究生剖析原理？不同受众要求完全不同的内容难度。</p></div><div class="ih-card"><h4>主题聚焦</h4><p>是侧重技术实现，还是行业应用？同一主题下有不同的切面。</p></div><div class="ih-card"><h4>目标明确</h4><p>是要一节45分钟的课堂讲义，还是整套课程教材？长度和深度影响任务分解。</p></div></div><p class="ih-callout">只有准确理解这些维度，Configurer智能体才能正确分解后续任务，否则后续生成的内容会偏离教师原意。</p></article>
+<article data-block-id="unit-5-case-study_flow" data-block-type="animated_flow"><h3>从需求到任务的分解流程</h3><div class="ih-flow-board"><div class="ih-flow-step"><span class="ih-step-badge">1</span><div><h4>Configurer 理解需求</h4><p>接收用户自然语言需求，解析教学主题、受众、目标，生成任务规划。</p></div></div><div class="ih-flow-connector"></div><div class="ih-flow-step"><span class="ih-step-badge">2</span><div><h4>Worker-1 调研与RAG检索</h4><p>联网检索最新资料，结合本地知识库，输出带引用摘要。</p></div></div><div class="ih-flow-connector"></div><div class="ih-flow-step"><span class="ih-step-badge">3</span><div><h4>Worker-2 讲义生成</h4><p>基于调研摘要，分块生成详细讲义，遵循指定格式。</p></div></div><div class="ih-flow-connector"></div><div class="ih-flow-step"><span class="ih-step-badge">4+</span><div><h4>后续步骤：PPT / 视频 / 教材</h4><p>其他Worker进一步处理，确保多渠道内容一致性。</p></div></div></div><p>每个步骤由独立智能体完成，Configurer负责协调和数据继承，避免内容断层。</p></article>
+<article class="ih-block ih-interaction ih-quiz ih-quiz--single ih-variant-checkpoint" data-block-id="unit-5-case-study_quiz1" data-block-type="single_choice">
+<div class="ih-block-header"><div><div class="ih-block-kicker">单选题</div><h3>检验理解：为什么需要深层问题理解？</h3></div></div>
+<p class="ih-question">在多智能体教学资料生成系统中，为什么第一步的“问题理解”至关重要？</p>
+<div aria-label="单选题选项" class="ih-options" role="group">
+<button class="ih-option" data-correct="true" data-feedback="正确！问题理解是任务分解的基础，直接影响后续所有智能体的工作质量。" data-ih-action="single-choice" data-interaction-id="interaction-1" data-option-id="a" data-option-label="A" type="button">因为系统需要将用户需求精确转化为具体任务，否则后续智能体会生成错误的内容。</button>
+<button class="ih-option" data-correct="false" data-feedback="不对。计算资源不是问题理解的核心目的。再想想：问题理解是做什么的？" data-ih-action="single-choice" data-interaction-id="interaction-1" data-option-id="b" data-option-label="B" type="button">因为AI需要确认用户是否拥有足够的计算资源。</button>
+<button class="ih-option" data-correct="false" data-feedback="不，系统不会自动收费。问题理解是为了明确任务目标。" data-ih-action="single-choice" data-interaction-id="interaction-1" data-option-id="c" data-option-label="C" type="button">因为问题理解可以让系统自动向用户收费。</button>
+<button class="ih-option" data-correct="false" data-feedback="不，编程语言选择是具体实现细节，不是问题理解的首要任务。" data-ih-action="single-choice" data-interaction-id="interaction-1" data-option-id="d" data-option-label="D" type="button">因为只有理解问题，系统才能决定使用哪个编程语言。</button>
+</div>
+<div aria-live="polite" class="ih-feedback" data-ih-feedback-for="interaction-1"></div>
+</article>
+<article data-block-id="unit-5-case-study_reflection" data-block-type="reflection"><h3>思考：如果理解不准确会怎样？</h3><div class="ih-reflection"><p>假如系统将"生成式AI概述"误判为面向小学生的入门话题，生成的内容过于基础，大学生根本不会满意。更严重的是，如果理解偏差导致调研方向错误，后续所有产出都将偏离教学目标。</p><div class="ih-callout"><strong>提示：</strong>检索增强生成（RAG）技术可以为系统补充相关的权威资料，减少因知识不足导致的理解偏差。</div></div></article>
+</section></section><section class="ih-module-card" data-example-section="" hidden="" id="unit-6-boundaries-and-future"><h2>理解能力的边界与未来展望</h2><section class="ih-unit ih-scope-unit-6-boundaries-and-future" data-section-id="unit-6-boundaries-and-future" id="unit-6-boundaries-and-future">
+<article class="ih-card" data-block-id="unit-6-boundaries-and-future_intro" data-block-type="intro"><div class="ih-eyebrow">认识AI</div><h3>AI真的理解你吗？</h3><p>当你对AI倾诉心事，它真的“懂”你吗？看似温暖的回应，背后其实是一套精密的<strong>统计模式匹配</strong>——它依据海量语料预测最可能的下一个词，而非真正理解你的情感。</p><div class="ih-callout"><strong>举两个例子</strong><ul><li><strong>人类理解</strong>：“今天心情不好。” → 你能体会到对方的低落，并给予真实共情。</li><li><strong>AI模式匹配</strong>：同样一句话，AI根据概率生成“抱抱你”“发生什么事了”等回复，却从未拥有过任何情感体验。</li></ul><p>这种本质差异正是AI理解能力的核心局限。</p></div></article>
+<article class="ih-card" data-block-id="unit-6-boundaries-and-future_limitations" data-block-type="concept_explanation"><h3>AI理解的三大局限</h3><p>以下三个经典案例，清晰揭示了AI在常识、因果推理和意图理解上的短板。</p><div class="ih-concept-grid"><div class="ih-card"><h4>缺乏常识</h4><p>AI可能回答“把大象放进冰箱”需要几步？如果按模式匹配生成“三步”，它不懂冰箱根本装不下大象——因为缺乏物理世界常识。</p></div><div class="ih-card"><h4>无法因果推理</h4><p>问AI“下雨后地湿，那地湿一定是因为下雨吗？”AI可能只凭统计数据回答“是”，却无法理解洒水车等因素。</p></div><div class="ih-card"><h4>不懂真实意图</h4><p>用户说“我冷”，AI可能推荐穿外套，但若用户其实想开空调，AI无法识别深层需求——它只匹配了最频繁的回复。</p></div></div></article>
+<article class="ih-card" data-block-id="unit-6-boundaries-and-future_reasoning" data-block-type="stepper"><h3>推理模型如何突破边界：DeepSeek R1的快慢思考</h3><p>借鉴人类“双系统理论”，推理模型引入“慢思考”机制，通过显式思维链弥补统计匹配的不足。</p><div class="ih-flow-board"><div class="ih-step"><span class="ih-badge">1</span><h4>快思考（System 1）</h4><p>输入问题后，模型给出一个“即兴”回答（可能错误）。</p></div><div class="ih-step"><span class="ih-badge">2</span><h4>检测到复杂度</h4><p>模型自动触发推理模式，开始生成中间推理步骤。</p></div><div class="ih-step"><span class="ih-badge">3</span><h4>慢思考（System 2）</h4><p>逐步推演、自我纠错，形成连贯的思维链（CoT）。</p></div><div class="ih-step"><span class="ih-badge">4</span><h4>正确输出</h4><p>经过逻辑校验后，输出更可靠的最终答案。</p></div></div><p class="ih-callout">DeepSeek R1 将这一机制付诸实践，在数学、编程等复杂任务上展现了接近人类的推理能力，同时通过开源降低了使用门槛。</p></article>
+<article class="ih-block ih-interaction ih-quiz ih-quiz--single ih-variant-checkpoint" data-block-id="unit-6-boundaries-and-future_check" data-block-type="single_choice">
+<div class="ih-block-header"><div><div class="ih-block-kicker">单选题</div><h3>检测理解：AI的理解本质</h3></div></div>
+<p class="ih-question">关于AI的理解能力，以下哪种说法最准确？</p>
+<div aria-label="单选题选项" class="ih-options" role="group">
+<button class="ih-option" data-correct="false" data-feedback="不准确。AI并不具备真正的语义理解，它基于概率预测。" data-ih-action="single-choice" data-interaction-id="unit-6-boundaries-and-future_check_interaction" data-option-id="a" data-option-label="A" type="button">AI通过统计学习大量文本，可以像人类一样真正理解语义。</button>
+<button class="ih-option" data-correct="true" data-feedback="正确。AI通过模式匹配生成回答，而非真正理解。" data-ih-action="single-choice" data-interaction-id="unit-6-boundaries-and-future_check_interaction" data-option-id="b" data-option-label="B" type="button">AI的理解本质是基于模式的统计匹配，与人类的语义理解有本质不同。</button>
+<button class="ih-option" data-correct="false" data-feedback="不准确。目前的大模型缺乏因果推理能力，这是其局限之一。" data-ih-action="single-choice" data-interaction-id="unit-6-boundaries-and-future_check_interaction" data-option-id="c" data-option-label="C" type="button">AI能够进行因果推理，只是速度较慢。</button>
+<button class="ih-option" data-correct="false" data-feedback="不准确。AI目前仍缺乏常识和意图理解，这是根本局限。" data-ih-action="single-choice" data-interaction-id="unit-6-boundaries-and-future_check_interaction" data-option-id="d" data-option-label="D" type="button">AI已经具备了常识和意图理解的能力，只是尚未完善。</button>
+</div>
+<div aria-live="polite" class="ih-feedback" data-ih-feedback-for="unit-6-boundaries-and-future_check_interaction"></div>
+</article>
+<article class="ih-card" data-block-id="unit-6-boundaries-and-future_agent" data-block-type="case_compare"><h3>从信息引擎到任务引擎：智能体元年</h3><p>传统AI仅仅“回答问题”，而智能体（Agent）能自主规划、调用工具、执行任务。</p><div class="ih-scenario-layout"><div class="ih-card"><h4>传统AI：信息引擎</h4><p>你问“怎么订咖啡？”→ 它返回搜索链接或文字步骤，<strong>由你手动操作</strong>。</p></div><div class="ih-card"><h4>智能体：任务引擎</h4><p>你说“帮我订一杯拿铁” → 它自动打开APP，选择商品、使用红包、完成支付，<strong>直接交付结果</strong>。</p></div></div><p>2025年被称作“智能体元年”，多智能体协作（如教学资源自动生成）正在将AI从被动的对话工具升级为主动的数字员工。</p></article>
+<article class="ih-card" data-block-id="unit-6-boundaries-and-future_summary" data-block-type="summary"><h3>理解边界，拥抱未来</h3><div class="ih-reflection"><ul><li><strong>本质认清</strong>：AI理解是统计模式匹配，并非人类式语义理解。</li><li><strong>突破方向</strong>：推理模型（如DeepSeek R1）通过慢思考与思维链大幅提升逻辑可靠性。</li><li><strong>未来图景</strong>：智能体从信息引擎进化为任务引擎，自主执行复杂工作流。</li><li><strong>人类核心</strong>：保持批判性思维、创造力与审美判断，在AI增强时代锚定自身价值。</li></ul><p class="ih-callout">“AI的边界不是它的上限，而是我们的想象力。” 理解边界，才能更好地驾驭未来。</p></div></article>
+</section></section></main></div><script src="runtime.js"></script></body></html>

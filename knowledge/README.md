@@ -98,4 +98,4 @@ uv run python -m knowledge.scripts.ingest --retract workbench-guide
 - **目录被占用**：停止使用同一 Qdrant 本地目录的其它进程。
 - **切换模型后结果异常**：检查所用模型及对应集合，重新执行建库。
 
-设计依据见 [知识库设计](../docs/knowledge-base-design.md)。
+设计依据见 [知识库设计](../docs/design/knowledge-base-design.md)。

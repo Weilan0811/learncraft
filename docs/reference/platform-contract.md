@@ -63,7 +63,7 @@
 }
 ```
 
-事件类型见 [learning-loop.md](learning-loop.md)。
+事件类型见 [learning-loop.md](../design/learning-loop.md)。
 
 ### 学习摘要
 

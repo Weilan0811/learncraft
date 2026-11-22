@@ -47,7 +47,7 @@ uv run python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 
 | `POST /tasks/{task_id}/resources/{resource_id}/retry` | 重试资源 |
 | `POST /tasks/{task_id}/export` | 导出任务产物 |
 
-完整字段以 OpenAPI 为准。平台请求头、学习会话、摘要和复习接口见[平台契约](../docs/platform-contract.md)及[学习记录说明](../docs/learning-loop.md)。
+完整字段以 OpenAPI 为准。平台请求头、学习会话、摘要和复习接口见[平台契约](../docs/reference/platform-contract.md)及[学习记录说明](../docs/design/learning-loop.md)。
 
 ## 知识库与任务材料
 
@@ -61,7 +61,7 @@ uv run python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 
 
 附件格式为 `[{"filename":"材料.md","content":"正文"}]`，最多 10 份，每份最多 200,000 个字符。仅附件模式无需平台语料；复习任务继续使用原附件和模式。`knowledge_base_ids` 保留在请求结构中，当前不承担按库授权。
 
-配置、示例和索引维护见[知识库使用说明](../knowledge/README.md)，职责与设计依据见[知识库设计](../docs/knowledge-base-design.md)。
+配置、示例和索引维护见[知识库使用说明](../knowledge/README.md)，职责与设计依据见[知识库设计](../docs/design/knowledge-base-design.md)。
 
 ## 开发验证
 
