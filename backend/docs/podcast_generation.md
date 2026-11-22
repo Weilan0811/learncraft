@@ -172,9 +172,9 @@ MarkdownExporter / AudioExporter
 
 real provider 模式下：
 
-- 文本模型仍使用百炼 OpenAI-compatible base URL。
+- 文本生成使用当前配置的文本服务，可选择百炼或 DeepSeek；语音生成单独使用百炼。
 - TTS 使用 DashScope 多模态生成接口。
-- `BailianTTSService` 先请求 `qwen3-tts-instruct-flash` 获取音频 URL，再下载音频 bytes。
+- `BailianTTSService` 先请求 `qwen3-tts-flash` 获取音频 URL，再下载音频 bytes。
 - 音频 bytes 通过 `LocalStorageService.save_bytes(...)` 保存为 `audio` asset。
 - `PodcastRenderer` 只把清洗后的 `segment.text` 传入 TTS，避免把不兼容标签直接送入语音接口。
 
@@ -183,7 +183,7 @@ real provider 模式下：
 | 环境变量 | 默认值 |
 |---|---|
 | `CONTENT_GENERATOR_TTS_PROVIDER` | `bailian` |
-| `CONTENT_GENERATOR_TTS_MODEL` | `qwen3-tts-instruct-flash` |
+| `CONTENT_GENERATOR_TTS_MODEL` | `qwen3-tts-flash` |
 | `CONTENT_GENERATOR_TTS_PERSON1_VOICE` | `Ethan` |
 | `CONTENT_GENERATOR_TTS_PERSON2_VOICE` | `Cherry` |
 | `CONTENT_GENERATOR_TTS_OUTPUT_FORMAT` | `mp3` |
@@ -193,7 +193,7 @@ real provider 模式下：
 
 ## 8. 重试与完整音频
 
-`PodcastRenderer` 对每个 segment 顺序调用 TTS。
+`PodcastRenderer` 以有限并发生成语音分段，并按原稿顺序整理结果。并发数由 `CONTENT_GENERATOR_TTS_GENERATION_CONCURRENCY` 控制，默认 4。
 
 - 单段失败后按 `CONTENT_GENERATOR_PODCAST_SEGMENT_MAX_RETRIES` 重试。
 - 每次 retry 前等待 `CONTENT_GENERATOR_PODCAST_SEGMENT_RETRY_DELAY_SECONDS` 秒。
@@ -202,8 +202,8 @@ real provider 模式下：
 
 所有分段生成成功后，`AudioAssemblerService` 生成完整音频：
 
-- WAV 分段按音频参数拼接。
-- 其他统一格式分段提供保守字节拼接兜底。
+- 使用 ffmpeg 按原稿顺序解码并重新编码分段，统一为 24 kHz 单声道。
+- 根据输出配置生成 WAV 或 MP3；默认使用 `imageio-ffmpeg` 附带的程序，也可以通过 `CONTENT_GENERATOR_FFMPEG_BINARY` 指定路径。合成失败时保留分段并报告错误。
 - 完整音频写入 `final_audio_url`。
 - `audio_manifest.json` 始终保存，记录分段状态和完整音频 URL。
 

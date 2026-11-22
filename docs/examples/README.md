@@ -1,4 +1,4 @@
-# 完整作品示例
+# LearnCraft 完整作品示例
 
 这里保存四份实际生成的作品及必要资源，不需要 API Key。GitHub 文件页显示 HTML 源码；下载仓库 ZIP 并解压，打开 `docs/examples/index.html` 即可浏览。也可以下载对应目录的全部文件后本地打开。
 

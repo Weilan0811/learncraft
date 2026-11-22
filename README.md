@@ -1,10 +1,12 @@
-# Content Generator Agent
+# LearnCraft
+
+**AI 学习内容创作工具**
 
 **把想学的主题，变成一份能读、能练、能复习的交互讲义。**
 
 想弄懂一个新概念，或者找个主题从头学起？写下你的基础和学习要求，让 Agent 规划章节、组织讲解和练习。读一段，试着回答几个问题，再看看哪些地方值得回头复习。
 
-除了交互讲义，还可以生成图文讲义、双人播客和图文推文。项目提供完整的网页工作台，也支持通过 HTTP API 接入自己的应用。
+LearnCraft 从一个学习主题出发，生成交互讲义、图文讲义、双人播客、图文推文与幻灯片。项目提供完整的网页工作台，也支持通过 HTTP API 接入自己的应用。
 
 [生成效果](#生成效果) · [交互讲义](#边读边练继续复习) · [快速开始](#快速开始) · [配置指南](docs/configuration.md) · [架构与开发](docs/architecture.md)
 
@@ -46,8 +48,8 @@
 需要 Python 3.11+、[uv](https://docs.astral.sh/uv/) 和 Node.js 22.12+。以下使用 PowerShell。
 
 ```powershell
-git clone https://github.com/Weilan0811/content-generator-agent.git
-cd content-generator-agent
+git clone https://github.com/Weilan0811/learncraft.git
+cd learncraft
 uv sync
 if (!(Test-Path -LiteralPath .env)) {
     Copy-Item .env.example .env

@@ -137,7 +137,7 @@ finalize_task
 | `allowed_elements` | 空，当前不走 image / mindmap 元素分支 |
 | `default_required_elements` | 空 |
 | `optional_elements` | 空 |
-| `exporter_types` | profile 声明 `html`、`zip`；当前 API 可用导出以 `html` 为准 |
+| `exporter_types` | `html` |
 
 ## 6. Schema 结构
 
@@ -307,7 +307,7 @@ scenario_discussion
 
 - `content_type` 固定为 `interactive_html`。
 - units 中每个 unit 的 `unit_type` 固定为 `interactive_section`。
-- units 数量 4-8 个。
+- units 至少 1 个，不能超过 `generation_options.max_section_count`；按主题复杂度、学习目标、深度与资料确定，默认上限为 8。
 - 每个 unit 提供 `retrieval_queries` 和 `source_chunk_ids`。
 - 不指定具体 Block 类型。
 - 不规划互动检查点位置。
@@ -536,12 +536,9 @@ POST /api/interactive-lessons/{lesson_id}/sessions/{session_id}/events
 GET /api/interactive-lessons/{lesson_id}/sessions/{session_id}/state
 ```
 
-当前 `InMemoryLearningService` 保存：
+当前正式入口使用 `LearningService` 与 `SQLModelLearningRepository`，学习会话和事件保存在数据库中，复用任务仓储的数据库引擎。服务重启后可以继续读取。`InMemoryLearningService` 仅保留给独立检查使用。
 
-- `session_id`
-- `lesson_id`
-- event list
-- 简单 interaction summary
+除会话创建、事件提交和状态读取外，还提供学习摘要与规则复习要求接口，见[学习记录与复习](../../docs/design/learning-loop.md)。单选、多选提供本地答案判定；简答和讨论记录文本，未评分回答不计入正确率分母。
 
 当前 event payload 支持：
 
@@ -613,7 +610,7 @@ ExportResult(file_url=...)
 
 当前限制：
 
-- learning session 为 in-memory，服务重启后无法导出旧 session 的答题记录。
+- 学习会话与事件保存到数据库，服务重启后仍可导出有效会话的作答记录。
 - 当前导出需要已有 `content_spec` 和 `render_model`。
 - 当前 API 可用导出为 `html`；`zip` 尚未接入 `ExportType` 和 exporter router。
 
@@ -653,8 +650,8 @@ pytest tests/test_interactive_html_prompts.py tests/test_interactive_html_render
 
 ## 14. 当前待完善事项
 
-1. 将 learning session / event 持久化到数据库。
-2. 将 `interactive_html` 的 ZIP 导出补齐，或从 profile 中移除尚不可用的 `zip` 声明。
+1. 学习会话与事件已经持久化，学习摘要和复习生成可以读取历史任务；长期学习画像仍待实现。
+2. 当前 profile 仅声明 HTML 导出。ZIP 属于尚未实现的扩展格式。
 3. 为 `repair_render_unit` 接入更明确的 LLM repair 输出链路，目前 `repair_context` 已传入 composer，但主要 repair 行为仍依赖重新 compose。
 4. 扩展前端 runtime 对 `drag_match`、`sequence`、`socratic_chat`、`scenario` 的模板支持。
 5. 将 `duration_minutes`、`section_count` 对 interactive_html 的影响进一步落到 planner 逻辑和 request validator 中。

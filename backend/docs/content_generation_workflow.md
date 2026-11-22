@@ -10,7 +10,7 @@
 |---|---|---|
 | `lecture` | `unit_loop` | 生成讲义 / 阅读材料。 |
 | `slide_deck` | `unit_loop` | 生成课程 slides / PPT JSON。 |
-| `interactive_html` | `unit_loop` | 生成纵向教材式 + 对话导师的互动 HTML 课件。 |
+| `interactive_html` | `unit_loop` | 生成分章阅读、模板练习与学习记录相结合的交互 HTML 讲义。 |
 | `social_post` | `direct` | 生成微信公众号文章。 |
 | `podcast_script` | `direct` | 生成中文双人播客脚本和音频。 |
 
@@ -99,7 +99,7 @@ podcast_script  -> direct
 | `renderer_factory` | `InteractiveHtmlRenderer` |
 | `generator_name` | `interactive_html` |
 | `element_policy` | 当前不生成 image / mindmap 元素 |
-| `exporter_types` | profile 声明 `html`、`zip`；当前 API 可用导出以 `html` 为准 |
+| `exporter_types` | 仅 `html`，导出带指定会话作答记录的静态讲义 |
 
 ## 4. unit_loop 生成路径
 
@@ -179,14 +179,14 @@ merge_unit_result
 | 节点 | 职责 |
 |---|---|
 | `normalize_request` | 标准化用户请求和 generation options。 |
-| `retrieve_for_planning` | 为大纲规划检索知识库 chunk。 |
+| `retrieve_for_planning` | 启用本地检索时，先调用文本模型规划 1—4 条知识查询，再逐条检索并合并资料；未启用时返回明确的关闭状态。 |
 | `plan_outline` | 生成 `Outline`。`interactive_html` 使用 `interactive_html_outline.md`，只规划课程内容，不规划具体 block 或互动位置。 |
 | `validate_outline` | 校验 outline 结构、unit_type、顺序、引用和 content_type。 |
 | `initialize_section_units` | 初始化 lecture section 队列。 |
 | `initialize_slide_units` | 初始化 slide page 队列。 |
 | `initialize_interactive_html_units` | 初始化 interactive_html section 队列，并写入默认 `style_guide`。 |
 | `generate_units_parallel` | 以有限并发执行单元内检索、spec、元素、渲染和发布事件，并按 outline 顺序合并结果。 |
-| `retrieve_for_unit` | 为当前单元检索更聚焦的上下文。 |
+| `retrieve_for_unit` | 直接执行大纲单元的 `retrieval_queries`；没有章节结果时沿用大纲阶段资料，并保存实际使用情况。 |
 | `generate_unit_spec` | 根据 profile 调用对应 generator，生成 `LectureSection`、`SlideSpecPage` 或 `InteractiveHtmlSectionSpec`。 |
 | `validate_unit_spec` | 校验单元 spec 的结构、引用和 renderer 契约。 |
 | `repair_unit_spec` | 单元 spec 校验失败后，最多执行一次 LLM repair。 |
@@ -410,9 +410,11 @@ workflow 全局状态为 `ContentGenerationState`，关键字段如下：
 | 任务摘要、平台关联、状态、进度 | `content_generation_task` |
 | 大纲、content spec、unit spec、unit render、partial/final render | `content_generation_artifact` |
 | planning 和 unit spec 阶段检索引用 | `content_generation_reference` |
-| stream events | `content_generation_event` |
-| 节点耗时、LLM token、provider retry、fallback 原因 | `content_generation_metric` |
-| 图片、音频、导出文件 | 本地 asset storage，后续可迁移对象存储 |
+| stream events | `TaskEventStore` 保存到 `storage/logs/content-generation/{task_id}.events.json`；路径随日志配置变化 |
+| 查询及生成调用用量 | `retrieval_record`、大纲等产物中的实际调用记录；工作流日志与调试快照补充排查，`/metrics` 兼容接口当前返回空列表 |
+| 资源状态 | `content_generation_asset` 与渲染产物保存失败原因及重试状态 |
+| 学习会话和事件 | `interactive_learning_session`、`interactive_learning_event` |
+| 图片、音频、导出文件 | 本地文件存储与 `manifest.json` |
 
 写入时机：
 
@@ -423,9 +425,9 @@ workflow 全局状态为 `ContentGenerationState`，关键字段如下：
 | unit render 完成后 | 写入 `unit_render_ready` event；更新 `partial_render` artifact。 |
 | `assemble_content_spec` 后 | 写入 `content_spec` artifact。 |
 | 最终 renderer 后 | 写入 `final_render` artifact，并更新任务 `preview_url`。 |
-| 每个 graph update | 写入 node metric；provider 调用会附带 token / retry metric。 |
+| 每个 graph update | 保存任务进度、产物和累计事件文件；节点及供应商观测同时进入工作流日志或调试快照。 |
 
-本地 `storage/debug_workflow/{task_id}` 仍会保存 JSON 调试快照，只用于开发排障；产品查询应以 DB artifact/reference/metric 为准。
+本地 `storage/debug_workflow/{task_id}` 仍会保存 JSON 调试快照，只用于开发排障；产物和引用查询以数据库为准，事件从持久事件文件读取；不要依赖已移除的旧指标表。
 
 前端可以通过以下接口读取这些状态：
 
@@ -443,7 +445,7 @@ GET /api/content-generation/tasks/{task_id}/units/{unit_id}/references
 GET /api/content-generation/tasks/{task_id}/metrics
 ```
 
-平台后端保持“一会话一主产物”规则。生成模块不建立跨库外键，只保存 `platform_log_id`、`platform_user_id`、`platform_session_id`，平台可用 `content_generation_log.external_content_id = task_id` 关联生成结果。
+外部应用可通过 `platform_log_id`、`platform_user_id`、`platform_session_id` 关联任务。LearnCraft 保存这些标识，不建立跨库外键，也不限定外部会话只能关联一个产物。接入方式见[集成契约](../../docs/reference/platform-contract.md)。
 
 ## 10. 扩展新内容类型的步骤
 

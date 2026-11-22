@@ -1,4 +1,4 @@
-# 内容生成后端
+# LearnCraft 后端
 
 FastAPI 提供 HTTP API，LangGraph 编排内容生成，Pydantic 定义请求与产物契约，SQLModel 和 Alembic 管理任务与学习记录。
 

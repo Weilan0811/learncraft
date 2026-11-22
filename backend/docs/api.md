@@ -355,7 +355,7 @@ task 级 references 的 `unit_id` 为 `null`。`chunk_id` 优先使用 `source_i
 GET /api/content-generation/tasks/{task_id}/metrics
 ```
 
-返回 `GenerationMetricListResponse`。指标包括节点耗时、provider、model、prompt/completion/total token、retry 次数、fallback 是否使用和 fallback 原因。不同 provider 的 token usage 字段可能缺失，前端展示时需要容忍 `null`。
+返回 `GenerationMetricListResponse`。当前该兼容接口对已有任务返回空 `metrics` 列表，没有独立指标表。查询规划、大纲和章节的实际调用用量保存在对应任务产物中，详见[知识查询流程](../../docs/design/retrieval-workflow.md)。工作流日志与调试快照另用于排查。
 
 ### 2.12 导出任务结果
 
@@ -389,7 +389,8 @@ POST /api/content-generation/tasks/{task_id}/export
 
 | content_type | 推荐 export_type | 说明 |
 |---|---|---|
-| `lecture` | `pdf` | 当前为占位 PDF，用于跑通导出链路。 |
+| `lecture` | `pdf` | 使用 ReportLab 排版讲义正文与图片，输出实际 PDF。 |
+| `lecture` | `html` / `markdown` | 导出完整 HTML 或 Markdown 讲义。 |
 | `lecture` | `image_assets` | 打包任务中生成的图片资源。 |
 | `slide_deck` | `slide_json` | 导出前端 PPT/slide renderer 可消费的 JSON。 |
 | `slide_deck` | `image_assets` | 打包任务中生成的图片资源。 |
@@ -414,11 +415,16 @@ POST /api/content-generation/tasks/{task_id}/export
 
 - `session_id` 必须来自 `POST /api/interactive-lessons/{lesson_id}/sessions`。
 - 导出时后端会读取该 session 的学习事件，把在线互动控件静态化，并附加答题记录。
-- 当前 learning session 与事件存储为 in-memory，服务重启后 session 不保留。
-- `interactive_html` profile 中声明了 `zip`，但当前 `ExportType` 和 exporter router 尚未接入 `zip`，API 层可用导出以 `html` 为准。
+- 当前学习会话与事件保存到数据库，重启后可继续读取；导出必须使用属于该讲义的有效会话。
+- `interactive_html` profile 当前仅声明 `html`，导出需要 `export_options.session_id`；当前没有交互讲义 ZIP 导出接口。
 - `pptx` 等类型在 schema 或 profile 中已有预留，当前 exporter router 尚未形成完整生产契约。
 
 ## 3. 互动学习接口
+
+以下接口使用数据库保存会话与事件。学习摘要与复习要求另有正式入口，完整字段见[学习记录与复习](../../docs/design/learning-loop.md)：
+
+- `GET /api/interactive-lessons/{lesson_id}/sessions/{session_id}/summary`
+- `POST /api/interactive-lessons/{lesson_id}/sessions/{session_id}/adaptive-brief`
 
 互动学习接口用于 `interactive_html` 在线课件运行时记录学生交互事件，并为离线复习讲义导出提供答题记录。
 
@@ -566,7 +572,9 @@ GET /api/assets/{asset_id}/download
 | `topic` | string | 生成主题。 |
 | `user_prompt` | string | 用户原始生成要求。 |
 | `system_prompt` | string / null | 可选系统约束。 |
-| `knowledge_base_ids` | string[] | 检索使用的知识库 ID。 |
+| `knowledge_base_ids` | string[] | 保留并持久化的关联字段，当前不承担分库选择或授权。 |
+| `kb_mode` | string | `platform`、`materials_only` 或 `fused`，分别选择平台材料、任务附件或融合结果；需启用本地检索适配器。 |
+| `attachments` | object[] | 本次材料正文，结构为 `{filename, content}`；最多 10 份，每份最多 200,000 个字符。 |
 | `generation_options` | object | 生成配置。 |
 
 `ContentType` schema 中还保留了 `video_script`、`project_task`、`quiz_pack`、`learning_path` 等未来类型，但当前 runtime registry 尚未注册这些类型，提交后会在 workflow 路由阶段失败。
@@ -582,7 +590,7 @@ GET /api/assets/{asset_id}/download
 | `duration_minutes` | null | lecture / interactive_html 可参考的时长配置。 |
 | `section_count` | null | lecture / interactive_html 章节数建议。当前强校验只针对 `lecture`。 |
 | `slide_count` | null | slide 页数。 |
-| `max_section_count` | 8 | lecture 最大章节数；interactive_html outline prompt 当前建议 4-8 个 units。 |
+| `max_section_count` | 8 | 讲义与交互讲义的大纲章节上限；交互讲义至少 1 章，实际数量由主题、要求和资料决定。 |
 | `max_slide_count` | 12 | slide 最大页数。 |
 | `output_depth` | `standard` | `brief` / `standard` / `detailed`。 |
 | `image_style` | null | 图片风格提示。 |

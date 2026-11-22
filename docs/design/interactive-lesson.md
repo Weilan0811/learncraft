@@ -1,6 +1,6 @@
 # 互动讲义
 
-互动讲义是一条“教学大纲 → 单元规格 → HTML/CSS → 运行时”的流水线。它把讲义的长内容能力和幻灯片的视觉表达合并成一个可直接学习的单文件页面。
+互动讲义按“教学大纲 → 单元规格 → HTML/CSS → 前端运行时”生成。在线工作台按章节展示讲解和练习；导出时生成附带作答记录的单文件静态讲义。
 
 ## 流水线
 
@@ -14,7 +14,7 @@ flowchart LR
     F --> G[学习事件]
 ```
 
-1. **Outline**：4–8 个章节，每章包含 `section_id / title / learning_goal / target_concepts / key_questions`。大纲阶段不规划 HTML block。
+1. **Outline（大纲）**：章节数量至少为 1，不能超过 `generation_options.max_section_count`，默认上限为 8。大纲单元使用 `id / title / goal / core_message / key_points / retrieval_queries / source_chunk_ids` 等字段；教学块、互动题目和概念由单元规格进一步设计。
 2. **Unit Spec**：逐章设计 `teaching_flow`、`interaction_specs`、概念与引用。此阶段只描述“教什么、怎么互动”，不写 HTML。
 3. **Composer**：把单元规格渲染为受限 HTML 片段与作用域 CSS。前端负责外壳、导航、样式容器与交互运行时。
 4. **Render Model**：`InteractiveHtmlRenderModel` 包含章节 HTML、块清单、交互清单、导航与运行时配置。
@@ -29,7 +29,7 @@ flowchart LR
 
 ## 互动
 
-`InteractiveHtmlInteractionSpec` 支持四类可评分互动：
+`InteractiveHtmlInteractionSpec` 支持四类互动。选择题在浏览器中判定答案；简答和讨论保存文本与参考要点，当前主运行时不提供自动评分：
 
 | 类型 | 事件 | 说明 |
 |---|---|---|

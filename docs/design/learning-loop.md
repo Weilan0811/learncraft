@@ -1,6 +1,6 @@
-# 学习闭环
+# 学习记录与复习
 
-学习闭环把“生成互动讲义”扩展为“生成 → 学习 → 诊断 → 再生成”。当前实现是最小可用版本：数据持久化、规则摘要、规则 brief；LLM brief 与长期学习画像在接口上已预留。
+学习记录把“生成互动讲义”扩展为“生成 → 学习 → 摘要 → 复习生成”。当前实现包含数据库持久化、规则摘要和规则复习要求；模型生成复习要求、长期学习画像及平台自动回写属于后续扩展。
 
 ## 数据模型
 
@@ -174,7 +174,7 @@ POST /api/interactive-lessons/{lesson_id}/sessions/{session_id}/events
 
 ### 完成度
 
-`answered_sections / total_sections`。`total_sections` 取自讲义中有互动的章节；历史任务缺少规格时，以事件中出现的章节数为准。
+`answered_sections / total_sections`，结果最多为 1。分母包含讲义规格或渲染结果中带互动的章节，并补充事件中出现的其他章节；历史任务缺少章节资料时，以事件中出现的章节数为准。这里衡量章节作答覆盖情况，不等同于阅读完成度。
 
 ## brief 规则
 
@@ -198,11 +198,11 @@ POST /api/interactive-lessons/{lesson_id}/sessions/{session_id}/events
 1. 调用 adaptive brief，读取响应中的 `source_request` 作为原始配置，支持刷新后和历史记录中的讲义；
 2. 以 `topic_suggestion` 作为新主题；
 3. 把 `focus_prompt` 追加到原 `user_prompt`；
-4. 沿用 `system_prompt`、`knowledge_base_ids` 和全部 `generation_options`，更新其中的建议难度；
+4. 沿用 `system_prompt`、`knowledge_base_ids`、`attachments`、`kb_mode` 和全部 `generation_options`，更新其中的建议难度；
 5. 提交新的 `interactive_html` 任务。
 
 ## 演进方向
 
-- **LLM brief**：保留同一响应结构，把 `AdaptiveBriefService.build` 内部替换为 LLM 生成，并可用规则结果作为约束与兜底。
+- **LLM brief**：保留同一响应结构，把 `AdaptiveBriefService.build` 内部替换为 LLM 生成，并可用规则结果提供约束。
 - **学生长期画像**：把会话摘要按 `platform_user_id` 聚合，形成概念掌握度、偏好难度与常见错因；生成请求可携带画像摘要，brief 也可读取画像。
 - **平台回写**：摘要与 brief 作为学习结果回写教育平台，更新学生档案与推荐策略。
