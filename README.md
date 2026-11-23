@@ -29,7 +29,7 @@ LearnCraft 从一个学习主题出发，生成交互讲义、图文讲义、双
 </tr>
 </table>
 
-[查看完整示例与下载说明](docs/examples/README.md)
+[查看完整示例](https://weilan0811.github.io/learncraft/)
 
 <sub>另支持幻灯片生成，目前排版效果暂不稳定。</sub>
 
