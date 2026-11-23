@@ -8,20 +8,28 @@
 
 LearnCraft 从一个学习主题出发，生成交互讲义、图文讲义、双人播客、图文推文与幻灯片。项目提供完整的网页工作台，也支持通过 HTTP API 接入自己的应用。
 
-[生成效果](#生成效果) · [交互讲义](#边读边练继续复习) · [快速开始](#快速开始) · [配置指南](docs/configuration.md) · [架构与开发](docs/architecture.md)
+[工作台](#工作台) · [生成效果](#生成效果) · [交互讲义](#边读边练继续复习) · [快速开始](#快速开始) · [配置指南](docs/configuration.md) · [架构与开发](docs/architecture.md)
+
+## 工作台
+
+选择内容形式、写下要求，生成后就能在同一页面预览和导出。
+
+![完整工作台：生成配置、任务状态、章节导航与内容预览](docs/assets/screenshots/workbench.jpg)
 
 ## 生成效果
 
 <table>
 <tr>
-<td width="50%" align="center"><strong>交互讲义</strong> · <a href="docs/examples/README.md">完整示例与下载</a><br><a href="docs/assets/screenshots/interactive-home.jpg"><img src="docs/assets/screenshots/interactive-home.jpg" width="520" alt="六章交互讲义：生成式AI如何理解你的问题"></a><br>分章阅读，穿插互动练习。</td>
-<td width="50%" align="center"><strong>图文讲义</strong> · <a href="docs/examples/README.md">完整示例与下载</a><br><a href="docs/assets/screenshots/lecture-home.jpg"><img src="docs/assets/screenshots/lecture-home.jpg" width="520" alt="咖啡供需讲义的标题、学习目标和正文"></a><br>把概念、案例和配图组织成完整讲义。</td>
+<td width="50%" align="center"><strong>交互讲义</strong><br><a href="docs/assets/screenshots/interactive-home.jpg"><img src="docs/assets/screenshots/interactive-home.jpg" width="520" alt="六章交互讲义：生成式AI如何理解你的问题"></a><br>分章阅读，穿插互动练习。</td>
+<td width="50%" align="center"><strong>图文讲义</strong><br><a href="docs/assets/screenshots/lecture-home.jpg"><img src="docs/assets/screenshots/lecture-home.jpg" width="520" alt="咖啡供需讲义的标题、学习目标和正文"></a><br>把概念、案例和配图组织成完整讲义。</td>
 </tr>
 <tr>
-<td align="center"><strong>图文推文</strong> · <a href="docs/examples/README.md">完整示例与下载</a><br><a href="docs/assets/screenshots/social-mobile.jpg"><img src="docs/assets/screenshots/social-mobile.jpg" height="300" alt="手机尺寸下的AI Agent工作流文章首页"></a><br>生成正文与配图，预览文章排版。</td>
-<td align="center"><strong>播客</strong> · <a href="docs/examples/README.md">完整示例与下载</a><br><a href="docs/assets/screenshots/podcast.jpg"><img src="docs/assets/screenshots/podcast.jpg" width="520" alt="双人播客脚本和完整音频播放器"></a><br>双人对谈脚本，配分段语音与完整音频。</td>
+<td align="center"><strong>图文推文</strong><br><a href="docs/assets/screenshots/social-mobile.jpg"><img src="docs/assets/screenshots/social-mobile.jpg" height="300" alt="手机尺寸下的AI Agent工作流文章首页"></a><br>生成正文与配图，预览文章排版。</td>
+<td align="center"><strong>播客</strong><br><a href="docs/assets/screenshots/podcast.jpg"><img src="docs/assets/screenshots/podcast.jpg" width="520" alt="双人播客脚本和完整音频播放器"></a><br>双人对谈脚本，配分段语音与完整音频。</td>
 </tr>
 </table>
+
+[查看完整示例与下载说明](docs/examples/README.md)
 
 <sub>另支持幻灯片生成，目前排版效果暂不稳定。</sub>
 
@@ -29,13 +37,11 @@ LearnCraft 从一个学习主题出发，生成交互讲义、图文讲义、双
 
 讲义生成一章，就能先看一章。沿着目录阅读概念、案例和图解，遇到练习就停下来试一试：做一道选择题，写下自己的解释，或者想想换个情景该怎么办。
 
-![交互讲义正文](docs/assets/screenshots/interactive-content.jpg)
+![交互讲义单选练习：选项、已选答案与即时反馈](docs/assets/screenshots/interactive-exercise.jpg)
 
 读完后，学习摘要会帮你整理这次的作答情况、薄弱概念和建议复习章节。还没弄懂的地方，可以继续生成一份针对性的复习讲义，沿用原来的资料和设置；想留着慢慢看，也可以导出带作答记录的离线讲义。
 
 单选、多选提供答案反馈；简答和讨论会保存提交内容，未评分的回答不计入正确率。
-
-完整作品保存在 [示例目录](docs/examples/README.md)。下载解压后打开入口页面，即可阅读或试听。
 
 ## 日常使用
 
